@@ -17,12 +17,14 @@
                 {% for tier_name, tier_data in tiers.items() %}
                 <div class="mb-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
-                        {% if tier_name == "free" %}
+                        {% if tier_name.upper() == "FREE" %}
                         <span class="badge bg-success">{{ tier_name }}</span>
-                        {% elif tier_name == "lowcost" %}
+                        {% elif tier_name.upper() == "LOWCOST" %}
                         <span class="badge bg-info">{{ tier_name }}</span>
-                        {% else %}
+                        {% elif tier_name.upper() == "PREMIUM" %}
                         <span class="badge bg-warning text-dark">{{ tier_name }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ tier_name }}</span>
                         {% endif %}
                         {% if tier_data.endpoint %}
                         <small class="text-muted text-truncate" title="{{ tier_data.endpoint }}">{{ tier_data.endpoint }}</small>

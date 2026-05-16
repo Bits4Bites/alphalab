@@ -1,5 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
+
+if TYPE_CHECKING:
+    from google.genai import Client as GenaiClient
+    from openai import AsyncOpenAI
 
 
 class AppSettings(BaseSettings):
@@ -69,6 +77,62 @@ class AIVendorSettings(BaseSettings):
         "nested_model_default_partial_update": True,
         "populate_by_name": True,
     }
+
+    def get_ai_client(self, vendor: str, tier: str, timeout_sec: float = 180) -> GenaiClient | AsyncOpenAI | None:
+        """Return an async AI client for the given vendor and tier, or None if not found.
+
+        Supported vendors:
+        - gemini → google.genai.Client (async)
+        - openai → openai.AsyncOpenAI
+        - azure_openai / azureopenai → openai.AsyncOpenAI (with DefaultAzureCredential)
+        """
+        from google import genai
+        from google.genai.types import HttpOptions
+        from openai import AsyncOpenAI
+
+        timeout_sec = timeout_sec if timeout_sec > 0 else 30
+
+        vendor_upper = vendor.upper()
+        tier_upper = tier.upper()
+
+        vendor_tiers = self.vendors.get(vendor_upper)
+        if not vendor_tiers:
+            return None
+
+        cfg = vendor_tiers.get(tier_upper)
+        if not cfg:
+            return None
+
+        if vendor_upper == "GEMINI":
+            client = genai.Client(api_key=cfg.api_key, http_options=HttpOptions(timeout=int(timeout_sec * 1000)))
+            return client
+
+        if vendor_upper in ("OPENROUTER", "OPEN_ROUTER", "OPEN-ROUTER"):
+            client = AsyncOpenAI(api_key=cfg.api_key, base_url=cfg.endpoint, project="AlphaLab", timeout=timeout_sec)
+            return client
+
+        if vendor_upper == "OPENAI":
+            kwargs: dict = {"api_key": cfg.api_key, "project": "AlphaLab"}
+            if cfg.endpoint:
+                kwargs["base_url"] = cfg.endpoint
+            client = AsyncOpenAI(**kwargs)
+            return client
+
+        if vendor_upper in ("AZUREOPENAI", "AZURE_OPENAI", "AZURE-OPENAI"):
+            from azure.identity import EnvironmentCredential, get_bearer_token_provider
+
+            token_provider = get_bearer_token_provider(EnvironmentCredential(), "https://ai.azure.com/.default")
+            kwargs = {
+                "api_key": token_provider(),
+                "base_url": cfg.endpoint,
+                "project": "AlphaLab",
+                "timeout": timeout_sec,
+            }
+            client = AsyncOpenAI(**kwargs)
+            return client
+
+        return None
+
 
 app_settings = AppSettings()
 security_settings = SecuritySettings()

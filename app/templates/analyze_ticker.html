@@ -1,0 +1,41 @@
+{% extends "app_layout.html" %}
+
+{% block title %}Analyze Ticker - AlphaLab{% endblock %}
+{% block nav_analyze %}active{% endblock %}
+{% block page_title %}Analyze Ticker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form method="post" action="/analyze-ticker">
+                    <label for="ticker" class="form-label fw-semibold">Stock Ticker</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="ticker" name="ticker"
+                               placeholder="e.g. ASX:CBA, NYSE:AAPL, HOSE:VNM"
+                               value="{{ ticker or '' }}" required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search me-1"></i>Analyze
+                        </button>
+                    </div>
+                    <div class="form-text">Enter ticker in EXCHANGE:SYMBOL format.</div>
+                </form>
+            </div>
+        </div>
+
+        {% if analysis %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                <h6 class="fw-semibold mb-0">
+                    <i class="bi bi-file-text me-1"></i>Analysis: {{ ticker }}
+                </h6>
+            </div>
+            <div class="card-body" id="analysis-result">
+                {{ analysis }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
