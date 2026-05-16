@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AlphaLab{% endblock %}</title>
+    <link rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
           rel="stylesheet"
           integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
@@ -106,6 +107,15 @@
                 <li class="nav-item">
                     <a class="nav-link {% block nav_review %}{% endblock %}" href="#">
                         <i class="bi bi-clipboard-data me-2"></i>Review Portfolio
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-section">Settings</div>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link {% block nav_ai_vendors %}{% endblock %}" href="/ai-vendors">
+                        <i class="bi bi-cpu me-2"></i>AI Vendors
                     </a>
                 </li>
             </ul>

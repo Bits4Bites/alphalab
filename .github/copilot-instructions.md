@@ -53,3 +53,4 @@ ruff format .                      # format
 - Use Pydantic `BaseSettings` in `app/config.py` for configuration; reads from `.env`
 - Type-annotate all function signatures
 - Ruff config in `pyproject.toml`: line length 120, rules `E, F, I, W, UP`
+- **Any change to existing logic must be confirmed with the user before applying.**
