@@ -134,7 +134,44 @@ class AIVendorSettings(BaseSettings):
         return None
 
 
+class AITaskConfig(BaseSettings):
+    task_id: str = ""
+    vendor: str = ""
+    tier: str = ""
+    model: str = ""
+
+
+class AITaskSettings(BaseSettings):
+    """AI task configuration loaded from nested env vars.
+
+    Env var format: AL_TASK__{TASK_NAME}__{FIELD}
+
+    Example:
+        AL_TASK__ANALYZE_TICKER__VENDOR=GEMINI
+        AL_TASK__ANALYZE_TICKER__TIER=FREE
+        AL_TASK__ANALYZE_TICKER__MODEL=gemini-2.5-flash
+    """
+
+    tasks: dict[str, AITaskConfig] = Field(alias="AL_TASK", default={})
+
+    model_config = {
+        "env_file": "ai_tasks.env",
+        "env_file_encoding": "utf-8",
+        "env_nested_delimiter": "__",
+        "nested_model_default_partial_update": True,
+        "populate_by_name": True,
+    }
+
+    def get_ai_client(self, task_id: str) -> GenaiClient | AsyncOpenAI | None:
+        """Return an AI client for the given task, or None if not configured."""
+        task_config = self.tasks.get(task_id.upper())
+        if not task_config or not task_config.vendor or not task_config.tier:
+            return None
+        return ai_vendor_settings.get_ai_client(task_config.vendor, task_config.tier)
+
+
 app_settings = AppSettings()
 security_settings = SecuritySettings()
 identity_settings = ExternalIdentitySettings()
 ai_vendor_settings = AIVendorSettings()
+ai_task_settings = AITaskSettings()
