@@ -6,7 +6,7 @@
 
 {% block content %}
 <div class="row">
-    <div class="col-lg-8">
+    <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
                 <form method="post" action="/analyze-ticker">
@@ -23,6 +23,13 @@
                 </form>
             </div>
         </div>
+
+        {% if error %}
+        <div class="alert alert-danger d-flex align-items-center" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            {{ error }}
+        </div>
+        {% endif %}
 
         {% if analysis %}
         <div class="card border-0 shadow-sm">
