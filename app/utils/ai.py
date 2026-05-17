@@ -58,12 +58,20 @@ async def execute_prompt(client, model: str, prompt: str) -> AIResponse:
     if result.success:
         logger.info(
             "Prompt completed | vendor=%s | model=%s | duration=%.2fs | tokens_in=%d | tokens_out=%d | tokens_total=%d",
-            vendor, model, elapsed, result.token_usage_input, result.token_usage_output, result.token_usage_total,
+            vendor,
+            model,
+            elapsed,
+            result.token_usage_input,
+            result.token_usage_output,
+            result.token_usage_total,
         )
     else:
         logger.info(
             "Prompt failed | vendor=%s | model=%s | duration=%.2fs | error=%s",
-            vendor, model, elapsed, result.error,
+            vendor,
+            model,
+            elapsed,
+            result.error,
         )
 
     if _is_debug_mode() and result.completion:

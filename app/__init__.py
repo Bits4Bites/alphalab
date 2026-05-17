@@ -1,15 +1,11 @@
-from . import config
-
 import logging
+
+from . import config
 
 
 class CustomLoggerConfig(logging.Logger):
     def __init__(self, name, level=logging.NOTSET):
-        level = (
-            logging.WARNING
-            if name.startswith("azure.")
-            else logging.DEBUG if name.startswith("app.") else level
-        )
+        level = logging.WARNING if name.startswith("azure.") else logging.DEBUG if name.startswith("app.") else level
         super().__init__(name, level)
 
 

@@ -23,7 +23,9 @@ async def analyze_ticker_page(request: Request, user: dict = Depends(get_current
 
 @router.get("/analyze-ticker/stream")
 async def analyze_ticker_stream(
-    request: Request, ticker: str = Query(...), quick_mode: bool = Query(default=False),
+    request: Request,
+    ticker: str = Query(...),
+    quick_mode: bool = Query(default=False),
     user: dict = Depends(get_current_user),
 ) -> EventSourceResponse:
     async def event_generator():
