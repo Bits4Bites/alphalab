@@ -54,6 +54,11 @@ class AIVendorConfig(BaseSettings):
         return set()
 
 
+def _normalize_vendor_name(vendor: str) -> str:
+    """Normalize vendor name by removing spaces, hyphens, and underscores."""
+    return vendor.upper().replace(" ", "").replace("-", "").replace("_", "")
+
+
 class AIVendorSettings(BaseSettings):
     """AI/LLM vendor configuration loaded from nested env vars.
 
@@ -78,6 +83,14 @@ class AIVendorSettings(BaseSettings):
         "populate_by_name": True,
     }
 
+    def _find_vendor_tiers(self, vendor: str) -> dict[str, AIVendorConfig] | None:
+        """Find vendor tiers by trying normalized matching against configured vendors."""
+        normalized = _normalize_vendor_name(vendor)
+        for key, tiers in self.vendors.items():
+            if _normalize_vendor_name(key) == normalized:
+                return tiers
+        return None
+
     def get_ai_client(self, vendor: str, tier: str, timeout_sec: float = 180) -> GenaiClient | AsyncOpenAI | None:
         """Return an async AI client for the given vendor and tier, or None if not found.
 
@@ -85,6 +98,7 @@ class AIVendorSettings(BaseSettings):
         - gemini → google.genai.Client (async)
         - openai → openai.AsyncOpenAI
         - azure_openai / azureopenai → openai.AsyncOpenAI (with DefaultAzureCredential)
+        - openrouter → openai.AsyncOpenAI
         """
         from google import genai
         from google.genai.types import HttpOptions
@@ -92,10 +106,10 @@ class AIVendorSettings(BaseSettings):
 
         timeout_sec = timeout_sec if timeout_sec > 0 else 30
 
-        vendor_upper = vendor.upper()
+        normalized_vendor = _normalize_vendor_name(vendor)
         tier_upper = tier.upper()
 
-        vendor_tiers = self.vendors.get(vendor_upper)
+        vendor_tiers = self._find_vendor_tiers(vendor)
         if not vendor_tiers:
             return None
 
@@ -103,22 +117,22 @@ class AIVendorSettings(BaseSettings):
         if not cfg:
             return None
 
-        if vendor_upper == "GEMINI":
+        if normalized_vendor == "GEMINI":
             client = genai.Client(api_key=cfg.api_key, http_options=HttpOptions(timeout=int(timeout_sec * 1000)))
             return client
 
-        if vendor_upper in ("OPENROUTER", "OPEN_ROUTER", "OPEN-ROUTER"):
+        if normalized_vendor == "OPENROUTER":
             client = AsyncOpenAI(api_key=cfg.api_key, base_url=cfg.endpoint, project="AlphaLab", timeout=timeout_sec)
             return client
 
-        if vendor_upper == "OPENAI":
+        if normalized_vendor == "OPENAI":
             kwargs: dict = {"api_key": cfg.api_key, "project": "AlphaLab"}
             if cfg.endpoint:
                 kwargs["base_url"] = cfg.endpoint
             client = AsyncOpenAI(**kwargs)
             return client
 
-        if vendor_upper in ("AZUREOPENAI", "AZURE_OPENAI", "AZURE-OPENAI"):
+        if normalized_vendor == "AZUREOPENAI":
             from azure.identity import EnvironmentCredential, get_bearer_token_provider
 
             token_provider = get_bearer_token_provider(EnvironmentCredential(), "https://ai.azure.com/.default")

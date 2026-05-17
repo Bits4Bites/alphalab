@@ -1,5 +1,21 @@
 from . import config
 
+import logging
+
+
+class CustomLoggerConfig(logging.Logger):
+    def __init__(self, name, level=logging.NOTSET):
+        level = (
+            logging.WARNING
+            if name.startswith("azure.")
+            else logging.DEBUG if name.startswith("app.") else level
+        )
+        super().__init__(name, level)
+
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s: %(message)s")
+logging.setLoggerClass(CustomLoggerConfig)
+
 # config.ai_vendor_settings.vendors is in the following format:
 # {
 #     "vendor_name": {
