@@ -86,6 +86,7 @@ async def _execute_gemini(client, model: str, prompt: str) -> AIResponse:
 
     config = GenerateContentConfig(
         tools=[Tool(google_search=GoogleSearch())],
+        temperature=0.1,
     )
 
     response = await client.aio.models.generate_content(
@@ -126,8 +127,9 @@ async def _execute_openai(client, model: str, prompt: str) -> AIResponse:
         response = await client.responses.create(
             model=model,
             input=prompt,
-            # messages=[{"role": "user", "content": prompt}],
             tools=[{"type": "web_search_preview"}],
+            temperature=0.1,
+            top_p=0.1,
         )
 
     completion = ""
