@@ -73,6 +73,11 @@ async def oauth_callback(provider: str, code: str, response: Response) -> Redire
         else:
             raise HTTPException(status_code=400, detail="Unsupported provider")
 
+    # Check if user's email is in the allowed list
+    user_email = (user_info.get("email") or "").lower()
+    if not user_email or user_email not in security_settings.allowed_emails:
+        raise HTTPException(status_code=403, detail="Access denied. Your email is not in the allowed list.")
+
     # Create JWT and set as cookie
     jwt_token = create_access_token(user_info)
     redirect = RedirectResponse(url="/dashboard", status_code=302)

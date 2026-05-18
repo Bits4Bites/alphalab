@@ -22,6 +22,14 @@ class SecuritySettings(BaseSettings):
     secret_key: str = Field(default="change-me-in-production", alias="AL_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="AL_JWT_ALGORITHM")
     jwt_expire_minutes: int = Field(default=60 * 24 * 7, alias="AL_JWT_EXPIRE_MINUTES")
+    allowed_emails: list[str] | None = Field(default=None, alias="AL_ALLOWED_EMAILS")
+
+    @field_validator("allowed_emails", mode="before")
+    @classmethod
+    def parse_allowed_emails(cls, v) -> list[str]:
+        if isinstance(v, str):
+            return [e.strip().lower() for e in v.split(",") if e.strip()]
+        return []
 
     model_config = {"env_file": "sec_settings.env", "env_file_encoding": "utf-8", "populate_by_name": True}
 
@@ -48,7 +56,7 @@ class AIVendorConfig(BaseSettings):
 
     @field_validator("models", mode="before")
     @classmethod
-    def decode_models(cls, v: str) -> set[str]:
+    def parse_models(cls, v: str) -> set[str]:
         if isinstance(v, str):
             return set(model.strip() for model in v.split(",") if model.strip())
         return set()
