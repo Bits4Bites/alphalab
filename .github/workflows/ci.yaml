@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [ '*' ]
+    paths-ignore:
+      - '.github/dependabot.yaml'
+  pull_request:
+    types: [ opened, edited, reopened, synchronize, review_requested ]
+    branches: [ '*' ]
+  workflow_call:
+
+  # Allow manually trigger
+  workflow_dispatch:
+
+env:
+  TAG_PREFIX: v
+  DOCKER_IMAGE: btnguyen2k/alphalab # update your Docker Hub image name here
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Lint check
+        run: |
+          ruff check .
+          ruff format --diff .
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+  docker:
+    name: Docker Build & Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v7
+        with:
+          # platforms: linux/amd64
+          push: false
+          load: true
+          tags: ci
+          file: ./${{ matrix.dockerfiles }}
+          context: ./
+
+      - name: Start container
+        run: docker run -d --name alphalab-ci -p 1234:8000 alphalab:ci
+
+      - name: Wait for container to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:1234/health > /dev/null 2>&1; then
+              echo "ℹ️Container is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "❌Container failed to start"
+          docker logs alphalab-ci
+          exit 1
+
+      - name: Health check
+        run: |
+          response=$(curl -sf http://localhost:8000/health)
+          echo "ℹ️Response: $response"
+          echo "$response" | grep -q '"status":"ok"'
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f alphalab-ci || true
