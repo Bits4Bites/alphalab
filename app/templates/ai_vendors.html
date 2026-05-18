@@ -26,9 +26,6 @@
                         {% else %}
                         <span class="badge bg-secondary">{{ tier_name }}</span>
                         {% endif %}
-                        {% if tier_data.endpoint %}
-                        <small class="text-muted text-truncate" title="{{ tier_data.endpoint }}">{{ tier_data.endpoint }}</small>
-                        {% endif %}
                     </div>
                     {% if tier_data.models %}
                     <ul class="list-unstyled ms-2 mb-0">
