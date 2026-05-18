@@ -81,9 +81,7 @@ async def build_portfolio_stream(
             f"- Risk management and diversification notes\n"
         )
         if existing_holdings:
-            prompt_request += (
-                f"- How the new recommendations complement or adjust the existing holdings\n"
-            )
+            prompt_request += "- How the new recommendations complement or adjust the existing holdings\n"
         prompt_request += "Output only the prompt text, nothing else."
         prompt_result = await execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
 
