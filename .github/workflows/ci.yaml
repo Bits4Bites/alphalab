@@ -1,4 +1,4 @@
-name: CI
+name: "CI"
 
 on:
   push:
@@ -63,7 +63,7 @@ jobs:
           push: false
           load: true
           tags: ci
-          file: ./${{ matrix.dockerfiles }}
+          file: ./Dockerfile
           context: ./
 
       - name: Start container
