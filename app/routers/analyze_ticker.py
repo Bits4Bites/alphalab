@@ -67,15 +67,26 @@ async def analyze_ticker_stream(
 
         build_prompt_task = ai_task_settings.tasks.get("ANALYZE_TICKER_BUILD_PROMPT")
         company_name = info.get("longName") or info.get("shortName")
-        prompt_request = (
-            f"Generate a ready-to-use prompt (copy-and-paste, no placeholders) to analyze the stock ticker "
-            f"{ticker} ({company_name}). The prompt must instruct the AI to provide:\n"
-            f"- A detailed fundamental and technical analysis of the stock\n"
-            f"- A summary of current stock quotation (price, volume, market cap, P/E, etc.)\n"
-            f"- Stock outlook with trend prediction for the next 2 weeks, 1 month, and 3 months\n"
-            f"- Confidence level (low/medium/high) for each outlook period\n"
-            f"Output only the prompt text, nothing else."
-        )
+        if quick_mode:
+            prompt_request = (
+                f"Generate a ready-to-use prompt (copy-and-paste, no placeholders) to analyze the stock ticker "
+                f"{ticker} ({company_name}). The prompt must instruct the AI to provide a concise one-page analysis "
+                f"that includes:\n"
+                f"- A brief current stock quotation summary\n"
+                f"- Stock outlook with trend prediction for the next 2 weeks, 1 month, and 3 months\n"
+                f"- Confidence level (low/medium/high) for each outlook period\n"
+                f"Output only the prompt text, nothing else."
+            )
+        else:
+            prompt_request = (
+                f"Generate a ready-to-use prompt (copy-and-paste, no placeholders) to analyze the stock ticker "
+                f"{ticker} ({company_name}). The prompt must instruct the AI to provide:\n"
+                f"- A detailed fundamental and technical analysis of the stock\n"
+                f"- A summary of current stock quotation (price, volume, market cap, P/E, etc.)\n"
+                f"- Stock outlook with trend prediction for the next 2 weeks, 1 month, and 3 months\n"
+                f"- Confidence level (low/medium/high) for each outlook period\n"
+                f"Output only the prompt text, nothing else."
+            )
         prompt_result = await execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
 
         if not prompt_result.success:
