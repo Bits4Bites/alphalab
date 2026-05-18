@@ -14,6 +14,14 @@ class AppSettings(BaseSettings):
     app_name: str = Field(default="AlphaLab", alias="AL_APP_NAME")
     debug: bool = Field(default=False, alias="AL_DEBUG")
     base_url: str = Field(default="http://localhost:8000", alias="AL_BASE_URL")
+    primary_markets: set[str] | None = Field(default=None, alias="AL_PRIMARY_MARKETS")
+
+    @field_validator("primary_markets", mode="before")
+    @classmethod
+    def parse_primary_markets(cls, v):
+        if isinstance(v, str):
+            return {m.strip() for m in v.split(",") if m.strip()}
+        return []
 
     model_config = {"env_file": "app_settings.env", "env_file_encoding": "utf-8", "populate_by_name": True}
 

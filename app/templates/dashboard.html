@@ -5,54 +5,158 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3 bg-primary bg-opacity-10">
-                        <i class="bi bi-search text-primary fs-4"></i>
-                    </div>
-                    <div>
-                        <h6 class="card-title mb-1">Analyze Ticker</h6>
-                        <small class="text-muted">Research individual stocks and securities</small>
-                    </div>
-                </div>
-                <a href="#" class="btn btn-outline-primary btn-sm mt-3">Get Started</a>
+<!-- HERO Section -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <h4 class="fw-semibold mb-1"><i class="bi bi-lightning-charge me-1"></i>What would you like to know?</h4>
+        <p class="text-muted mb-3">Ask anything about the stock market and get AI-powered insights.</p>
+        <form id="hero-form">
+            <div class="input-group">
+                <input type="text" class="form-control form-control-lg" id="hero-intent" name="intent"
+                       placeholder="e.g. Analyze AAPL, is it a good time to buy?" required maxlength="300">
+                <button type="submit" class="btn btn-primary btn-lg" id="hero-btn">
+                    <i class="bi bi-send me-1"></i>Go
+                </button>
             </div>
+        </form>
+        <div class="mt-3">
+            <small class="text-muted me-2">Try:</small>
+            <button class="btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn" type="button">Analyze AAPL, is it a good time to buy?</button>
+            <button class="btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn" type="button">Build an ASX dividend portfolio</button>
+            <button class="btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn" type="button">Compare ANZ.AX and WBC.AX</button>
+            <button class="btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn" type="button">Top 5 AI stocks to watch this month</button>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3 bg-success bg-opacity-10">
-                        <i class="bi bi-pie-chart text-success fs-4"></i>
-                    </div>
-                    <div>
-                        <h6 class="card-title mb-1">Build Portfolio</h6>
-                        <small class="text-muted">Construct and optimise your portfolio</small>
-                    </div>
+</div>
+
+<!-- Progress indicator -->
+<div id="progress-section" class="d-none mb-4">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-3">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
-                <a href="#" class="btn btn-outline-success btn-sm mt-3">Get Started</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 p-3 bg-warning bg-opacity-10">
-                        <i class="bi bi-clipboard-data text-warning fs-4"></i>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold" id="progress-message">Starting...</div>
+                    <div class="progress mt-2" style="height: 6px;">
+                        <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
                     </div>
-                    <div>
-                        <h6 class="card-title mb-1">Review Portfolio</h6>
-                        <small class="text-muted">Monitor performance and rebalance</small>
-                    </div>
+                    <small class="text-muted" id="progress-step">Step 0 of 4</small>
                 </div>
-                <a href="#" class="btn btn-outline-warning btn-sm mt-3">Get Started</a>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Error display -->
+<div id="error-section" class="d-none mb-4">
+    <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span id="error-message"></span>
+    </div>
+</div>
+
+<!-- Result display -->
+<style>
+#hero-result h1 {font-size: 1.5rem !important;}
+#hero-result h2 {font-size: 1.4rem !important;}
+#hero-result h3 {font-size: 1.3rem !important;}
+#hero-result h4 {font-size: 1.2rem !important;}
+#hero-result h5 {font-size: 1.1rem !important;}
+</style>
+<div id="result-section" class="d-none mb-4">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex align-items-center justify-content-between">
+            <h4 class="fw-semibold mb-0">
+                <i class="bi bi-file-earmark-text me-1"></i>Analysis
+            </h4>
+            <button class="btn btn-outline-secondary btn-sm" onclick="printResult()" title="Print">
+                <i class="bi bi-printer"></i>
+            </button>
+        </div>
+        <div class="card-body" id="hero-result"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+// Suggestion buttons
+document.querySelectorAll('.suggestion-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('hero-intent').value = this.textContent;
+        document.getElementById('hero-form').dispatchEvent(new Event('submit'));
+    });
+});
+
+document.getElementById('hero-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const intent = document.getElementById('hero-intent').value.trim();
+    if (!intent) return;
+
+    const btn = document.getElementById('hero-btn');
+    const progressSection = document.getElementById('progress-section');
+    const errorSection = document.getElementById('error-section');
+    const resultSection = document.getElementById('result-section');
+
+    // Reset UI
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+    progressSection.classList.remove('d-none');
+    errorSection.classList.add('d-none');
+    resultSection.classList.add('d-none');
+
+    const params = new URLSearchParams({ intent: intent });
+    const eventSource = new EventSource(`/dashboard/stream?${params.toString()}`);
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'progress') {
+            const pct = Math.round((data.step / data.total) * 100);
+            document.getElementById('progress-message').textContent = data.message;
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
+        } else if (data.type === 'error') {
+            progressSection.classList.add('d-none');
+            errorSection.classList.remove('d-none');
+            document.getElementById('error-message').textContent = data.message;
+            eventSource.close();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send me-1"></i>Go';
+        } else if (data.type === 'result') {
+            progressSection.classList.add('d-none');
+            resultSection.classList.remove('d-none');
+            document.getElementById('hero-result').innerHTML = marked.parse(data.content);
+            eventSource.close();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send me-1"></i>Go';
+        }
+    };
+
+    eventSource.onerror = function() {
+        progressSection.classList.add('d-none');
+        errorSection.classList.remove('d-none');
+        document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
+        eventSource.close();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send me-1"></i>Go';
+    };
+});
+
+function printResult() {
+    const content = document.getElementById('hero-result').innerHTML;
+    const html = `<html lang="en"><head><title>Analysis - AlphaLab</title>
+        <style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 2rem; line-height: 1.6; }</style>
+        </head><body><h1>Analysis</h1>${content}</body></html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const printWindow = window.open(url, '_blank');
+    printWindow.onload = function() {
+        printWindow.print();
+        URL.revokeObjectURL(url);
+    };
+}
+</script>
 {% endblock %}

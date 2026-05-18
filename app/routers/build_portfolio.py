@@ -79,6 +79,8 @@ async def build_portfolio_stream(
             f"- Approximate unit/share counts for each ticker based on current market prices\n"
             f"- Entry strategy and timing considerations\n"
             f"- Risk management and diversification notes\n"
+            f"The generated prompt should instruct the AI NOT to include any suggested follow-up questions. "
+            f"Output only the prompt text, nothing else."
         )
         if existing_holdings:
             prompt_request += "- How the new recommendations complement or adjust the existing holdings\n"

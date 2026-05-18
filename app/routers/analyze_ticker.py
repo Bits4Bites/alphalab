@@ -75,6 +75,7 @@ async def analyze_ticker_stream(
                 f"- A brief current stock quotation summary\n"
                 f"- Stock outlook with trend prediction for the next 2 weeks, 1 month, and 3 months\n"
                 f"- Confidence level (low/medium/high) for each outlook period\n"
+                f"The generated prompt should instruct the AI NOT to include any suggested follow-up questions. "
                 f"Output only the prompt text, nothing else."
             )
         else:
@@ -85,6 +86,7 @@ async def analyze_ticker_stream(
                 f"- A summary of current stock quotation (price, volume, market cap, P/E, etc.)\n"
                 f"- Stock outlook with trend prediction for the next 2 weeks, 1 month, and 3 months\n"
                 f"- Confidence level (low/medium/high) for each outlook period\n"
+                f"The generated prompt should instruct the AI NOT to include any suggested follow-up questions. "
                 f"Output only the prompt text, nothing else."
             )
         prompt_result = await execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)

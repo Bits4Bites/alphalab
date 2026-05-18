@@ -76,6 +76,7 @@ async def review_portfolio_stream(
             f"- Rebalancing recommendations with rationale\n"
             f"- Suggested additions or removals to improve the portfolio\n"
             f"- Market conditions and timing considerations\n"
+            f"The generated prompt should instruct the AI NOT to include any suggested follow-up questions. "
             f"Output only the prompt text, nothing else."
         )
         prompt_result = await execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)

@@ -30,12 +30,13 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    from app.config import ai_vendor_settings, security_settings
+    from app.config import ai_vendor_settings, app_settings, security_settings
     from app.services.oauth import get_enabled_providers
 
     enabled_providers = get_enabled_providers()
     configured_vendors = list(ai_vendor_settings.vendors.keys())
     allowed_emails = security_settings.allowed_emails
+    primary_markets = sorted(app_settings.primary_markets)
 
     return templates.TemplateResponse(
         request,
@@ -44,5 +45,6 @@ async def index(request: Request) -> HTMLResponse:
             "enabled_providers": enabled_providers,
             "configured_vendors": configured_vendors,
             "allowed_emails": allowed_emails,
+            "primary_markets": primary_markets,
         },
     )

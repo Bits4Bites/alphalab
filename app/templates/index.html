@@ -55,6 +55,16 @@
                             {% endif %}
                         </td>
                     </tr>
+                    {% if primary_markets %}
+                    <tr>
+                        <td class="fw-semibold">Primary Markets</td>
+                        <td>
+                            {% for m in primary_markets %}
+                                <span class="badge bg-primary me-1">{{ m }}</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
