@@ -94,6 +94,6 @@ async def oauth_callback(provider: str, code: str, response: Response) -> Redire
 
 @router.get("/logout")
 async def logout() -> RedirectResponse:
-    redirect = RedirectResponse(url="/login", status_code=302)
+    redirect = RedirectResponse(url="/", status_code=302)
     redirect.delete_cookie(key="access_token")
     return redirect
