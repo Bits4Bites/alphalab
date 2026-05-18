@@ -59,12 +59,11 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v7
         with:
-          # platforms: linux/amd64
           push: false
           load: true
-          tags: ci
-          file: ./Dockerfile
-          context: ./
+          tags: "alphalab:ci"
+          file: "./Dockerfile"
+          context: "./"
 
       - name: Start container
         run: docker run -d --name alphalab-ci -p 1234:8000 alphalab:ci
