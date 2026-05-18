@@ -37,8 +37,12 @@ async def index(request: Request) -> HTMLResponse:
     configured_vendors = list(ai_vendor_settings.vendors.keys())
     allowed_emails = security_settings.allowed_emails
 
-    return templates.TemplateResponse(request, "index.html", {
-        "enabled_providers": enabled_providers,
-        "configured_vendors": configured_vendors,
-        "allowed_emails": allowed_emails,
-    })
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {
+            "enabled_providers": enabled_providers,
+            "configured_vendors": configured_vendors,
+            "allowed_emails": allowed_emails,
+        },
+    )
