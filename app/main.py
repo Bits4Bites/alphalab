@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.routers import ai_tasks, ai_vendors, analyze_ticker, auth, build_portfolio, dashboard, health
+from app.routers import ai_tasks, ai_vendors, analyze_ticker, auth, build_portfolio, dashboard, health, review_portfolio
 
 app = FastAPI(title="AlphaLab", description="AI-powered market research lab")
 
@@ -16,6 +16,7 @@ app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(analyze_ticker.router)
 app.include_router(build_portfolio.router)
+app.include_router(review_portfolio.router)
 app.include_router(ai_vendors.router)
 app.include_router(ai_tasks.router)
 
