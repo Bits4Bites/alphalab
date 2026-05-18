@@ -83,7 +83,7 @@ jobs:
 
       - name: Health check
         run: |
-          response=$(curl -sf http://localhost:8000/health)
+          response=$(curl -sf http://localhost:1234/health)
           echo "ℹ️Response: $response"
           echo "$response" | grep -q '"status":"ok"'
 
