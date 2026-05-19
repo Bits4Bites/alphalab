@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 800px;">
+    <h1 class="mb-4">Privacy Policy</h1>
+    <p class="text-muted">Last updated: 19 May 2026</p>
+
+    <h4>1. Introduction</h4>
+    <p>This Privacy Policy explains how {{ app_name }} ("the Service") collects, uses, and protects your information when you use our platform. We are committed to safeguarding your privacy and handling your data transparently.</p>
+
+    <h4>2. Information We Collect</h4>
+    <p>We collect the following types of information:</p>
+    <ul>
+        <li><strong>Authentication data:</strong> When you sign in via a third-party provider (e.g., GitHub, LinkedIn), we receive your name, email address, profile picture, and a unique identifier from that provider.</li>
+        <li><strong>Usage data:</strong> Information you voluntarily submit during use of the Service, such as ticker symbols, portfolio holdings, investment preferences, and search queries.</li>
+    </ul>
+
+    <h4>3. Information We Do Not Collect</h4>
+    <ul>
+        <li>We do not store passwords — authentication is handled entirely by third-party OAuth providers.</li>
+        <li>We do not collect financial account credentials or brokerage login details.</li>
+        <li>We do not use tracking cookies or third-party analytics services.</li>
+    </ul>
+
+    <h4>4. How We Use Your Information</h4>
+    <p>Your information is used solely to:</p>
+    <ul>
+        <li>Authenticate your identity and manage access to the Service;</li>
+        <li>Process your requests and generate AI-powered analysis in real-time;</li>
+        <li>Enforce access control via the allowed email list.</li>
+    </ul>
+
+    <h4>5. Data Retention</h4>
+    <p>We do not retain user-submitted data (e.g., ticker queries, portfolio holdings) beyond the duration of the session. AI-generated responses are not stored on our servers. Authentication tokens are stored as browser cookies and expire according to the configured session duration.</p>
+
+    <h4>6. Data Sharing</h4>
+    <p>We do not sell, trade, or share your personal information with third parties, except:</p>
+    <ul>
+        <li><strong>AI providers:</strong> Your queries are sent to configured AI service providers (e.g., OpenAI, Google Gemini) for processing. These providers have their own privacy policies governing data handling.</li>
+        <li><strong>OAuth providers:</strong> Authentication data is exchanged with your chosen identity provider (GitHub, LinkedIn) as part of the sign-in process.</li>
+        <li><strong>Legal requirements:</strong> We may disclose information if required by law or to protect our rights.</li>
+    </ul>
+
+    <h4>7. Data Security</h4>
+    <p>We take reasonable measures to protect your information, including:</p>
+    <ul>
+        <li>Using HTTPS for all communications;</li>
+        <li>Storing authentication tokens as HTTP-only, secure cookies;</li>
+        <li>Restricting access via email allowlists;</li>
+        <li>Not persisting sensitive user data on our servers.</li>
+    </ul>
+
+    <h4>8. Your Rights</h4>
+    <p>Depending on your jurisdiction, you may have the right to:</p>
+    <ul>
+        <li>Request information about the data we hold about you;</li>
+        <li>Request deletion of your data;</li>
+        <li>Withdraw consent for data processing;</li>
+        <li>Lodge a complaint with a data protection authority.</li>
+    </ul>
+    <p>Since we do not retain user-submitted data beyond sessions, most data subject requests are satisfied by default.</p>
+
+    <h4>9. Third-Party Services</h4>
+    <p>The Service integrates with third-party services that have their own privacy policies:</p>
+    <ul>
+        <li>AI providers (e.g., OpenAI, Google, Azure, OpenRouter)</li>
+        <li>Identity providers (e.g., GitHub, LinkedIn)</li>
+        <li>Market data providers (e.g., Yahoo Finance)</li>
+    </ul>
+    <p>We encourage you to review their respective privacy policies.</p>
+
+    <h4>10. Children's Privacy</h4>
+    <p>The Service is not intended for use by individuals under the age of 18. We do not knowingly collect information from minors.</p>
+
+    <h4>11. Changes to This Policy</h4>
+    <p>We may update this Privacy Policy from time to time. Continued use of the Service after changes constitutes acceptance of the revised policy. We encourage you to review this page periodically.</p>
+
+    <h4>12. Contact</h4>
+    <p>If you have questions or concerns about this Privacy Policy, please contact the site administrator.</p>
+
+    <hr class="my-4">
+    <p class="text-muted small">See also: <a href="/terms">Terms of Service</a></p>
+</div>
+{% endblock %}

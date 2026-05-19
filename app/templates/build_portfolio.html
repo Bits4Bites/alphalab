@@ -1,6 +1,6 @@
 {% extends "app_layout.html" %}
 
-{% block title %}Build Portfolio - AlphaLab{% endblock %}
+{% block title %}Build Portfolio - {{ app_name }}{% endblock %}
 {% block nav_build %}active{% endblock %}
 {% block page_title %}Build Portfolio{% endblock %}
 
@@ -108,7 +108,13 @@
                         <i class="bi bi-printer"></i>
                     </button>
                 </div>
-                <div class="card-body" id="portfolio-result"></div>
+                <div class="card-body">
+                    <div class="alert alert-warning small mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
+                    </div>
+                    <div id="portfolio-result"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -188,7 +194,7 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
 
 function printPortfolio() {
     const content = document.getElementById('portfolio-result').innerHTML;
-    const html = `<html lang="en"><head><title>Portfolio Recommendation - AlphaLab</title>
+    const html = `<html lang="en"><head><title>Portfolio Recommendation - {{ app_name }}</title>
         <style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 2rem; line-height: 1.6; }</style>
         </head><body><h1>Portfolio Recommendation</h1>${content}</body></html>`;
     const blob = new Blob([html], { type: 'text/html' });

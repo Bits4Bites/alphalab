@@ -1,3 +1,8 @@
 # This file has been cleaned up post-releasing version 0.1.0.
 # Generate its content quickly using the following command:
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
+#!VERSION=0.1.1
+- (Fix) Release workflow updates app version incorrectly.
+- (Patch) Add disclaimer about the AI generated content.
+- (Patch) Add app name/version info to bottom.
+- (Patch) Add Terms of Service and Privacy Policy pages and links.

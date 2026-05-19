@@ -1,5 +1,5 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Actions Status](https://github.com/Bits4Bites/alphalab/workflows/ci/badge.svg)](https://github.com/Bits4Bites/alphalab/actions)
+[![Actions Status](https://github.com/Bits4Bites/alphalab/workflows/CI/badge.svg)](https://github.com/Bits4Bites/alphalab/actions)
 [![Release](https://img.shields.io/github/release/Bits4Bites/alphalab.svg?style=flat-square)](RELEASE-NOTES.md)
 
 AI-powered market research lab.
@@ -24,7 +24,7 @@ docker run -p 8000:8000 \
   --env-file external_identity_providers.env \
   --env-file ai_vendors.env \
   --env-file ai_tasks.env \
-  btnguyen2k/alphalab
+  btnguyen2k/alphalab:release
 ```
 
 The app will be available at `http://localhost:8000`. 
