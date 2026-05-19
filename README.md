@@ -15,7 +15,7 @@ AI-powered market research lab.
 
 ### Run from Docker Image
 
-The pre-built Docker image is available at `btnguyen2k/alphalab`:
+The pre-built Docker image is available at [btnguyen2k/alphalab](https://hub.docker.com/r/btnguyen2k/alphalab):
 
 ```bash
 docker run -p 8000:8000 \
@@ -27,7 +27,9 @@ docker run -p 8000:8000 \
   btnguyen2k/alphalab
 ```
 
-The app will be available at `http://localhost:8000`.
+The app will be available at `http://localhost:8000`. 
+
+See [Environment Variables](#environment-variables) for configuration details.
 
 ### Run from Source
 
@@ -76,29 +78,41 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 
 **Required configurations:**
 
-| Variable | Description |
-|----------|-------------|
-| `AL_ALLOWED_EMAILS` | Comma-separated list of email addresses allowed to log in |
-| `AL_GITHUB_CLIENT_ID` / `AL_GITHUB_CLIENT_SECRET` | GitHub OAuth credentials (at least one identity provider required) |
-| `AL_LINKEDIN_CLIENT_ID` / `AL_LINKEDIN_CLIENT_SECRET` | LinkedIn OAuth credentials (alternative to GitHub) |
-| `AL_LLM__<VENDOR>__<TIER>__ENDPOINT` | AI vendor endpoint (at least one vendor must be configured) |
-| `AL_LLM__<VENDOR>__<TIER>__API_KEY` | AI vendor API key |
+| Variable                                              | Description                                               |
+|-------------------------------------------------------|-----------------------------------------------------------|
+| `AL_ALLOWED_EMAILS`                                   | Comma-separated list of email addresses allowed to log in |
+| `AL_GITHUB_CLIENT_ID` / `AL_GITHUB_CLIENT_SECRET`     | GitHub OAuth credentials                                  |
+| `AL_LINKEDIN_CLIENT_ID` / `AL_LINKEDIN_CLIENT_SECRET` | LinkedIn OAuth credentials                                |
+| `AL_LLM__<VENDOR>__<TIER>__ENDPOINT`                  | AI vendor endpoint                                        |
+| `AL_LLM__<VENDOR>__<TIER>__API_KEY`                   | AI vendor API key                                         |
+
+> At least one identity provider (GitHub or LinkedIn) and one AI vendor must be configured for the app to function properly.
+
+**Supported AI vendors:**
+
+| Vendor        | `<VENDOR>` value | Notes                                         |
+|---------------|------------------|-----------------------------------------------|
+| Google Gemini | `GEMINI`         | Uses Google GenAI SDK                         |
+| OpenAI        | `OPENAI`         | Native OpenAI API                             |
+| Azure OpenAI  | `AZURE_OPENAI`   | Use OpenAI API, support Azure AD credentials  |
+| OpenRouter    | `OPENROUTER`     | OpenAI-compatible, supports web search plugin |
+
+**Pricing tiers (`<TIER>`):** `FREE`, `LOWCOST`, `PREMIUM` (or any custom tier name)
 
 **Optional configurations:**
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AL_APP_NAME` | `AlphaLab` | Application display name |
-| `AL_DEBUG` | `false` | Enable debug mode |
-| `AL_BASE_URL` | `http://localhost:8000` | Base URL for OAuth callbacks |
-| `AL_PRIMARY_MARKETS` | _(empty)_ | Comma-separated list of primary markets (e.g. `US,ASX,LSE`) |
-| `AL_SECRET_KEY` | `change-me-in-production` | JWT signing secret |
-| `AL_JWT_ALGORITHM` | `HS256` | JWT algorithm |
-| `AL_JWT_EXPIRE_MINUTES` | `10080` (7 days) | JWT token expiry |
-| `AL_LLM__<VENDOR>__<TIER>__MODELS` | _(empty)_ | Comma-separated list of available models |
-| `AL_TASK__<TASK>__VENDOR` | _(empty)_ | AI vendor for a specific task |
-| `AL_TASK__<TASK>__TIER` | _(empty)_ | AI tier for a specific task |
-| `AL_TASK__<TASK>__MODEL` | _(empty)_ | Model for a specific task |
+| Variable                           | Default                   | Description                                                 |
+|------------------------------------|---------------------------|-------------------------------------------------------------|
+| `AL_DEBUG`                         | `false`                   | Enable debug mode                                           |
+| `AL_BASE_URL`                      | `http://localhost:8000`   | Base URL for OAuth callbacks                                |
+| `AL_PRIMARY_MARKETS`               | _(empty)_                 | Comma-separated list of primary markets (e.g. `US,ASX,LSE`) |
+| `AL_SECRET_KEY`                    | `change-me-in-production` | JWT signing secret                                          |
+| `AL_JWT_ALGORITHM`                 | `HS256`                   | JWT algorithm                                               |
+| `AL_JWT_EXPIRE_MINUTES`            | `10080` (7 days)          | JWT token expiry                                            |
+| `AL_LLM__<VENDOR>__<TIER>__MODELS` | _(empty)_                 | Comma-separated list of available models                    |
+| `AL_TASK__<TASK>__VENDOR`          | _(empty)_                 | AI vendor for a specific task                               |
+| `AL_TASK__<TASK>__TIER`            | _(empty)_                 | AI tier for a specific task                                 |
+| `AL_TASK__<TASK>__MODEL`           | _(empty)_                 | Model for a specific task                                   |
 
 **Examples:**
 

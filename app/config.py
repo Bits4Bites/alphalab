@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class AppSettings(BaseSettings):
-    app_name: str = Field(default="AlphaLab", alias="AL_APP_NAME")
+    app_name: str = "AlphaLab",
     debug: bool = Field(default=False, alias="AL_DEBUG")
     base_url: str = Field(default="http://localhost:8000", alias="AL_BASE_URL")
     primary_markets: set[str] | None = Field(default=None, alias="AL_PRIMARY_MARKETS")
