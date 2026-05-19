@@ -1,6 +1,3 @@
-# This file has been cleaned up post-releasing version 0.1.1.
+# This file has been cleaned up post-releasing version 0.1.2.
 # Generate its content quickly using the following command:
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
-#!VERSION=0.1.2
-- impr(ui): make sidebar collapsible on mobile viewports.
-- impr(dashboard): display 4 random sample prompts from pool of 20.
