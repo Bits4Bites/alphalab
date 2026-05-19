@@ -17,7 +17,7 @@
             width: 260px;
             min-height: 100vh;
             background: #1e293b;
-            transition: width 0.2s ease;
+            transition: transform 0.3s ease;
         }
         .sidebar .nav-link {
             color: #94a3b8;
@@ -71,13 +71,38 @@
             background: #fff;
             border-bottom: 1px solid #e2e8f0;
         }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1040;
+        }
+        @media (max-width: 991.98px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 1050;
+                transform: translateX(-100%);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .sidebar-overlay.show {
+                display: block;
+            }
+        }
     </style>
     {% block head %}{% endblock %}
 </head>
 <body>
     <div class="d-flex">
+        <!-- Sidebar overlay for mobile -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
         <!-- Sidebar -->
-        <nav class="sidebar d-flex flex-column">
+        <nav class="sidebar d-flex flex-column" id="sidebar">
             <a href="/dashboard" class="sidebar-brand">
                 <img src="/static/img/logo.png" alt="{{ app_name }}" height="32" class="rounded">
                 {{ app_name }}
@@ -138,6 +163,13 @@
 
         <!-- Main content -->
         <div class="content-area">
+            <!-- Mobile top bar with hamburger -->
+            <div class="d-lg-none top-bar p-3">
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleSidebar()">
+                    <i class="bi bi-list fs-5"></i>
+                </button>
+            </div>
+
             {% include "partials/topbar.html" %}
 
             <!-- Page content -->
@@ -155,6 +187,12 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
             crossorigin="anonymous"></script>
+    <script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('show');
+        document.getElementById('sidebar-overlay').classList.toggle('show');
+    }
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
