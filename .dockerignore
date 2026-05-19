@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+.github/
+docs/
+tests/
+.env
+.ruff_cache/
+.pytest_cache/
+token_logs.md

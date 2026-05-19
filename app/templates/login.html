@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AlphaLab</title>
+    <link rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+          crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+          rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+
+        .login-split { display: flex; min-height: 100vh; }
+
+        /* Left branding panel */
+        .brand-panel {
+            flex: 1;
+            background: linear-gradient(160deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+        .brand-panel::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 70%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 30%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        .brand-content { position: relative; z-index: 1; text-align: center; max-width: 420px; }
+        .brand-logo {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+        }
+        .brand-logo i { font-size: 32px; color: #fff; }
+        .brand-content h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 16px;
+        }
+        .brand-content p {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            line-height: 1.7;
+        }
+        .brand-features {
+            margin-top: 48px;
+            text-align: left;
+        }
+        .brand-features .feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .brand-features .feature-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(99, 102, 241, 0.12);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .brand-features .feature-icon i { font-size: 16px; color: #818cf8; }
+        .brand-features .feature-text h6 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 2px;
+        }
+        .brand-features .feature-text p {
+            font-size: 0.82rem;
+            color: #64748b;
+            margin: 0;
+        }
+
+        /* Right login panel */
+        .login-panel {
+            flex: 0 0 480px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px 48px;
+            background: #fff;
+        }
+        .login-form-wrapper { width: 100%; max-width: 360px; }
+        .login-form-wrapper h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+        .login-form-wrapper .subtitle {
+            font-size: 0.92rem;
+            color: #64748b;
+            margin-bottom: 36px;
+        }
+
+        .btn-provider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 13px 20px;
+            font-size: 0.93rem;
+            font-weight: 500;
+            border-radius: 10px;
+            border: 1.5px solid #e2e8f0;
+            background: #fff;
+            color: #1e293b;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .btn-provider:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+            color: #0f172a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+        .btn-provider:active { transform: translateY(0); }
+        .btn-provider .provider-icon { width: 20px; height: 20px; flex-shrink: 0; }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 28px 0;
+            color: #94a3b8;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .divider::before { margin-right: 14px; }
+        .divider::after { margin-left: 14px; }
+
+        .login-footer {
+            margin-top: 36px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        .login-footer a { color: #6366f1; text-decoration: none; }
+        .login-footer a:hover { text-decoration: underline; }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .login-split { flex-direction: column; }
+            .brand-panel { display: none; }
+            .login-panel {
+                flex: 1;
+                padding: 40px 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-split">
+        <!-- Left: Branding -->
+        <div class="brand-panel">
+            <div class="brand-content">
+                <img src="/static/img/logo.png" alt="AlphaLab" height="72" class="mb-4 rounded">
+                <h1>AlphaLab</h1>
+                <p>AI-powered market research intelligence for data-driven decisions.</p>
+
+                <div class="brand-features">
+                    <div class="feature">
+                        <div class="feature-icon"><i class="bi bi-lightning-charge"></i></div>
+                        <div class="feature-text">
+                            <h6>Real-time Insights</h6>
+                            <p>Analyse market trends as they happen with AI-driven analytics.</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon"><i class="bi bi-globe"></i></div>
+                        <div class="feature-text">
+                            <h6>Global Coverage</h6>
+                            <p>Research across markets and industries worldwide.</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon"><i class="bi bi-shield-check"></i></div>
+                        <div class="feature-text">
+                            <h6>Secure & Private</h6>
+                            <p>Enterprise-grade security for your research data.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Login Form -->
+        <div class="login-panel">
+            <div class="login-form-wrapper">
+                <h2>Welcome back</h2>
+                <p class="subtitle">Sign in to continue to your workspace</p>
+
+                <div>
+                    {% for provider in providers %}
+                    <a href="/auth/{{ provider.name }}/login" class="btn-provider mb-2">
+                        {% if provider.icon == "github" %}
+                        <svg class="provider-icon" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+                            0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52
+                            -.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2
+                            -3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82
+                            .64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08
+                            2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01
+                            1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                        </svg>
+                        {% elif provider.icon == "linkedin" %}
+                        <svg class="provider-icon" viewBox="0 0 24 24" fill="#0a66c2">
+                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853
+                            0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9
+                            1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337
+                            7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782
+                            13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0
+                            1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24
+                            22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                        </svg>
+                        {% endif %}
+                        {{ provider.label }}
+                    </a>
+                    {% endfor %}
+
+                    {% if not providers %}
+                    <p class="text-center text-muted">No login providers configured.</p>
+                    {% endif %}
+                </div>
+
+                <div class="divider">more options soon</div>
+
+                <p class="login-footer">
+                    By continuing, you agree to our <a href="#">Terms of Service</a>
+                    and <a href="#">Privacy Policy</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
