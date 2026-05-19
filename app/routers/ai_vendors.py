@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from app.config import ai_vendor_settings
 from app.dependencies import get_current_user
+from app.templating import templates
 
 router = APIRouter(tags=["ai_vendors"])
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/ai-vendors", response_class=HTMLResponse)

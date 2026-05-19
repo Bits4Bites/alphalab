@@ -3,16 +3,15 @@ import json
 import yfinance as yf
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sse_starlette.sse import EventSourceResponse
 
 from app.config import ai_task_settings
 from app.dependencies import get_current_user
+from app.templating import templates
 from app.utils.ai import execute_prompt
 from app.utils.ticker import to_yfinance_format
 
 router = APIRouter(tags=["analyze_ticker"])
-templates = Jinja2Templates(directory="app/templates")
 TEMPLATE = "analyze_ticker.html"
 
 

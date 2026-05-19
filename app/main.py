@@ -1,15 +1,14 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.routers import ai_tasks, ai_vendors, analyze_ticker, auth, build_portfolio, dashboard, health, review_portfolio
+from app.templating import templates
 
 app = FastAPI(title="AlphaLab", description="AI-powered market research lab")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
 
 app.include_router(health.router)
 app.include_router(auth.router)
@@ -48,3 +47,13 @@ async def index(request: Request) -> HTMLResponse:
             "primary_markets": primary_markets,
         },
     )
+
+
+@app.get("/terms", response_class=HTMLResponse)
+async def terms(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "terms.html")
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "privacy.html")
