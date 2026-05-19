@@ -1,0 +1,196 @@
+{% extends "app_layout.html" %}
+
+{% block title %}Review Portfolio - AlphaLab{% endblock %}
+{% block nav_review %}active{% endblock %}
+{% block page_title %}Review Portfolio{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form id="review-form">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="holdings" class="form-label fw-semibold">Current Holdings</label>
+                            <textarea class="form-control" id="holdings" name="holdings" rows="4" required
+                                      placeholder="e.g. AAPL 50 shares, MSFT 30 shares, VGS.AX 200 units, GOOGL 10 shares"></textarea>
+                            <div class="form-text">List your tickers and quantities for the AI to review.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="risk-tolerance" class="form-label fw-semibold">Risk Tolerance (optional)</label>
+                            <select class="form-select" id="risk-tolerance" name="risk_tolerance">
+                                <option value="">Select...</option>
+                                <option value="Conservative">Conservative</option>
+                                <option value="Moderate">Moderate</option>
+                                <option value="Aggressive">Aggressive</option>
+                                <option value="Very Aggressive">Very Aggressive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="target-market" class="form-label fw-semibold">Target Market (optional)</label>
+                            <input type="text" class="form-control" id="target-market" name="target_market"
+                                   placeholder="e.g. US, Australia, Global">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="investment-horizon" class="form-label fw-semibold">Investment Horizon (optional)</label>
+                            <select class="form-select" id="investment-horizon" name="investment_horizon">
+                                <option value="">Select...</option>
+                                <option value="Short-term (< 1 year)">Short-term (&lt; 1 year)</option>
+                                <option value="Medium-term (1-3 years)">Medium-term (1-3 years)</option>
+                                <option value="Long-term (3-5 years)">Long-term (3-5 years)</option>
+                                <option value="Very long-term (5+ years)">Very long-term (5+ years)</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="investment-goals" class="form-label fw-semibold">Investment Goals (optional)</label>
+                            <input type="text" class="form-control" id="investment-goals" name="investment_goals"
+                                   placeholder="e.g. Retirement savings, Capital growth, Passive income, Beat inflation">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary" id="review-btn">
+                            <i class="bi bi-clipboard-data me-1"></i>Review Portfolio
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Progress indicator -->
+        <div id="progress-section" class="d-none mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold" id="progress-message">Starting...</div>
+                            <div class="progress mt-2" style="height: 6px;">
+                                <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small class="text-muted" id="progress-step">Step 0 of 4</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error display -->
+        <div id="error-section" class="d-none">
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span id="error-message"></span>
+            </div>
+        </div>
+
+        <!-- Result display -->
+        <style>
+        #review-result h1 {font-size: 1.5rem !important;}
+        #review-result h2 {font-size: 1.4rem !important;}
+        #review-result h3 {font-size: 1.3rem !important;}
+        #review-result h4 {font-size: 1.2rem !important;}
+        #review-result h5 {font-size: 1.1rem !important;}
+        </style>
+        <div id="result-section" class="d-none">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex align-items-center justify-content-between">
+                    <h4 class="fw-semibold mb-0">
+                        <i class="bi bi-clipboard-data me-1"></i>Portfolio Review
+                    </h4>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="printReview()" title="Print">
+                        <i class="bi bi-printer"></i>
+                    </button>
+                </div>
+                <div class="card-body" id="review-result"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.getElementById('review-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const holdings = document.getElementById('holdings').value.trim();
+    const riskTolerance = document.getElementById('risk-tolerance').value;
+    const investmentGoals = document.getElementById('investment-goals').value.trim();
+    const targetMarket = document.getElementById('target-market').value.trim();
+    const investmentHorizon = document.getElementById('investment-horizon').value;
+
+    if (!holdings) return;
+
+    const btn = document.getElementById('review-btn');
+    const progressSection = document.getElementById('progress-section');
+    const errorSection = document.getElementById('error-section');
+    const resultSection = document.getElementById('result-section');
+
+    // Reset UI
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Reviewing...';
+    progressSection.classList.remove('d-none');
+    errorSection.classList.add('d-none');
+    resultSection.classList.add('d-none');
+
+    const params = new URLSearchParams({
+        holdings: holdings,
+        risk_tolerance: riskTolerance,
+        investment_goals: investmentGoals,
+        target_market: targetMarket,
+        investment_horizon: investmentHorizon,
+    });
+
+    const eventSource = new EventSource(`/review-portfolio/stream?${params.toString()}`);
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'progress') {
+            const pct = Math.round((data.step / data.total) * 100);
+            document.getElementById('progress-message').textContent = data.message;
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
+        } else if (data.type === 'error') {
+            progressSection.classList.add('d-none');
+            errorSection.classList.remove('d-none');
+            document.getElementById('error-message').textContent = data.message;
+            eventSource.close();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-clipboard-data me-1"></i>Review Portfolio';
+        } else if (data.type === 'result') {
+            progressSection.classList.add('d-none');
+            resultSection.classList.remove('d-none');
+            document.getElementById('review-result').innerHTML = marked.parse(data.content);
+            eventSource.close();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-clipboard-data me-1"></i>Review Portfolio';
+        }
+    };
+
+    eventSource.onerror = function() {
+        progressSection.classList.add('d-none');
+        errorSection.classList.remove('d-none');
+        document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
+        eventSource.close();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-clipboard-data me-1"></i>Review Portfolio';
+    };
+});
+
+function printReview() {
+    const content = document.getElementById('review-result').innerHTML;
+    const html = `<html lang="en"><head><title>Portfolio Review - AlphaLab</title>
+        <style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 2rem; line-height: 1.6; }</style>
+        </head><body><h1>Portfolio Review</h1>${content}</body></html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const printWindow = window.open(url, '_blank');
+    printWindow.onload = function() {
+        printWindow.print();
+        URL.revokeObjectURL(url);
+    };
+}
+</script>
+{% endblock %}

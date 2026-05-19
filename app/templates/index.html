@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 700px;">
+    <div class="text-center mb-5">
+        <h1>AlphaLab</h1>
+        <p class="lead text-muted">Your AI-powered market research lab.</p>
+        <a href="/dashboard" class="btn btn-primary btn-lg mt-2">
+            <i class="bi bi-speedometer2 me-2"></i>Go to Dashboard
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-semibold">
+            <i class="bi bi-check2-circle me-1"></i>Quick Check
+        </div>
+        <div class="card-body">
+            <table class="table table-borderless mb-0">
+                <tbody>
+                    <tr>
+                        <td class="fw-semibold" style="width: 220px;">Identity Providers</td>
+                        <td>
+                            {% if enabled_providers %}
+                                {% for p in enabled_providers %}
+                                    <span class="badge bg-success me-1">{{ p.name }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <i class="bi bi-x-circle-fill text-danger me-1"></i>
+                                <span class="text-danger fw-semibold">Not configured</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">AI Vendors</td>
+                        <td>
+                            {% if configured_vendors %}
+                                {% for v in configured_vendors %}
+                                    <span class="badge bg-success me-1">{{ v }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <i class="bi bi-x-circle-fill text-danger me-1"></i>
+                                <span class="text-danger fw-semibold">Not configured</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Access Control</td>
+                        <td>
+                            {% if allowed_emails %}
+                                <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                <span class="text-success fw-semibold">Configured ✔</span>
+                            {% else %}
+                                <i class="bi bi-x-circle-fill text-danger me-1"></i>
+                                <span class="text-danger fw-semibold">Not configured ✘</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if primary_markets %}
+                    <tr>
+                        <td class="fw-semibold">Primary Markets</td>
+                        <td>
+                            {% for m in primary_markets %}
+                                <span class="badge bg-primary me-1">{{ m }}</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

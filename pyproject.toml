@@ -1,0 +1,15 @@
+[project]
+name = "alphalab"
+version = "0.1.0"
+description = "AI-powered market research lab"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "0.1.0"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
