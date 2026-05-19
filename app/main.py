@@ -47,3 +47,13 @@ async def index(request: Request) -> HTMLResponse:
             "primary_markets": primary_markets,
         },
     )
+
+
+@app.get("/terms", response_class=HTMLResponse)
+async def terms(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "terms.html")
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "privacy.html")
