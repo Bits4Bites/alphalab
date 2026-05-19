@@ -1,5 +1,14 @@
 # AlphaLab release notes
 
+## 2026-05-19 - v0.1.1
+
+### Fixed/Improvements
+
+- (Fix) Release workflow updates app version incorrectly.
+- (Patch) Add disclaimer about the AI generated content.
+- (Patch) Add app name/version info to bottom.
+- (Patch) Add Terms of Service and Privacy Policy pages and links.
+
 ## 2026-05-19 - v0.1.0
 
 ### Added/Refactoring/Deprecation
