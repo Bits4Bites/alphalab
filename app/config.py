@@ -23,7 +23,12 @@ class AppSettings(BaseSettings):
             return {m.strip() for m in v.split(",") if m.strip()}
         return []
 
-    model_config = {"env_file": "app_settings.env", "env_file_encoding": "utf-8", "populate_by_name": True}
+    model_config = {
+        "env_file": "app_settings.env",
+        "env_file_encoding": "utf-8",
+        "populate_by_name": True,
+        "extra": "ignore",
+    }
 
 
 class SecuritySettings(BaseSettings):
@@ -39,7 +44,12 @@ class SecuritySettings(BaseSettings):
             return [e.strip().lower() for e in v.split(",") if e.strip()]
         return []
 
-    model_config = {"env_file": "sec_settings.env", "env_file_encoding": "utf-8", "populate_by_name": True}
+    model_config = {
+        "env_file": "sec_settings.env",
+        "env_file_encoding": "utf-8",
+        "populate_by_name": True,
+        "extra": "ignore",
+    }
 
 
 class ExternalIdentitySettings(BaseSettings):
@@ -52,6 +62,7 @@ class ExternalIdentitySettings(BaseSettings):
         "env_file": "external_identity_providers.env",
         "env_file_encoding": "utf-8",
         "populate_by_name": True,
+        "extra": "ignore",
     }
 
 
@@ -97,6 +108,7 @@ class AIVendorSettings(BaseSettings):
         "env_nested_delimiter": "__",
         "nested_model_default_partial_update": True,
         "populate_by_name": True,
+        "extra": "ignore",
     }
 
     def _find_vendor_tiers(self, vendor: str) -> dict[str, AIVendorConfig] | None:
@@ -190,6 +202,7 @@ class AITaskSettings(BaseSettings):
         "env_nested_delimiter": "__",
         "nested_model_default_partial_update": True,
         "populate_by_name": True,
+        "extra": "ignore",
     }
 
     def get_ai_client(self, task_id: str) -> GenaiClient | AsyncOpenAI | None:
