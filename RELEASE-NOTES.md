@@ -1,5 +1,12 @@
 # AlphaLab release notes
 
+## 2026-05-19 - v0.1.2
+
+### Fixed/Improvements
+
+- Impr(ui): make sidebar collapsible on mobile viewports.
+- Impr(dashboard): display 4 random sample prompts from pool of 20.
+
 ## 2026-05-19 - v0.1.1
 
 ### Fixed/Improvements
