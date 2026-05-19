@@ -5,7 +5,7 @@ description = "AI-powered market research lab"
 requires-python = ">=3.12"
 
 [tool.ruff]
-target-version = "py312"
+target-version = "0.1.0"
 line-length = 120
 
 [tool.ruff.lint]
