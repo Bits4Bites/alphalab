@@ -2,15 +2,14 @@ import json
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sse_starlette.sse import EventSourceResponse
 
 from app.config import ai_task_settings
 from app.dependencies import get_current_user
+from app.templating import templates
 from app.utils.ai import execute_prompt
 
 router = APIRouter(tags=["build_portfolio"])
-templates = Jinja2Templates(directory="app/templates")
 TEMPLATE = "build_portfolio.html"
 
 
