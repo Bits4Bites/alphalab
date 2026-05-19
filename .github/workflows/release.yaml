@@ -84,7 +84,7 @@ jobs:
             sed -i -E "s/<<VERSION>>/v${VERSION}/" ./*.md
 
             echo ========== update VERSION info in pyproject.toml files ==========
-            sed -i -E "s/version\s*=.*/version = \"${VERSION}\"/" pyproject.toml
+            sed -i -E "s/^version\s*=.*/version = \"${VERSION}\"/" pyproject.toml
 
             echo ========== commit updates ==========
             git config --global user.email "<>"
