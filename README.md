@@ -4,31 +4,34 @@
 
 AI-powered market research lab.
 
-## Features
+## ✨Features
 
-- **Dashboard** — Quick AI-powered market insights from natural language prompts
-- **Analyze Ticker** — In-depth stock analysis with Quick Mode for one-page summaries
-- **Build Portfolio** — AI-generated portfolio allocation with ticker recommendations
-- **Review Portfolio** — Portfolio health assessment and rebalancing suggestions
-- **Multi-vendor AI** — Supports Google Gemini, OpenAI, Azure OpenAI, and OpenRouter
-- **OAuth Authentication** — GitHub and LinkedIn sign-in with email allowlist access control
+- **Analyze Ticker** Perform AI-driven analysis for individual stocks or ETFs using market data, technical signals, macro context, and sentiment insights.
+- **Build Portfolio** Generate a portfolio from scratch based on investor goals, risk tolerance, time horizon, market preference, and investment themes.
+- **Review Portfolio** Review an existing portfolio and identify strengths, weaknesses, concentration risks, and optimization opportunities.
+- **Freestyle Mode** Interact with the AI freely using natural language prompts for custom market research and investment exploration.
 
-## Tech Stack
+## 🚀 Getting Started
 
-- **Backend:** Python 3.12+, FastAPI, Pydantic Settings
-- **Frontend:** Jinja2 templates, Bootstrap 5, Bootstrap Icons
-- **AI:** Google GenAI SDK, OpenAI SDK, Azure Identity
-- **Streaming:** Server-Sent Events (SSE) for real-time progress
-- **Containerisation:** Docker (multistage build)
+### Run from Docker Image
 
-## Getting Started
+The pre-built Docker image is available at `btnguyen2k/alphalab`:
 
-### Prerequisites
+```bash
+docker run -p 8000:8000 \
+  --env-file app_settings.env \
+  --env-file sec_settings.env \
+  --env-file external_identity_providers.env \
+  --env-file ai_vendors.env \
+  --env-file ai_tasks.env \
+  btnguyen2k/alphalab
+```
 
-- Python 3.12+
-- A virtual environment (recommended)
+The app will be available at `http://localhost:8000`.
 
-### Installation
+### Run from Source
+
+**Prerequisites:** Python 3.12+
 
 ```bash
 git clone https://github.com/Bits4Bites/alphalab.git
@@ -43,32 +46,70 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 pip install -r requirements-dev.txt  # for development
+
+# Start the server
+python server.py
 ```
 
-### Configuration
+The app starts at `http://localhost:8000` by default.
 
-Copy and configure the environment files:
+**Server environment variables:**
 
-| File | Purpose |
-|------|---------|
-| `app_settings.env` | App name, debug mode, base URL, primary markets |
-| `sec_settings.env` | Secret key, JWT settings, allowed emails |
-| `external_identity_providers.env` | OAuth client IDs/secrets (GitHub, LinkedIn) |
-| `ai_vendors.env` | AI vendor endpoints, API keys, models |
-| `ai_tasks.env` | AI task-to-vendor/tier/model mapping |
+| Variable        | Default                     | Description                 |
+|-----------------|-----------------------------|-----------------------------|
+| `LISTEN_HOST`   | `127.0.0.1`                 | Bind address                |
+| `LISTEN_PORT`   | `8000`                      | Port                        |
+| `ENABLE_RELOAD` | `true` (Windows)            | Auto-reload on code changes |
+| `NUM_WORKERS`   | `1` (Windows) / `2` (Linux) | Uvicorn workers             |
 
-**Environment variable formats:**
+### Environment Variables
+
+Pre-set configurations are loaded from `.env` files. All pre-set values can be overridden with environment variables.
+
+| File                              | Purpose                                         |
+|-----------------------------------|-------------------------------------------------|
+| `app_settings.env`                | App name, debug mode, base URL, primary markets |
+| `sec_settings.env`                | Secret key, JWT settings, allowed emails        |
+| `external_identity_providers.env` | OAuth client IDs/secrets (GitHub, LinkedIn)     |
+| `ai_vendors.env`                  | AI vendor endpoints, API keys, models           |
+| `ai_tasks.env`                    | AI task-to-vendor/tier/model mapping            |
+
+**Required configurations:**
+
+| Variable | Description |
+|----------|-------------|
+| `AL_ALLOWED_EMAILS` | Comma-separated list of email addresses allowed to log in |
+| `AL_GITHUB_CLIENT_ID` / `AL_GITHUB_CLIENT_SECRET` | GitHub OAuth credentials (at least one identity provider required) |
+| `AL_LINKEDIN_CLIENT_ID` / `AL_LINKEDIN_CLIENT_SECRET` | LinkedIn OAuth credentials (alternative to GitHub) |
+| `AL_LLM__<VENDOR>__<TIER>__ENDPOINT` | AI vendor endpoint (at least one vendor must be configured) |
+| `AL_LLM__<VENDOR>__<TIER>__API_KEY` | AI vendor API key |
+
+**Optional configurations:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AL_APP_NAME` | `AlphaLab` | Application display name |
+| `AL_DEBUG` | `false` | Enable debug mode |
+| `AL_BASE_URL` | `http://localhost:8000` | Base URL for OAuth callbacks |
+| `AL_PRIMARY_MARKETS` | _(empty)_ | Comma-separated list of primary markets (e.g. `US,ASX,LSE`) |
+| `AL_SECRET_KEY` | `change-me-in-production` | JWT signing secret |
+| `AL_JWT_ALGORITHM` | `HS256` | JWT algorithm |
+| `AL_JWT_EXPIRE_MINUTES` | `10080` (7 days) | JWT token expiry |
+| `AL_LLM__<VENDOR>__<TIER>__MODELS` | _(empty)_ | Comma-separated list of available models |
+| `AL_TASK__<TASK>__VENDOR` | _(empty)_ | AI vendor for a specific task |
+| `AL_TASK__<TASK>__TIER` | _(empty)_ | AI tier for a specific task |
+| `AL_TASK__<TASK>__MODEL` | _(empty)_ | Model for a specific task |
+
+**Examples:**
 
 ```env
-# app_settings.env
-AL_APP_NAME=AlphaLab
-AL_DEBUG=true
-AL_BASE_URL=http://localhost:8000
-AL_PRIMARY_MARKETS=US,ASX,LSE
-
 # sec_settings.env
 AL_SECRET_KEY=your-secret-key
 AL_ALLOWED_EMAILS=user1@example.com,user2@example.com
+
+# external_identity_providers.env
+AL_GITHUB_CLIENT_ID=your-github-client-id
+AL_GITHUB_CLIENT_SECRET=your-github-client-secret
 
 # ai_vendors.env (nested with __)
 AL_LLM__OPENAI__PREMIUM__ENDPOINT=https://api.openai.com/v1
@@ -79,76 +120,6 @@ AL_LLM__OPENAI__PREMIUM__MODELS=gpt-4o,gpt-4o-mini
 AL_TASK__DASHBOARD_BUILD_PROMPT__VENDOR=openai
 AL_TASK__DASHBOARD_BUILD_PROMPT__TIER=premium
 AL_TASK__DASHBOARD_BUILD_PROMPT__MODEL=gpt-4o-mini
-```
-
-### Running
-
-```bash
-python server.py
-```
-
-The app starts at `http://localhost:8000` by default.
-
-**Server environment variables:**
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LISTEN_HOST` | `127.0.0.1` | Bind address |
-| `LISTEN_PORT` | `8000` | Port |
-| `ENABLE_RELOAD` | `true` (Windows) | Auto-reload on code changes |
-| `NUM_WORKERS` | `1` (Windows) / `2` (Linux) | Uvicorn workers |
-
-### Docker
-
-```bash
-docker build --rm -t alphalab:dev .
-docker run -p 8000:8000 --env-file app_settings.env alphalab:dev
-```
-
-## Development
-
-### Lint & Format
-
-```bash
-ruff check .           # lint
-ruff check . --fix     # lint + autofix
-ruff format .          # format
-ruff format --diff .   # format check (CI)
-```
-
-### Testing
-
-```bash
-python -m pytest tests/ -q
-```
-
-### Project Structure
-
-```
-alphalab/
-├── app/
-│   ├── main.py              # FastAPI entry point
-│   ├── config.py            # Settings classes (pydantic-settings)
-│   ├── dependencies.py      # Auth dependency (get_current_user)
-│   ├── routers/             # Route handlers
-│   │   ├── dashboard.py
-│   │   ├── analyze_ticker.py
-│   │   ├── build_portfolio.py
-│   │   ├── review_portfolio.py
-│   │   ├── ai_vendors.py
-│   │   ├── ai_tasks.py
-│   │   ├── auth.py
-│   │   └── health.py
-│   ├── services/            # Business logic
-│   ├── templates/           # Jinja2 HTML templates
-│   ├── static/              # CSS, JS, images
-│   └── utils/               # Helpers (ai.py, ticker.py)
-├── tests/                   # Pytest test suite
-├── server.py                # Uvicorn launcher
-├── Dockerfile               # Multistage Docker build
-├── requirements.txt         # Production dependencies
-├── requirements-dev.txt     # Dev dependencies
-└── pyproject.toml           # Project metadata & tool config
 ```
 
 ## 🤝 Contributing
