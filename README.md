@@ -24,7 +24,7 @@ docker run -p 8000:8000 \
   --env-file external_identity_providers.env \
   --env-file ai_vendors.env \
   --env-file ai_tasks.env \
-  btnguyen2k/alphalab
+  btnguyen2k/alphalab:release
 ```
 
 The app will be available at `http://localhost:8000`. 
