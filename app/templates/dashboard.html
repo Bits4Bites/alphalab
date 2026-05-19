@@ -19,12 +19,8 @@
                 </button>
             </div>
         </form>
-        <div class="mt-3">
+        <div class="mt-3" id="suggestions-container">
             <small class="text-muted me-2">Try:</small>
-            <button class="btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn" type="button">Analyze AAPL, is it a good time to buy?</button>
-            <button class="btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn" type="button">Build an ASX dividend portfolio</button>
-            <button class="btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn" type="button">Compare ANZ.AX and WBC.AX</button>
-            <button class="btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn" type="button">Top 5 AI stocks to watch this month</button>
         </div>
     </div>
 </div>
@@ -87,12 +83,50 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
-// Suggestion buttons
-document.querySelectorAll('.suggestion-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.getElementById('hero-intent').value = this.textContent;
-        document.getElementById('hero-form').dispatchEvent(new Event('submit'));
+// Sample prompts - randomly display 4 each time
+const samplePrompts = [
+    "Analyze AAPL, is it a good time to buy?",
+    "Build an ASX dividend portfolio",
+    "Compare ANZ.AX and WBC.AX",
+    "Top 5 AI stocks to watch this month",
+    "Is NVDA overvalued at current levels?",
+    "Best ETFs for long-term passive income",
+    "Analyze Tesla's growth potential for 2026",
+    "Compare MSFT, GOOGL, and AMZN cloud revenue",
+    "What are the best defensive stocks during a recession?",
+    "Build a $50K growth portfolio for US market",
+    "Analyze BHP.AX mining sector outlook",
+    "Top dividend aristocrats with yield above 4%",
+    "Is now a good time to invest in semiconductor stocks?",
+    "Compare Vanguard VGS vs iShares IOZ for Australian investors",
+    "What are emerging market opportunities in 2026?",
+    "Analyze the impact of interest rate cuts on REITs",
+    "Best small-cap stocks with high growth potential",
+    "Build a conservative retirement portfolio for $200K",
+    "How does CBA.AX compare to other big four banks?",
+    "Top renewable energy stocks to invest in globally",
+];
+
+function displayRandomSuggestions() {
+    const container = document.getElementById('suggestions-container');
+    const shuffled = samplePrompts.sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 4);
+    selected.forEach(prompt => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn';
+        btn.type = 'button';
+        btn.textContent = prompt;
+        container.appendChild(btn);
     });
+}
+displayRandomSuggestions();
+
+// Suggestion buttons (event delegation for dynamically created buttons)
+document.getElementById('suggestions-container').addEventListener('click', function(e) {
+    if (e.target.classList.contains('suggestion-btn')) {
+        document.getElementById('hero-intent').value = e.target.textContent;
+        document.getElementById('hero-form').dispatchEvent(new Event('submit'));
+    }
 });
 
 document.getElementById('hero-form').addEventListener('submit', function(e) {
