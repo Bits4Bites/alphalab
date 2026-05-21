@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -9,8 +8,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.routers import ai_tasks, ai_vendors, analyze_ticker, auth, build_portfolio, dashboard, health, review_portfolio
 from app.templating import templates
+from app.utils.scheduler import BackgroundScheduler, PeriodicTask
 
 logger = logging.getLogger(__name__)
+scheduler = BackgroundScheduler()
 
 
 async def _check_redis() -> None:
@@ -31,25 +32,35 @@ async def _check_redis() -> None:
         logger.warning("Redis unavailable, data store disabled: %s", exc)
 
 
-async def _startup_background_tasks() -> None:
-    """Run startup background tasks: Redis check, then sample prompt generation."""
-    await _check_redis()
-
+async def _generate_sample_prompts_task() -> None:
+    """Wrapper for sample prompt generation that checks Redis availability."""
     from app.config import datastore_settings
 
-    if datastore_settings.redis_enabled:
-        try:
-            from app.services.sample_prompts import generate_sample_prompts
+    if not datastore_settings.redis_enabled:
+        return
 
-            await generate_sample_prompts()
-        except Exception as exc:
-            logger.error("Sample prompt generation failed: %s", exc)
+    from app.services.sample_prompts import generate_sample_prompts
+
+    await generate_sample_prompts()
+
+
+# Register periodic tasks
+scheduler.register(
+    PeriodicTask(
+        name="generate_sample_prompts",
+        func=_generate_sample_prompts_task,
+        interval_seconds=3600,
+        run_on_start=True,
+    )
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    asyncio.create_task(_startup_background_tasks())
+    await _check_redis()
+    await scheduler.start()
     yield
+    await scheduler.stop()
 
 
 app = FastAPI(title="AlphaLab", description="AI-powered market research lab", lifespan=lifespan)
