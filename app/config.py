@@ -213,8 +213,33 @@ class AITaskSettings(BaseSettings):
         return ai_vendor_settings.get_ai_client(task_config.vendor, task_config.tier)
 
 
+class DataStoreSettings(BaseSettings):
+    """Redis data store configuration.
+
+    Env vars:
+        AL_DATASTORE_REDIS_URL - Redis connection URL
+            Non-SSL: redis://[:password@]host:port/db
+            SSL/TLS: rediss://[:password@]host:port/db  (note the double 's')
+        AL_DATASTORE_KEY_PREFIX - Key namespace prefix (default: alphalab:)
+    """
+
+    redis_url: str = Field(default="redis://localhost:6379/0", alias="AL_DATASTORE_REDIS_URL")
+    key_prefix: str = Field(default="alphalab:", alias="AL_DATASTORE_KEY_PREFIX")
+    redis_enabled: bool = False
+    redis_client: object | None = None
+
+    model_config = {
+        "env_file": "datastore.env",
+        "env_file_encoding": "utf-8",
+        "populate_by_name": True,
+        "extra": "ignore",
+        "arbitrary_types_allowed": True,
+    }
+
+
 app_settings = AppSettings()
 security_settings = SecuritySettings()
 identity_settings = ExternalIdentitySettings()
 ai_vendor_settings = AIVendorSettings()
 ai_task_settings = AITaskSettings()
+datastore_settings = DataStoreSettings()

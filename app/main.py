@@ -1,3 +1,6 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -5,8 +8,82 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.routers import ai_tasks, ai_vendors, analyze_ticker, auth, build_portfolio, dashboard, health, review_portfolio
 from app.templating import templates
+from app.utils.scheduler import BackgroundScheduler, PeriodicTask
 
-app = FastAPI(title="AlphaLab", description="AI-powered market research lab")
+logger = logging.getLogger(__name__)
+scheduler = BackgroundScheduler()
+
+
+async def _check_redis() -> None:
+    """Check Redis connectivity and set datastore_redis_enabled flag."""
+    from redis.asyncio import from_url
+
+    from app.config import datastore_settings
+
+    try:
+        client = from_url(datastore_settings.redis_url, decode_responses=True)
+        await client.ping()
+        datastore_settings.redis_enabled = True
+        datastore_settings.redis_client = client
+        logger.info("Redis connection OK")
+    except Exception as exc:
+        datastore_settings.redis_enabled = False
+        datastore_settings.redis_client = None
+        logger.warning("Redis unavailable, data store disabled: %s", exc)
+
+
+async def _generate_sample_prompts_task() -> None:
+    """Wrapper for sample prompt generation that checks Redis availability."""
+    from app.config import datastore_settings
+
+    if not datastore_settings.redis_enabled:
+        return
+
+    from app.services.sample_prompts import generate_sample_prompts
+
+    await generate_sample_prompts()
+
+
+async def _fetch_market_news_task() -> None:
+    """Wrapper for market news fetch that checks Redis availability."""
+    from app.config import datastore_settings
+
+    if not datastore_settings.redis_enabled:
+        return
+
+    from app.services.market_news import fetch_market_news
+
+    await fetch_market_news()
+
+
+# Register periodic tasks
+scheduler.register(
+    PeriodicTask(
+        name="generate_sample_prompts",
+        func=_generate_sample_prompts_task,
+        interval_seconds=3600,
+        run_on_start=True,
+    )
+)
+scheduler.register(
+    PeriodicTask(
+        name="fetch_market_news",
+        func=_fetch_market_news_task,
+        interval_seconds=3600,
+        run_on_start=True,
+    )
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await _check_redis()
+    await scheduler.start()
+    yield
+    await scheduler.stop()
+
+
+app = FastAPI(title="AlphaLab", description="AI-powered market research lab", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
