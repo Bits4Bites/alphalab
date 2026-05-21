@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 import time
 
 logger = logging.getLogger(__name__)
@@ -156,7 +157,10 @@ async def get_market_news() -> list[dict] | None:
             return None
         data = json.loads(cached)
         news = data.get("news", [])
-        return news if news else None
+        if not news:
+            return None
+        random.shuffle(news)
+        return news
     except Exception as exc:
         logger.warning("Failed to fetch market news from Redis: %s", exc)
         return None
