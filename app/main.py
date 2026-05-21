@@ -44,11 +44,31 @@ async def _generate_sample_prompts_task() -> None:
     await generate_sample_prompts()
 
 
+async def _fetch_market_news_task() -> None:
+    """Wrapper for market news fetch that checks Redis availability."""
+    from app.config import datastore_settings
+
+    if not datastore_settings.redis_enabled:
+        return
+
+    from app.services.market_news import fetch_market_news
+
+    await fetch_market_news()
+
+
 # Register periodic tasks
 scheduler.register(
     PeriodicTask(
         name="generate_sample_prompts",
         func=_generate_sample_prompts_task,
+        interval_seconds=3600,
+        run_on_start=True,
+    )
+)
+scheduler.register(
+    PeriodicTask(
+        name="fetch_market_news",
+        func=_fetch_market_news_task,
         interval_seconds=3600,
         run_on_start=True,
     )

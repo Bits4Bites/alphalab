@@ -25,6 +25,33 @@
     </div>
 </div>
 
+<!-- Market News Section -->
+{% if market_news %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <h5 class="fw-semibold mb-3"><i class="bi bi-newspaper me-1"></i>Market News</h5>
+        <div class="row g-3">
+            {% for item in market_news[:9] %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border">
+                    <div class="card-body p-3">
+                        <h6 class="card-title fw-semibold mb-1">
+                            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">{{ item.headline }}</a>
+                        </h6>
+                        <p class="card-text text-muted small mb-2">{{ item.summary }}</p>
+                        <div class="d-flex justify-content-between">
+                            <span class="badge bg-light text-dark">{{ item.market }}</span>
+                            <small class="text-muted">{{ item.date }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Progress indicator -->
 <div id="progress-section" class="d-none mb-4">
     <div class="card border-0 shadow-sm">

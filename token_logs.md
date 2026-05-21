@@ -1,8 +1,8 @@
 # 2026-05-21
 ```
-Changes   +362 -40
-AI Units  459 (29h 6m 42s)
-Tokens    ↑ 3.7m (3.3m cached) • ↓ 18.7
+Changes   +689 -59
+AI Units  817 (31h 40m 33s)
+Tokens    ↑ 6.6m (5.8m cached) • ↓ 28.4k
 ```
 
 -----
