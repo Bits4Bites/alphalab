@@ -17,7 +17,10 @@ MAX_INTENT_LENGTH = 300
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, user: dict = Depends(get_current_user)) -> HTMLResponse:
-    return templates.TemplateResponse(request, TEMPLATE, {"user": user})
+    from app.services.sample_prompts import get_random_sample_prompts
+
+    sample_prompts = await get_random_sample_prompts(4)
+    return templates.TemplateResponse(request, TEMPLATE, {"user": user, "sample_prompts": sample_prompts})
 
 
 @router.get("/dashboard/stream")

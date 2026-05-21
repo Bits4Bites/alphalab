@@ -83,8 +83,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
-// Sample prompts - randomly display 4 each time
-const samplePrompts = [
+// Sample prompts - use server-provided prompts if available, otherwise static fallback
+const serverPrompts = {{ sample_prompts | tojson }};
+const staticPrompts = [
     "Analyze AAPL, is it a good time to buy?",
     "Build an ASX dividend portfolio",
     "Compare ANZ.AX and WBC.AX",
@@ -109,8 +110,13 @@ const samplePrompts = [
 
 function displayRandomSuggestions() {
     const container = document.getElementById('suggestions-container');
-    const shuffled = samplePrompts.sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 4);
+    let selected;
+    if (serverPrompts && serverPrompts.length > 0) {
+        selected = serverPrompts;
+    } else {
+        const shuffled = staticPrompts.sort(() => 0.5 - Math.random());
+        selected = shuffled.slice(0, 4);
+    }
     selected.forEach(prompt => {
         const btn = document.createElement('button');
         btn.className = 'btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn';
