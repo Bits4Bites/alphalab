@@ -1,5 +1,11 @@
 # AlphaLab release notes
 
+## 2026-05-21 - v0.2.1
+
+### Fixed/Improvements
+
+- Patch: Move app_version to AppSettings config.
+
 ## 2026-05-21 - v0.2.0
 
 ### Added/Refactoring/Deprecation
