@@ -11,6 +11,10 @@ AI-powered market research lab.
 - **Review Portfolio** Review an existing portfolio and identify strengths, weaknesses, concentration risks, and optimization opportunities.
 - **Freestyle Mode** Interact with the AI freely using natural language prompts for custom market research and investment exploration.
 
+### Screenshots
+
+![AlphaLab Dashboard](docs/alphalab-screenshot-1.png)
+
 ## 🚀 Getting Started
 
 ### Run from Docker Image
