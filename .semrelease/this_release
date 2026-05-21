@@ -4,3 +4,4 @@
 #!VERSION=1.2.0
 - feat: Use AI to generate sample prompts for the Dashboard and store in an external data store.
 - feat: Fetch market news and present on Dashboard.
+- feat: Use AI to generate actionable ideas, and add to Dashboard.

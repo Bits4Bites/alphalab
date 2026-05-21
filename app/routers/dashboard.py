@@ -17,12 +17,13 @@ MAX_INTENT_LENGTH = 300
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, user: dict = Depends(get_current_user)) -> HTMLResponse:
-    from app.services.market_news import get_market_news
+    from app.services.market_news import get_ai_ideas, get_market_news
     from app.services.sample_prompts import get_random_sample_prompts
 
     sample_prompts = await get_random_sample_prompts(4)
     market_news = await get_market_news()
-    context = {"user": user, "sample_prompts": sample_prompts, "market_news": market_news}
+    ai_ideas = await get_ai_ideas(3)
+    context = {"user": user, "sample_prompts": sample_prompts, "market_news": market_news, "ai_ideas": ai_ideas}
     return templates.TemplateResponse(request, TEMPLATE, context)
 
 

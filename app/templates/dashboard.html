@@ -108,7 +108,34 @@
 </div>
 {% endif %}
 
+<!-- AI Ideas Section -->
+{% if ai_ideas %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <h5 class="fw-semibold mb-3"><i class="bi bi-lightbulb me-1"></i>AI Ideas</h5>
+        <div class="row g-3">
+            {% for idea in ai_ideas %}
+            <div class="col-md-4">
+                <div class="card h-100 border">
+                    <div class="card-body p-3">
+                        <h6 class="card-title fw-semibold text-primary mb-2">{{ idea.prompt }}</h6>
+                        <div class="card-text small mb-0 ai-idea-content">{{ idea.result }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+// Render AI Ideas markdown content
+document.querySelectorAll('.ai-idea-content').forEach(el => {
+    el.innerHTML = marked.parse(el.textContent);
+});
+</script>
 <script>
 // Sample prompts - use server-provided prompts if available, otherwise static fallback
 const serverPrompts = {{ sample_prompts | tojson }};
