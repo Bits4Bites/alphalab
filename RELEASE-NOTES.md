@@ -1,5 +1,13 @@
 # AlphaLab release notes
 
+## 2026-05-21 - v0.2.0
+
+### Added/Refactoring/Deprecation
+
+- Feat: Use AI to generate sample prompts for the Dashboard and store in an external data store.
+- Feat: Fetch market news and present on Dashboard.
+- Feat: Use AI to generate actionable ideas, and add to Dashboard.
+
 ## 2026-05-19 - v0.1.2
 
 ### Fixed/Improvements
