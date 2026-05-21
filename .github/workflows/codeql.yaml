@@ -3,6 +3,12 @@ name: "CodeQL"
 on:
   schedule:
     - cron: "0 0 * * 6"  # Weekly on Saturday at 00:00 UTC
+  push:
+    branches: [ '*' ]
+    paths-ignore:
+      - '.github/**'
+  pull_request:
+    branches: [ '*' ]
   workflow_dispatch:
 
 jobs:

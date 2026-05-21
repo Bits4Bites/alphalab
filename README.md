@@ -150,7 +150,7 @@ If you find a bug or have a suggestion:
 
 1. **Search existing issues** to avoid duplicates
 2. **Create a new issue** on GitHub:
-   - Go to: https://github.com/Bits4Bytes/alphalab/issues/new
+   - Go to: https://github.com/Bits4Bites/alphalab/issues/new
    - Provide a clear title and description
    - Include steps to reproduce (for bugs)
    - Add relevant labels (bug, enhancement, question, etc.)
