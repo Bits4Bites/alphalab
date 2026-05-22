@@ -31,8 +31,11 @@ ACTIONABLE_PROMPTS_TEMPLATE = (
 )
 
 SYSTEM_PROMPT_TEMPLATE = (
-    "You are a financial news analyst. Provide the latest important stock market news "
+    "You are a financial news analyst. Provide important stock market news from the last 30 days "
     "relevant to the following market(s): {markets}. "
+    "Prioritize news that is local to the specified market(s) — domestic companies, local exchanges, "
+    "and region-specific policy or economic events. Include global news only if it has direct impact "
+    "on the specified market(s). "
     "For each news item, include: a concise headline, a brief summary (2-3 sentences), "
     "the relevant market or region, an approximate date, and a URL link to the original source. "
     "Provide 10-15 news items covering diverse topics (earnings, policy, sector moves, IPOs, macro events). "
