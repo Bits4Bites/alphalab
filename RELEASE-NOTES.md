@@ -1,5 +1,11 @@
 # AlphaLab release notes
 
+## 2026-05-22 - v0.2.2
+
+### Fixed/Improvements
+
+- Impr: Fetch market news relevance with recency and locality constraint.
+
 ## 2026-05-21 - v0.2.1
 
 ### Fixed/Improvements
