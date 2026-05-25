@@ -28,6 +28,7 @@ docker run -p 8000:8000 \
   --env-file external_identity_providers.env \
   --env-file ai_vendors.env \
   --env-file ai_tasks.env \
+  --env-file datastore.env \
   btnguyen2k/alphalab:release
 ```
 
@@ -79,6 +80,7 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 | `external_identity_providers.env` | OAuth client IDs/secrets (GitHub, LinkedIn)     |
 | `ai_vendors.env`                  | AI vendor endpoints, API keys, models           |
 | `ai_tasks.env`                    | AI task-to-vendor/tier/model mapping            |
+| `datastore.env`                   | Redis connection and key prefix                 |
 
 **Required configurations:**
 
@@ -105,18 +107,20 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 
 **Optional configurations:**
 
-| Variable                           | Default                   | Description                                                 |
-|------------------------------------|---------------------------|-------------------------------------------------------------|
-| `AL_DEBUG`                         | `false`                   | Enable debug mode                                           |
-| `AL_BASE_URL`                      | `http://localhost:8000`   | Base URL for OAuth callbacks                                |
-| `AL_PRIMARY_MARKETS`               | _(empty)_                 | Comma-separated list of primary markets (e.g. `US,ASX,LSE`) |
-| `AL_SECRET_KEY`                    | `change-me-in-production` | JWT signing secret                                          |
-| `AL_JWT_ALGORITHM`                 | `HS256`                   | JWT algorithm                                               |
-| `AL_JWT_EXPIRE_MINUTES`            | `10080` (7 days)          | JWT token expiry                                            |
-| `AL_LLM__<VENDOR>__<TIER>__MODELS` | _(empty)_                 | Comma-separated list of available models                    |
-| `AL_TASK__<TASK>__VENDOR`          | _(empty)_                 | AI vendor for a specific task                               |
-| `AL_TASK__<TASK>__TIER`            | _(empty)_                 | AI tier for a specific task                                 |
-| `AL_TASK__<TASK>__MODEL`           | _(empty)_                 | Model for a specific task                                   |
+| Variable                           | Default                    | Description                                                     |
+|------------------------------------|----------------------------|-----------------------------------------------------------------|
+| `AL_DEBUG`                         | `false`                    | Enable debug mode                                               |
+| `AL_BASE_URL`                      | `http://localhost:8000`    | Base URL for OAuth callbacks                                    |
+| `AL_PRIMARY_MARKETS`               | _(empty)_                  | Comma-separated list of primary markets (e.g. `US,ASX,LSE`)     |
+| `AL_SECRET_KEY`                    | `change-me-in-production`  | JWT signing secret                                              |
+| `AL_JWT_ALGORITHM`                 | `HS256`                    | JWT algorithm                                                   |
+| `AL_JWT_EXPIRE_MINUTES`            | `10080` (7 days)           | JWT token expiry                                                |
+| `AL_LLM__<VENDOR>__<TIER>__MODELS` | _(empty)_                  | Comma-separated list of available models                        |
+| `AL_TASK__<TASK>__VENDOR`          | _(empty)_                  | AI vendor for a specific task                                   |
+| `AL_TASK__<TASK>__TIER`            | _(empty)_                  | AI tier for a specific task                                     |
+| `AL_TASK__<TASK>__MODEL`           | _(empty)_                  | Model for a specific task                                       |
+| `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Redis connection URL (enables dashboard market news & AI ideas) |
+| `AL_DATASTORE_REDIS_KEY_PREFIX`    | `alphalab:`                | Key namespace prefix for all Redis keys                         |
 
 **Examples:**
 

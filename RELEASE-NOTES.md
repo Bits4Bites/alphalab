@@ -1,5 +1,11 @@
 # AlphaLab release notes
 
+## 2026-05-25 - v0.3.0
+
+### Fixed/Improvements
+
+- Impr: Improve ticker analysis prompt.
+
 ## 2026-05-22 - v0.2.2
 
 ### Fixed/Improvements
