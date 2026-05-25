@@ -1,8 +1,16 @@
+# 2026-05-25
+```
+Changes    +1019 -160
+AI Credits 179 (121h 49m 38s)
+Tokens     ↑ 1.5m (1.3m cached) • ↓ 3.1k
+```
+
+-----
 # 2026-05-22
 ```
 Changes   +994 -138
 AI Units  1915 (48h 34m 36s)
-Tokens    ↑ 16.1m (14.4m cached) • ↓ 47.0
+Tokens    ↑ 16.1m (14.4m cached) • ↓ 47.0k
 ```
 
 # 2026-05-21
