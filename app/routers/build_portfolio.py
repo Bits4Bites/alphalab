@@ -55,8 +55,10 @@ _PROMPT_TEMPLATE = (
     "{existing_holdings_instruction}"
     "\n"
     "## Output format\n"
-    "Return ONLY the ready-to-use prompt. No preamble, no explanation, no commentary.\n"
+    "Return ONLY the ready-to-execute prompt. No preamble, no explanation, no commentary.\n"
     "The prompt must be self-contained, the premium model will receive it with no other context.\n"
+    "The prompt must instruct the premium model to format the response in Markdown, "
+    "and use the hyphen character (-) instead of em-dash (\u2014) throughout.\n"
     "The premium model is NOT to include any suggested follow-up questions."
 )
 

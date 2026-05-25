@@ -2,7 +2,9 @@
 # Generate its content quickly using the following command:
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
 #!VERSION=0.3.1
+- Impr: Improve dashboard prompt.
 - Impr: Improve portfolio building prompt.
+- Impr: Improve portfolio review prompt.
 - Impr(UI): Add a timer next to the progress bar.
 - Impr(UI): Handle LaTeX in the generated markdown.
 - Impr(UI): Update/Improve print view.
