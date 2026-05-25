@@ -12,6 +12,54 @@ from app.utils.ai import execute_prompt
 router = APIRouter(tags=["build_portfolio"])
 TEMPLATE = "build_portfolio.html"
 
+_PROMPT_TEMPLATE = (
+    "You are an expert financial advisor and prompt engineer.\n"
+    "\n"
+    "Your task is to write a detailed, ready-to-execute prompt that instructs a premium AI model\n"
+    "to help a user build a stock portfolio from scratch.\n"
+    "\n"
+    "## Investor profile and goal\n"
+    "{investor_profile}\n"
+    "\n"
+    "## Your instructions\n"
+    "Adapt the portfolio-building prompt to the user's specific profile:\n"
+    "- For conservative profiles: weight toward dividend stocks, blue chips, bonds, or bond ETFs\n"
+    "- For aggressive profiles: allow higher allocation to growth stocks, small-caps, thematic ETFs\n"
+    "- For passive income goals: emphasize REITs, dividend ETFs, high-yield equities\n"
+    "- For short horizons: reduce volatility exposure, increase cash or short-duration assets\n"
+    "- For non-US investors: account for currency exposure, foreign withholding tax, local market access\n"
+    "- For ESG exclusions: explicitly instruct the premium model to screen out excluded sectors\n"
+    "\n"
+    "Write a prompt that tells the premium model to:\n"
+    "1. Use its web search capability to gather current market data, valuations, and recent performance\n"
+    "2. Recommend a concrete, actionable portfolio — specific tickers, not vague asset classes\n"
+    "3. Justify every pick with data (valuation, growth profile, role in the portfolio)\n"
+    "4. Define the allocation clearly (percentage per position)\n"
+    "5. Flag key risks for the overall portfolio and for individual positions\n"
+    "6. Keep the portfolio manageable (typically 8–15 positions unless the investor profile suggests otherwise)\n"
+    "\n"
+    "## The prompt must instruct the premium model to cover:\n"
+    "- Proposed asset allocation strategy (equities / ETFs / REITs / bonds / cash %)\n"
+    "- Individual stock/ETF picks with:\n"
+    "  - Ticker and full name\n"
+    "  - Allocation % and estimated number of shares\n"
+    "  - Rationale (why this pick, why this weighting)\n"
+    "  - Key risks specific to this position\n"
+    "- Portfolio-level analysis:\n"
+    "  - Diversification assessment (sector, geography, market cap spread)\n"
+    "  - Expected income yield (if relevant to goal)\n"
+    "  - Overall risk profile vs. stated tolerance\n"
+    "- Relevant tax considerations (e.g. franking credits, withholding tax, capital gains treatment)\n"
+    "- Suggested rebalancing frequency\n"
+    "- A clear next-steps section for the user to act on the recommendations\n"
+    "{existing_holdings_instruction}"
+    "\n"
+    "## Output format\n"
+    "Return ONLY the ready-to-use prompt. No preamble, no explanation, no commentary.\n"
+    "The prompt must be self-contained, the premium model will receive it with no other context.\n"
+    "The premium model is NOT to include any suggested follow-up questions."
+)
+
 
 @router.get("/build-portfolio", response_class=HTMLResponse)
 async def build_portfolio_page(request: Request, user: dict = Depends(get_current_user)) -> HTMLResponse:
@@ -68,27 +116,25 @@ async def build_portfolio_stream(
             context_parts.append(f"Existing Holdings: {existing_holdings}")
         investor_profile = "\n".join(context_parts)
 
-        prompt_request = (
-            f"Generate a ready-to-use prompt (copy-and-paste, no placeholders) to build an investment portfolio "
-            f"based on the following investor profile:\n{investor_profile}\n\n"
-            f"The prompt must instruct the AI to provide:\n"
-            f"- A recommended portfolio allocation strategy\n"
-            f"- Specific ticker recommendations with rationale for each pick\n"
-            f"- Suggested allocation percentage for each ticker\n"
-            f"- Approximate unit/share counts for each ticker based on current market prices\n"
-            f"- Entry strategy and timing considerations\n"
-            f"- Risk management and diversification notes\n"
-            f"The generated prompt should instruct the AI NOT to include any suggested follow-up questions. "
-            f"Output only the prompt text, nothing else."
+        prompt_request = _PROMPT_TEMPLATE.format(
+            investor_profile=investor_profile,
+            existing_holdings_instruction=(
+                "- How the new recommendations complement or adjust the existing holdings\n"
+                if existing_holdings
+                else ""
+            ),
         )
-        if existing_holdings:
-            prompt_request += "- How the new recommendations complement or adjust the existing holdings\n"
-        prompt_request += "Output only the prompt text, nothing else."
         prompt_result = await execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate portfolio prompt: {prompt_result.error}")}
             return
+
+        # ### DEBUG: START
+        # yield {"data": progress(total_steps, total_steps, "Analysis complete!")}
+        # yield {"data": result(prompt_result.completion)}
+        # return
+        # ### DEBUG: END
 
         # Step 3: Build portfolio with generated prompt
         yield {"data": progress(3, total_steps, "Building portfolio with AI...")}

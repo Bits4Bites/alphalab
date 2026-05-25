@@ -258,7 +258,7 @@ async def analyze_ticker_stream(
             return
 
         # ### DEBUG: START
-        # yield {"data": progress(5, total_steps, "Analysis complete!")}
+        # yield {"data": progress(total_steps, total_steps, "Analysis complete!")}
         # yield {"data": result(prompt_result.completion)}
         # return
         # ### DEBUG: END
