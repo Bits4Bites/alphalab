@@ -221,11 +221,11 @@ class DataStoreSettings(BaseSettings):
         AL_DATASTORE_REDIS_URL - Redis connection URL
             Non-SSL: redis://[:password@]host:port/db
             SSL/TLS: rediss://[:password@]host:port/db  (note the double 's')
-        AL_DATASTORE_KEY_PREFIX - Key namespace prefix (default: alphalab:)
+        AL_DATASTORE_REDIS_KEY_PREFIX - Key namespace prefix (default: alphalab:)
     """
 
     redis_url: str = Field(default="redis://localhost:6379/0", alias="AL_DATASTORE_REDIS_URL")
-    key_prefix: str = Field(default="alphalab:", alias="AL_DATASTORE_KEY_PREFIX")
+    key_prefix: str = Field(default="alphalab:", alias="AL_DATASTORE_REDIS_KEY_PREFIX")
     redis_enabled: bool = False
     redis_client: object | None = None
 

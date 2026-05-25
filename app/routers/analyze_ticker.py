@@ -73,11 +73,10 @@ _FULL_COVER_ITEMS = (
 )
 
 
-# Approximate FX rates to USD for market-cap tier normalization.
-# Precision is not critical — these are only used to bucket market caps into tiers.
 # Market-cap tier thresholds per country/market (in local currency).
 # Each tuple: (mega, large, mid, small, micro) — values are lower bounds for each tier.
 # Sources: index methodology from S&P, ASX, TSE, etc.
+# Precision is not critical — these are only used to bucket market caps into tiers.
 _MARKET_CAP_TIERS: dict[str, tuple[float, float, float, float, float]] = {
     "US": (200e9, 10e9, 2e9, 300e6, 50e6),
     "CA": (30e9, 5e9, 1e9, 250e6, 50e6),
