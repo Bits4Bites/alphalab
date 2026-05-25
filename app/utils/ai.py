@@ -122,6 +122,8 @@ async def _execute_openai(client, model: str, prompt: str) -> AIResponse:
             model=model,
             messages=[{"role": "user", "content": prompt}],
             extra_body={"plugins": [{"id": "web"}]},
+            temperature=0.1,
+            top_p=0.1,
         )
     else:
         response = await client.responses.create(

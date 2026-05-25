@@ -33,7 +33,7 @@ for vendor_name, api_tiers in list(config.ai_vendor_settings.vendors.items()):
         if (not llm_cfg.api_key and not llm_cfg.endpoint) or llm_cfg.models is None or not llm_cfg.models:
             del api_tiers[api_tier]
         else:
-            config.ai_vendor_settings.vendors[vendor_name.upper()][api_tier.upper()] = llm_cfg.copy()
+            config.ai_vendor_settings.vendors[vendor_name.upper()][api_tier.upper()] = llm_cfg.model_copy()
             config.ai_vendor_settings.vendors[vendor_name.upper()][api_tier.upper()].vendor_name = vendor_name.upper()
             config.ai_vendor_settings.vendors[vendor_name.upper()][api_tier.upper()].api_tier = api_tier.upper()
 
@@ -59,7 +59,7 @@ for vendor_name, api_tiers in list(config.ai_vendor_settings.vendors.items()):
 # }
 # task_id is initially empty, we want to populate its value from the keys
 for task_id, llm_task_cfg in list(config.ai_task_settings.tasks.items()):
-    config.ai_task_settings.tasks[task_id.upper()] = llm_task_cfg.copy()
+    config.ai_task_settings.tasks[task_id.upper()] = llm_task_cfg.model_copy()
     config.ai_task_settings.tasks[task_id.upper()].task_id = task_id.upper()
 
 for task_id, llm_task_cfg in list(config.ai_task_settings.tasks.items()):
