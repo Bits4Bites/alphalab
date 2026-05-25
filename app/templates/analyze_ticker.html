@@ -41,6 +41,7 @@
                                 <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
                             </div>
                             <small class="text-muted" id="progress-step">Step 0 of 5</small>
+                            <small class="text-muted d-none ms-2" id="wait-timer"></small>
                         </div>
                     </div>
                 </div>
@@ -105,6 +106,8 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
     progressSection.classList.remove('d-none');
     errorSection.classList.add('d-none');
     resultSection.classList.add('d-none');
+    const waitTimer = new WaitTimer('wait-timer');
+    waitTimer.start();
 
     const eventSource = new EventSource(`/analyze-ticker/stream?ticker=${encodeURIComponent(ticker)}&quick_mode=${quickMode}`);
 
@@ -117,6 +120,7 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
             document.getElementById('progress-bar').style.width = pct + '%';
             document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
         } else if (data.type === 'error') {
+            waitTimer.stop();
             progressSection.classList.add('d-none');
             errorSection.classList.remove('d-none');
             document.getElementById('error-message').textContent = data.message;
@@ -124,6 +128,7 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-search me-1"></i>Analyze';
         } else if (data.type === 'result') {
+            waitTimer.stop();
             progressSection.classList.add('d-none');
             resultSection.classList.remove('d-none');
             document.getElementById('result-ticker').textContent = ticker;
@@ -135,6 +140,7 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
     };
 
     eventSource.onerror = function() {
+        waitTimer.stop();
         progressSection.classList.add('d-none');
         errorSection.classList.remove('d-none');
         document.getElementById('error-message').textContent = 'Connection lost. Please try again.';

@@ -3,3 +3,4 @@
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
 #!VERSION=0.3.1
 - Impr: Improve portfolio building prompt.
+- Impr(UI): Add a timer next to the progress bar.

@@ -76,6 +76,7 @@
                                 <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
                             </div>
                             <small class="text-muted" id="progress-step">Step 0 of 4</small>
+                            <small class="text-muted d-none ms-2" id="wait-timer"></small>
                         </div>
                     </div>
                 </div>
@@ -145,6 +146,8 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
     progressSection.classList.remove('d-none');
     errorSection.classList.add('d-none');
     resultSection.classList.add('d-none');
+    const waitTimer = new WaitTimer('wait-timer');
+    waitTimer.start();
 
     const params = new URLSearchParams({
         risk_tolerance: riskTolerance,
@@ -166,6 +169,7 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
             document.getElementById('progress-bar').style.width = pct + '%';
             document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
         } else if (data.type === 'error') {
+            waitTimer.stop();
             progressSection.classList.add('d-none');
             errorSection.classList.remove('d-none');
             document.getElementById('error-message').textContent = data.message;
@@ -173,6 +177,7 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-pie-chart me-1"></i>Build Portfolio';
         } else if (data.type === 'result') {
+            waitTimer.stop();
             progressSection.classList.add('d-none');
             resultSection.classList.remove('d-none');
             document.getElementById('portfolio-result').innerHTML = marked.parse(data.content);
@@ -183,6 +188,7 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
     };
 
     eventSource.onerror = function() {
+        waitTimer.stop();
         progressSection.classList.add('d-none');
         errorSection.classList.remove('d-none');
         document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
