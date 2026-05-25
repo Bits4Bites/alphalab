@@ -5,3 +5,4 @@
 - Impr: Improve portfolio building prompt.
 - Impr(UI): Add a timer next to the progress bar.
 - Impr(UI): Handle LaTeX in the generated markdown.
+- Impr(UI): Update/Improve print view.

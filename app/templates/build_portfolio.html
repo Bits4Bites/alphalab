@@ -201,8 +201,10 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
 function printPortfolio() {
     const content = document.getElementById('portfolio-result').innerHTML;
     const html = `<html lang="en"><head><title>Portfolio Recommendation - {{ app_name }}</title>
-        <style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 2rem; line-height: 1.6; }</style>
-        </head><body><h1>Portfolio Recommendation</h1>${content}</body></html>`;
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+        <style>body { padding: 2rem; } @media print { body { padding: 0; } }</style>
+        </head><body><div class="container"><h1 class="mb-4">Portfolio Recommendation</h1>${content}</div></body></html>`;
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const printWindow = window.open(url, '_blank');
