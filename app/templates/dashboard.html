@@ -134,7 +134,7 @@
 <script>
 // Render AI Ideas markdown content
 document.querySelectorAll('.ai-idea-content').forEach(el => {
-    el.innerHTML = marked.parse(el.textContent);
+    renderMarkdown(el.textContent, el);
 });
 </script>
 <script>
@@ -233,7 +233,7 @@ document.getElementById('hero-form').addEventListener('submit', function(e) {
             waitTimer.stop();
             progressSection.classList.add('d-none');
             resultSection.classList.remove('d-none');
-            document.getElementById('hero-result').innerHTML = marked.parse(data.content);
+            renderMarkdown(data.content, document.getElementById('hero-result'));
             eventSource.close();
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-send me-1"></i>Go';

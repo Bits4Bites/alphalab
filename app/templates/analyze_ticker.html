@@ -132,7 +132,7 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
             progressSection.classList.add('d-none');
             resultSection.classList.remove('d-none');
             document.getElementById('result-ticker').textContent = ticker;
-            document.getElementById('analysis-result').innerHTML = marked.parse(data.content);
+            renderMarkdown(data.content, document.getElementById('analysis-result'));
             eventSource.close();
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-search me-1"></i>Analyze';
