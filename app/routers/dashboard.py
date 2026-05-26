@@ -64,14 +64,18 @@ async def dashboard_stream(
 
         build_prompt_task = ai_task_settings.tasks.get("DASHBOARD_BUILD_PROMPT")
         prompt_request = (
-            f"You are a stock market research assistant. A user has submitted the following intent:\n"
+            f"You are a stock market research assistant and prompt engineer. "
+            f"A user has submitted the following intent:\n"
             f'"{user_intent}"\n\n'
             f"First, determine if this intent is related to the stock market, investing, or financial analysis. "
             f"If it is NOT related, respond with exactly: REJECTED: <reason>\n\n"
-            f"If it IS related, generate a ready-to-use prompt (copy-and-paste, no placeholders) that will "
+            f"If it IS related, generate a ready-to-execute prompt that instructs a premium AI model to "
             f"produce a concise one-page response fulfilling the user's intent. "
-            f"The generated prompt should instruct the AI to provide actionable insights with data, "
-            f"but NOT to include any suggested follow-up questions. "
+            f"The generated prompt should instruct the AI to:\n"
+            f"- Provide actionable insights with data\n"
+            f"- Format the response in Markdown\n"
+            f"- Use the hyphen character (-) instead of em-dash (\u2014) throughout\n"
+            f"- NOT include any suggested follow-up questions\n"
             f"Output only the prompt text, nothing else."
         )
         prompt_result = await execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
