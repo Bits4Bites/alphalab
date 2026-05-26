@@ -1,5 +1,16 @@
 # AlphaLab release notes
 
+## 2026-05-26 - v0.3.1
+
+### Fixed/Improvements
+
+- Impr: Improve dashboard prompt.
+- Impr: Improve portfolio building prompt.
+- Impr: Improve portfolio review prompt.
+- Impr(UI): Add a timer next to the progress bar.
+- Impr(UI): Handle LaTeX in the generated markdown.
+- Impr(UI): Update/Improve print view.
+
 ## 2026-05-25 - v0.3.0
 
 ### Fixed/Improvements
