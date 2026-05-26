@@ -59,7 +59,7 @@ _PROMPT_TEMPLATE = (
     "- Identify missing sectors, geographies, or asset types given the investor's goal and risk profile\n"
     "- Suggest 2–5 specific new tickers to add, each with:\n"
     "  - Ticker and full name\n"
-    "  - Suggested allocation % and dollar amount\n"
+    "  - Suggested allocation % and estimated number of shares\n"
     "  - Rationale (why this pick, why now, how it improves the portfolio)\n"
     "  - Key risks specific to this position\n"
     "\n"
