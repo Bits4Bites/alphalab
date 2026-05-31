@@ -1,5 +1,16 @@
 # AlphaLab release notes
 
+## 2026-05-31 - v0.4.0
+
+### Added/Refactoring/Deprecation
+
+- Feat: Analyze a dividend event.
+- Feat: Market outlook.
+
+### Fixed/Improvements
+
+- Fix: other fixes and improvements.
+
 ## 2026-05-26 - v0.3.1
 
 ### Fixed/Improvements
