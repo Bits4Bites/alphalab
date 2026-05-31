@@ -3,3 +3,4 @@
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
 #!VERSION=0.4.0
 - feat: Analyze a dividend event.
+- fix: other fixes and improvements.
