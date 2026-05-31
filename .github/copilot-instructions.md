@@ -54,3 +54,17 @@ ruff format .                      # format
 - Type-annotate all function signatures
 - Ruff config in `pyproject.toml`: line length 120, rules `E, F, I, W, UP`
 - **Any change to existing logic must be confirmed with the user before applying.**
+
+### Import rules
+
+- **No re-exports.** Do not re-export modules (e.g. via `__init__.py`). If a module is needed, import it directly where used.
+- **Import modules, not functions.** Do not use direct function imports (e.g. `from module import function`). Instead, import the module and call `module.function()`.
+  ```python
+  # ✅ Good
+  from app.utils import ai
+  result = ai.execute_prompt(...)
+
+  # ❌ Bad
+  from app.utils.ai import execute_prompt
+  result = execute_prompt(...)
+  ```

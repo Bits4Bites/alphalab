@@ -4,10 +4,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
-from app.config import ai_task_settings
-from app.dependencies import get_current_user
-from app.templating import templates
-from app.utils.ai import execute_prompt
+from app import config, dependencies, templating
+from app.utils import ai
 
 router = APIRouter(tags=["review_portfolio"])
 TEMPLATE = "review_portfolio.html"
@@ -90,8 +88,8 @@ _PROMPT_TEMPLATE = (
 
 
 @router.get("/review-portfolio", response_class=HTMLResponse)
-async def review_portfolio_page(request: Request, user: dict = Depends(get_current_user)) -> HTMLResponse:
-    return templates.TemplateResponse(request, TEMPLATE, {"user": user})
+async def review_portfolio_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
+    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
 
 
 @router.get("/review-portfolio/stream")
@@ -102,7 +100,7 @@ async def review_portfolio_stream(
     investment_goals: str = Query(default=""),
     target_market: str = Query(default=""),
     investment_horizon: str = Query(default=""),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
     async def event_generator():
         def progress(step: int, total: int, message: str):
@@ -124,12 +122,12 @@ async def review_portfolio_stream(
 
         # Step 2: Generate review prompt
         yield {"data": progress(2, total_steps, "Generating portfolio review prompt...")}
-        build_prompt_client = ai_task_settings.get_ai_client("REVIEW_PORTFOLIO_BUILD_PROMPT")
+        build_prompt_client = config.ai_task_settings.get_ai_client("REVIEW_PORTFOLIO_BUILD_PROMPT")
         if not build_prompt_client:
             yield {"data": error("AI task 'REVIEW_PORTFOLIO_BUILD_PROMPT' is not configured.")}
             return
 
-        build_prompt_task = ai_task_settings.tasks.get("REVIEW_PORTFOLIO_BUILD_PROMPT")
+        build_prompt_task = config.ai_task_settings.tasks.get("REVIEW_PORTFOLIO_BUILD_PROMPT")
         context_parts = [f"Current Holdings:\n{holdings.strip()}"]
         if risk_tolerance:
             context_parts.append(f"Risk Tolerance: {risk_tolerance}")
@@ -142,7 +140,7 @@ async def review_portfolio_stream(
         investor_context = "\n".join(context_parts)
 
         prompt_request = _PROMPT_TEMPLATE.format(investor_context=investor_context)
-        prompt_result = await execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate review prompt: {prompt_result.error}")}
@@ -150,13 +148,13 @@ async def review_portfolio_stream(
 
         # Step 3: Review portfolio with generated prompt
         yield {"data": progress(3, total_steps, "Reviewing portfolio with AI...")}
-        review_client = ai_task_settings.get_ai_client("REVIEW_PORTFOLIO_ANALYZE")
+        review_client = config.ai_task_settings.get_ai_client("REVIEW_PORTFOLIO_ANALYZE")
         if not review_client:
             yield {"data": error("AI task 'REVIEW_PORTFOLIO_ANALYZE' is not configured.")}
             return
 
-        review_task = ai_task_settings.tasks.get("REVIEW_PORTFOLIO_ANALYZE")
-        review_result = await execute_prompt(review_client, review_task.model, prompt_result.completion)
+        review_task = config.ai_task_settings.tasks.get("REVIEW_PORTFOLIO_ANALYZE")
+        review_result = await ai.execute_prompt(review_client, review_task.model, prompt_result.completion)
 
         if not review_result.success:
             yield {"data": error(f"Failed to review portfolio: {review_result.error}")}
