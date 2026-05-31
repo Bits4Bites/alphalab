@@ -6,11 +6,9 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
-from app.config import ai_task_settings
-from app.dependencies import get_current_user
-from app.templating import templates
-from app.utils.ai import execute_prompt
-from app.utils.ticker import to_yfinance_format
+from app import config, dependencies, templating
+from app.utils import ai
+from app.utils import ticker as ticker_utils
 
 router = APIRouter(tags=["analyze_ticker"])
 TEMPLATE = "analyze_ticker.html"
@@ -207,8 +205,8 @@ def _build_analysis_prompt(*, ticker: str, info: dict, quick_mode: bool) -> str:
 
 
 @router.get("/analyze-ticker", response_class=HTMLResponse)
-async def analyze_ticker_page(request: Request, user: dict = Depends(get_current_user)) -> HTMLResponse:
-    return templates.TemplateResponse(request, TEMPLATE, {"user": user})
+async def analyze_ticker_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
+    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
 
 
 @router.get("/analyze-ticker/stream")
@@ -216,7 +214,7 @@ async def analyze_ticker_stream(
     request: Request,
     ticker: str = Query(...),
     quick_mode: bool = Query(default=False),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
     async def event_generator():
         def progress(step: int, total: int, message: str):
@@ -232,7 +230,7 @@ async def analyze_ticker_stream(
 
         # Step 1: Validate ticker format
         yield {"data": progress(1, total_steps, "Validating ticker format...")}
-        yf_ticker = to_yfinance_format(ticker)
+        yf_ticker = ticker_utils.to_yfinance_format(ticker)
         if yf_ticker is None:
             yield {"data": error(f"Unsupported exchange in ticker '{ticker}'.")}
             return
@@ -246,14 +244,14 @@ async def analyze_ticker_stream(
 
         # Step 3: Generate analysis prompt
         yield {"data": progress(3, total_steps, "Generating analysis prompt...")}
-        build_prompt_client = ai_task_settings.get_ai_client("ANALYZE_TICKER_BUILD_PROMPT")
+        build_prompt_client = config.ai_task_settings.get_ai_client("ANALYZE_TICKER_BUILD_PROMPT")
         if not build_prompt_client:
             yield {"data": error("AI task 'ANALYZE_TICKER_BUILD_PROMPT' is not configured.")}
             return
 
-        build_prompt_task = ai_task_settings.tasks.get("ANALYZE_TICKER_BUILD_PROMPT")
+        build_prompt_task = config.ai_task_settings.tasks.get("ANALYZE_TICKER_BUILD_PROMPT")
         prompt_request = _build_analysis_prompt(ticker=ticker, info=info, quick_mode=quick_mode)
-        prompt_result = await execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate analysis prompt: {prompt_result.error}")}
@@ -268,13 +266,13 @@ async def analyze_ticker_stream(
         # Step 4: Analyze ticker with generated prompt
         analyze_task_id = "ANALYZE_TICKER_ANALYZE_QUICK" if quick_mode else "ANALYZE_TICKER_ANALYZE"
         yield {"data": progress(4, total_steps, "Analyzing ticker with AI...")}
-        analyze_client = ai_task_settings.get_ai_client(analyze_task_id)
+        analyze_client = config.ai_task_settings.get_ai_client(analyze_task_id)
         if not analyze_client:
             yield {"data": error(f"AI task '{analyze_task_id}' is not configured.")}
             return
 
-        analyze_task = ai_task_settings.tasks.get(analyze_task_id)
-        analysis_result = await execute_prompt(analyze_client, analyze_task.model, prompt_result.completion)
+        analyze_task = config.ai_task_settings.tasks.get(analyze_task_id)
+        analysis_result = await ai.execute_prompt(analyze_client, analyze_task.model, prompt_result.completion)
 
         if not analysis_result.success:
             yield {"data": error(f"Failed to analyze ticker: {analysis_result.error}")}

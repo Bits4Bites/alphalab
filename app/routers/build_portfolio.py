@@ -4,10 +4,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
-from app.config import ai_task_settings
-from app.dependencies import get_current_user
-from app.templating import templates
-from app.utils.ai import execute_prompt
+from app import config, dependencies, templating
+from app.utils import ai
 
 router = APIRouter(tags=["build_portfolio"])
 TEMPLATE = "build_portfolio.html"
@@ -63,8 +61,8 @@ _PROMPT_TEMPLATE = (
 
 
 @router.get("/build-portfolio", response_class=HTMLResponse)
-async def build_portfolio_page(request: Request, user: dict = Depends(get_current_user)) -> HTMLResponse:
-    return templates.TemplateResponse(request, TEMPLATE, {"user": user})
+async def build_portfolio_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
+    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
 
 
 @router.get("/build-portfolio/stream")
@@ -76,7 +74,7 @@ async def build_portfolio_stream(
     investment_horizon: str = Query(default=""),
     budget: str = Query(default=""),
     existing_holdings: str = Query(default=""),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
     async def event_generator():
         def progress(step: int, total: int, message: str):
@@ -98,12 +96,12 @@ async def build_portfolio_stream(
 
         # Step 2: Generate portfolio construction prompt
         yield {"data": progress(2, total_steps, "Generating portfolio strategy prompt...")}
-        build_prompt_client = ai_task_settings.get_ai_client("BUILD_PORTFOLIO_BUILD_PROMPT")
+        build_prompt_client = config.ai_task_settings.get_ai_client("BUILD_PORTFOLIO_BUILD_PROMPT")
         if not build_prompt_client:
             yield {"data": error("AI task 'BUILD_PORTFOLIO_BUILD_PROMPT' is not configured.")}
             return
 
-        build_prompt_task = ai_task_settings.tasks.get("BUILD_PORTFOLIO_BUILD_PROMPT")
+        build_prompt_task = config.ai_task_settings.tasks.get("BUILD_PORTFOLIO_BUILD_PROMPT")
         context_parts = [
             f"Risk Tolerance: {risk_tolerance}",
             f"Investment Theme/Flavor: {investment_theme}",
@@ -125,7 +123,7 @@ async def build_portfolio_stream(
                 else ""
             ),
         )
-        prompt_result = await execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate portfolio prompt: {prompt_result.error}")}
@@ -139,13 +137,13 @@ async def build_portfolio_stream(
 
         # Step 3: Build portfolio with generated prompt
         yield {"data": progress(3, total_steps, "Building portfolio with AI...")}
-        portfolio_client = ai_task_settings.get_ai_client("BUILD_PORTFOLIO_ANALYZE")
+        portfolio_client = config.ai_task_settings.get_ai_client("BUILD_PORTFOLIO_ANALYZE")
         if not portfolio_client:
             yield {"data": error("AI task 'BUILD_PORTFOLIO_ANALYZE' is not configured.")}
             return
 
-        portfolio_task = ai_task_settings.tasks.get("BUILD_PORTFOLIO_ANALYZE")
-        portfolio_result = await execute_prompt(portfolio_client, portfolio_task.model, prompt_result.completion)
+        portfolio_task = config.ai_task_settings.tasks.get("BUILD_PORTFOLIO_ANALYZE")
+        portfolio_result = await ai.execute_prompt(portfolio_client, portfolio_task.model, prompt_result.completion)
 
         if not portfolio_result.success:
             yield {"data": error(f"Failed to build portfolio: {portfolio_result.error}")}

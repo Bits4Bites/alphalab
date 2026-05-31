@@ -4,10 +4,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
-from app.config import ai_task_settings
-from app.dependencies import get_current_user
-from app.templating import templates
-from app.utils.ai import execute_prompt
+from app import config, dependencies, templating
+from app.utils import ai
 
 router = APIRouter(tags=["dashboard"])
 TEMPLATE = "dashboard.html"
@@ -16,22 +14,21 @@ MAX_INTENT_LENGTH = 300
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, user: dict = Depends(get_current_user)) -> HTMLResponse:
-    from app.services.market_news import get_ai_ideas, get_market_news
-    from app.services.sample_prompts import get_random_sample_prompts
+async def dashboard(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
+    from app.services import market_news, sample_prompts
 
-    sample_prompts = await get_random_sample_prompts(4)
-    market_news = await get_market_news()
-    ai_ideas = await get_ai_ideas(3)
-    context = {"user": user, "sample_prompts": sample_prompts, "market_news": market_news, "ai_ideas": ai_ideas}
-    return templates.TemplateResponse(request, TEMPLATE, context)
+    prompts = await sample_prompts.get_random_sample_prompts(4)
+    news = await market_news.get_market_news()
+    ai_ideas = await market_news.get_ai_ideas(3)
+    context = {"user": user, "sample_prompts": prompts, "market_news": news, "ai_ideas": ai_ideas}
+    return templating.templates.TemplateResponse(request, TEMPLATE, context)
 
 
 @router.get("/dashboard/stream")
 async def dashboard_stream(
     request: Request,
     intent: str = Query(...),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
     async def event_generator():
         def progress(step: int, total: int, message: str):
@@ -57,12 +54,12 @@ async def dashboard_stream(
 
         # Step 2: Generate prompt
         yield {"data": progress(2, total_steps, "Building analysis prompt...")}
-        build_prompt_client = ai_task_settings.get_ai_client("DASHBOARD_BUILD_PROMPT")
+        build_prompt_client = config.ai_task_settings.get_ai_client("DASHBOARD_BUILD_PROMPT")
         if not build_prompt_client:
             yield {"data": error("AI task 'DASHBOARD_BUILD_PROMPT' is not configured.")}
             return
 
-        build_prompt_task = ai_task_settings.tasks.get("DASHBOARD_BUILD_PROMPT")
+        build_prompt_task = config.ai_task_settings.tasks.get("DASHBOARD_BUILD_PROMPT")
         prompt_request = (
             f"You are a stock market research assistant and prompt engineer. "
             f"A user has submitted the following intent:\n"
@@ -78,7 +75,7 @@ async def dashboard_stream(
             f"- NOT include any suggested follow-up questions\n"
             f"Output only the prompt text, nothing else."
         )
-        prompt_result = await execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to process your request: {prompt_result.error}")}
@@ -93,13 +90,13 @@ async def dashboard_stream(
 
         # Step 3: Execute the prompt
         yield {"data": progress(3, total_steps, "Generating analysis...")}
-        analyze_client = ai_task_settings.get_ai_client("DASHBOARD_ANALYZE")
+        analyze_client = config.ai_task_settings.get_ai_client("DASHBOARD_ANALYZE")
         if not analyze_client:
             yield {"data": error("AI task 'DASHBOARD_ANALYZE' is not configured.")}
             return
 
-        analyze_task = ai_task_settings.tasks.get("DASHBOARD_ANALYZE")
-        analyze_result = await execute_prompt(analyze_client, analyze_task.model, completion)
+        analyze_task = config.ai_task_settings.tasks.get("DASHBOARD_ANALYZE")
+        analyze_result = await ai.execute_prompt(analyze_client, analyze_task.model, completion)
 
         if not analyze_result.success:
             yield {"data": error(f"Failed to generate analysis: {analyze_result.error}")}

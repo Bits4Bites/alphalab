@@ -6,59 +6,69 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.routers import ai_tasks, ai_vendors, analyze_ticker, auth, build_portfolio, dashboard, health, review_portfolio
-from app.templating import templates
-from app.utils.scheduler import BackgroundScheduler, PeriodicTask
+from app import templating
+from app.routers import (
+    ai_tasks,
+    ai_vendors,
+    analyze_ticker,
+    auth,
+    build_portfolio,
+    dashboard,
+    dividend_event,
+    health,
+    review_portfolio,
+)
+from app.utils import scheduler as scheduler_mod
 
 logger = logging.getLogger(__name__)
-scheduler = BackgroundScheduler()
+scheduler = scheduler_mod.BackgroundScheduler()
 
 
 async def _check_redis() -> None:
     """Check Redis connectivity and set datastore_redis_enabled flag."""
-    from redis.asyncio import from_url
+    from redis import asyncio as redis_asyncio
 
-    from app.config import datastore_settings
+    from app import config
 
     try:
-        client = from_url(datastore_settings.redis_url, decode_responses=True)
+        client = redis_asyncio.from_url(config.datastore_settings.redis_url, decode_responses=True)
         await client.ping()
-        datastore_settings.redis_enabled = True
-        datastore_settings.redis_client = client
+        config.datastore_settings.redis_enabled = True
+        config.datastore_settings.redis_client = client
         logger.info("Redis connection OK")
     except Exception as exc:
-        datastore_settings.redis_enabled = False
-        datastore_settings.redis_client = None
+        config.datastore_settings.redis_enabled = False
+        config.datastore_settings.redis_client = None
         logger.warning("Redis unavailable, data store disabled: %s", exc)
 
 
 async def _generate_sample_prompts_task() -> None:
     """Wrapper for sample prompt generation that checks Redis availability."""
-    from app.config import datastore_settings
+    from app import config
 
-    if not datastore_settings.redis_enabled:
+    if not config.datastore_settings.redis_enabled:
         return
 
-    from app.services.sample_prompts import generate_sample_prompts
+    from app.services import sample_prompts
 
-    await generate_sample_prompts()
+    await sample_prompts.generate_sample_prompts()
 
 
 async def _fetch_market_news_task() -> None:
     """Wrapper for market news fetch that checks Redis availability."""
-    from app.config import datastore_settings
+    from app import config
 
-    if not datastore_settings.redis_enabled:
+    if not config.datastore_settings.redis_enabled:
         return
 
-    from app.services.market_news import fetch_market_news
+    from app.services import market_news
 
-    await fetch_market_news()
+    await market_news.fetch_market_news()
 
 
 # Register periodic tasks
 scheduler.register(
-    PeriodicTask(
+    scheduler_mod.PeriodicTask(
         name="generate_sample_prompts",
         func=_generate_sample_prompts_task,
         interval_seconds=3600,
@@ -66,7 +76,7 @@ scheduler.register(
     )
 )
 scheduler.register(
-    PeriodicTask(
+    scheduler_mod.PeriodicTask(
         name="fetch_market_news",
         func=_fetch_market_news_task,
         interval_seconds=3600,
@@ -93,6 +103,7 @@ app.include_router(dashboard.router)
 app.include_router(analyze_ticker.router)
 app.include_router(build_portfolio.router)
 app.include_router(review_portfolio.router)
+app.include_router(dividend_event.router)
 app.include_router(ai_vendors.router)
 app.include_router(ai_tasks.router)
 
@@ -106,15 +117,15 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    from app.config import ai_vendor_settings, app_settings, security_settings
-    from app.services.oauth import get_enabled_providers
+    from app import config
+    from app.services import oauth
 
-    enabled_providers = get_enabled_providers()
-    configured_vendors = list(ai_vendor_settings.vendors.keys())
-    allowed_emails = security_settings.allowed_emails
-    primary_markets = sorted(app_settings.primary_markets)
+    enabled_providers = oauth.get_enabled_providers()
+    configured_vendors = list(config.ai_vendor_settings.vendors.keys())
+    allowed_emails = config.security_settings.allowed_emails
+    primary_markets = sorted(config.app_settings.primary_markets)
 
-    return templates.TemplateResponse(
+    return templating.templates.TemplateResponse(
         request,
         "index.html",
         {
@@ -128,9 +139,9 @@ async def index(request: Request) -> HTMLResponse:
 
 @app.get("/terms", response_class=HTMLResponse)
 async def terms(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "terms.html")
+    return templating.templates.TemplateResponse(request, "terms.html")
 
 
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "privacy.html")
+    return templating.templates.TemplateResponse(request, "privacy.html")
