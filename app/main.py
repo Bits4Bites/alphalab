@@ -16,6 +16,7 @@ from app.routers import (
     dashboard,
     dividend_event,
     health,
+    ipo_analyzer,
     market_outlook,
     review_portfolio,
 )
@@ -113,6 +114,7 @@ app.include_router(build_portfolio.router)
 app.include_router(review_portfolio.router)
 app.include_router(dividend_event.router)
 app.include_router(market_outlook.router)
+app.include_router(ipo_analyzer.router)
 app.include_router(ai_vendors.router)
 app.include_router(ai_tasks.router)
 
