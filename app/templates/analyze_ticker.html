@@ -20,6 +20,12 @@
                                placeholder="e.g. Should I buy, sell, or hold?">
                         <div class="form-text">Add your question or goal for the analysis.</div>
                     </div>
+                    <div class="mt-3">
+                        <label for="scenario" class="form-label fw-semibold">Scenario (optional)</label>
+                        <input type="text" class="form-control" id="scenario" name="scenario"
+                               placeholder="e.g. 2008 crash, rate hike shock, AI spending collapse">
+                        <div class="form-text">If provided, the analysis will include a stress test for this scenario.</div>
+                    </div>
                     <div class="form-check mt-2">
                         <input class="form-check-input" type="checkbox" id="quick-mode" name="quick_mode" checked>
                         <label class="form-check-label" for="quick-mode">Quick Mode</label>
@@ -102,6 +108,7 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
 
     const quickMode = document.getElementById('quick-mode').checked;
     const intent = document.getElementById('intent').value.trim();
+    const scenario = document.getElementById('scenario').value.trim();
     const btn = document.getElementById('analyze-btn');
     const progressSection = document.getElementById('progress-section');
     const errorSection = document.getElementById('error-section');
@@ -120,6 +127,7 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
         ticker: ticker,
         quick_mode: String(quickMode),
         intent: intent,
+        scenario: scenario,
     });
     const eventSource = new EventSource(`/analyze-ticker/stream?${params.toString()}`);
 

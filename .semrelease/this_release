@@ -3,5 +3,6 @@
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
 #!VERSION=0.5.0
 - impr(analyze ticker): Improve Analyze Ticker feature with optional intent.
+- impr(analyze ticker): Improve Analyze Ticker feature with optional scenario.
 - feat: IPO Analyzer.
 - patch(UI): Minor UI changes.
