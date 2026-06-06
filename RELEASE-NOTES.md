@@ -1,5 +1,18 @@
 # AlphaLab release notes
 
+## 2026-06-06 - v0.5.0
+
+### Added/Refactoring/Deprecation
+
+- Feat: IPO Analyzer.
+
+### Fixed/Improvements
+
+- Impr(analyze ticker): Improve Analyze Ticker feature with optional intent.
+- Impr(analyze ticker): Improve Analyze Ticker feature with optional scenario.
+- Patch(UI): Minor UI changes.
+- Impr(review portfolio): Improve Review Portfolio feature with optional scenario.
+
 ## 2026-05-31 - v0.4.0
 
 ### Added/Refactoring/Deprecation
