@@ -1,3 +1,19 @@
+# 2026-06-06
+```
+Changes    +3319 -584
+AI Credits 149 (420h 52m 58s)
+Tokens     ↑ 8.1m (7.6m cached) • ↓ 34.6k (2.0k reasoning)
+```
+
+-----
+# 2026-05-31
+```
+Changes    +2833 -503
+AI Credits 444 (277h 44m 11s)
+Tokens     ↑ 4.0m (3.7m cached) • ↓ 39.8k (165 reasoning)
+```
+
+-----
 # 2026-05-26
 ```
 Changes    +2001 -398
