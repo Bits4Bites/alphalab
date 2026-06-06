@@ -94,7 +94,14 @@ async def lifespan(app: FastAPI):
     await scheduler.stop()
 
 
-app = FastAPI(title="AlphaLab", description="AI-powered market research lab", lifespan=lifespan)
+app = FastAPI(
+    title="AlphaLab",
+    description="AI-powered market research lab",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
