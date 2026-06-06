@@ -1,45 +1,37 @@
 {% extends "app_layout.html" %}
 
-{% block title %}Analyze Ticker - {{ app_name }}{% endblock %}
-{% block nav_analyze %}active{% endblock %}
-{% block page_title %}Analyze Ticker{% endblock %}
+{% block title %}IPO / Listing Event - {{ app_name }}{% endblock %}
+{% block nav_ipo %}active{% endblock %}
+{% block page_title %}IPO / Listing Event{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
-                <form id="analyze-form">
-                    <label for="ticker" class="form-label fw-semibold">Stock Ticker</label>
-                    <input type="text" class="form-control" id="ticker" name="ticker"
-                           placeholder="e.g. ASX:CBA, NYSE:AAPL, HOSE:VNM" required>
-                    <div class="form-text">Enter ticker in EXCHANGE:SYMBOL format.</div>
-                    <div class="mt-3">
-                        <label for="intent" class="form-label fw-semibold">Intent (optional)</label>
-                        <input type="text" class="form-control" id="intent" name="intent"
-                               placeholder="e.g. Should I buy, sell, or hold?">
-                        <div class="form-text">Add your question or goal for the analysis.</div>
+                <form id="ipo-form">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="company-name" class="form-label fw-semibold">Company Name</label>
+                            <input type="text" class="form-control" id="company-name" name="company_name" required
+                                   placeholder="e.g. Stripe, Databricks, or the IPO issuer name">
+                            <div class="form-text">This is required to start the IPO analysis.</div>
+                        </div>
+                        <div class="col-12">
+                            <label for="additional-notes" class="form-label fw-semibold">Additional Notes (optional)</label>
+                            <textarea class="form-control" id="additional-notes" name="additional_notes" rows="3"
+                                      placeholder="e.g. Recent news, expected market sentiment, investor interest"></textarea>
+                        </div>
                     </div>
                     <div class="mt-3">
-                        <label for="scenario" class="form-label fw-semibold">Scenario (optional)</label>
-                        <input type="text" class="form-control" id="scenario" name="scenario"
-                               placeholder="e.g. 2008 crash, rate hike shock, AI spending collapse">
-                        <div class="form-text">If provided, the analysis will include a stress test for this scenario.</div>
-                    </div>
-                    <div class="form-check mt-2">
-                        <input class="form-check-input" type="checkbox" id="quick-mode" name="quick_mode" checked>
-                        <label class="form-check-label" for="quick-mode">Quick Mode</label>
-                    </div>
-                    <div class="mt-3">
-                        <button type="submit" class="btn btn-primary" id="analyze-btn">
-                            <i class="bi bi-graph-up me-1"></i>Analyze Ticker
+                        <button type="submit" class="btn btn-primary" id="ipo-btn">
+                            <i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event
                         </button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- Progress indicator -->
         <div id="progress-section" class="d-none mb-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -52,7 +44,7 @@
                             <div class="progress mt-2" style="height: 6px;">
                                 <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
                             </div>
-                            <small class="text-muted" id="progress-step">Step 0 of 5</small>
+                            <small class="text-muted" id="progress-step">Step 0 of 4</small>
                             <small class="text-muted d-none ms-2" id="wait-timer"></small>
                         </div>
                     </div>
@@ -60,7 +52,6 @@
             </div>
         </div>
 
-        <!-- Error display -->
         <div id="error-section" class="d-none">
             <div class="alert alert-danger d-flex align-items-center" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -68,21 +59,20 @@
             </div>
         </div>
 
-        <!-- Result display -->
         <style>
-        #analysis-result h1 {font-size: 1.5rem !important;}
-        #analysis-result h2 {font-size: 1.4rem !important;}
-        #analysis-result h3 {font-size: 1.3rem !important;}
-        #analysis-result h4 {font-size: 1.2rem !important;}
-        #analysis-result h5 {font-size: 1.1rem !important;}
+        #ipo-result h1 {font-size: 1.5rem !important;}
+        #ipo-result h2 {font-size: 1.4rem !important;}
+        #ipo-result h3 {font-size: 1.3rem !important;}
+        #ipo-result h4 {font-size: 1.2rem !important;}
+        #ipo-result h5 {font-size: 1.1rem !important;}
         </style>
         <div id="result-section" class="d-none">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex align-items-center justify-content-between">
                     <h4 class="fw-semibold mb-0">
-                        <i class="bi bi-file-text me-1"></i>Analysis: <span id="result-ticker"></span>
+                        <i class="bi bi-graph-up-arrow me-1"></i>IPO Analysis
                     </h4>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="printAnalysis()" title="Print">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="printIPO()" title="Print">
                         <i class="bi bi-printer"></i>
                     </button>
                 </div>
@@ -91,7 +81,7 @@
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
                     </div>
-                    <div id="analysis-result"></div>
+                    <div id="ipo-result"></div>
                 </div>
             </div>
         </div>
@@ -100,21 +90,17 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
-document.getElementById('analyze-form').addEventListener('submit', function(e) {
+document.getElementById('ipo-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
-    const ticker = document.getElementById('ticker').value.trim();
-    if (!ticker) return;
+    const companyName = document.getElementById('company-name').value.trim();
+    if (!companyName) return;
 
-    const quickMode = document.getElementById('quick-mode').checked;
-    const intent = document.getElementById('intent').value.trim();
-    const scenario = document.getElementById('scenario').value.trim();
-    const btn = document.getElementById('analyze-btn');
+    const btn = document.getElementById('ipo-btn');
     const progressSection = document.getElementById('progress-section');
     const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
 
-    // Reset UI
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing...';
     progressSection.classList.remove('d-none');
@@ -124,12 +110,11 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
     waitTimer.start();
 
     const params = new URLSearchParams({
-        ticker: ticker,
-        quick_mode: String(quickMode),
-        intent: intent,
-        scenario: scenario,
+        company_name: companyName,
+        additional_notes: document.getElementById('additional-notes').value.trim(),
     });
-    const eventSource = new EventSource(`/analyze-ticker/stream?${params.toString()}`);
+
+    const eventSource = new EventSource(`/analyze-ipo/stream?${params.toString()}`);
 
     eventSource.onmessage = function(event) {
         const data = JSON.parse(event.data);
@@ -146,16 +131,15 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
             document.getElementById('error-message').textContent = data.message;
             eventSource.close();
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-graph-up me-1"></i>Analyze Ticker';
+            btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
         } else if (data.type === 'result') {
             waitTimer.stop();
             progressSection.classList.add('d-none');
             resultSection.classList.remove('d-none');
-            document.getElementById('result-ticker').textContent = ticker;
-            renderMarkdown(data.content, document.getElementById('analysis-result'));
+            renderMarkdown(data.content, document.getElementById('ipo-result'));
             eventSource.close();
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-graph-up me-1"></i>Analyze Ticker';
+            btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
         }
     };
 
@@ -166,18 +150,17 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
         document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
         eventSource.close();
         btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-graph-up me-1"></i>Analyze Ticker';
+        btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
     };
 });
 
-function printAnalysis() {
-    const content = document.getElementById('analysis-result').innerHTML;
-    const ticker = document.getElementById('result-ticker').textContent;
-    const html = `<html lang="en"><head><title>Analysis: ${ticker}</title>
+function printIPO() {
+    const content = document.getElementById('ipo-result').innerHTML;
+    const html = `<html lang="en"><head><title>IPO Analysis</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
         <style>body { padding: 2rem; } @media print { body { padding: 0; } }</style>
-        </head><body><div class="container"><h1 class="mb-4">Analysis: ${ticker}</h1>${content}</div></body></html>`;
+        </head><body><div class="container"><h1 class="mb-4">IPO Analysis</h1>${content}</div></body></html>`;
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const printWindow = window.open(url, '_blank');

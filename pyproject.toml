@@ -1,6 +1,6 @@
 [project]
 name = "alphalab"
-version = "0.4.0"
+version = "0.5.0"
 description = "AI-powered market research lab"
 requires-python = ">=3.12"
 

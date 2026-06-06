@@ -26,6 +26,8 @@ _BASE_PROMPT_TEMPLATE = (
     "{sector_industry}"
     "- Exchange:   {exchange}\n"
     "- Market cap: {market_cap_tier}\n"
+    "{intent_section}"
+    "{scenario_section}"
     "\n"
     "## Your instructions\n"
     "Adapt the analysis prompt to the nature of this specific asset:\n"
@@ -37,9 +39,12 @@ _BASE_PROMPT_TEMPLATE = (
     "\n"
     "Write a {depth_word} prompt that tells the premium model to:\n"
     "1. Use its web search capability to gather current, real data on the stock\n"
-    "2. Structure the analysis clearly with defined sections\n"
-    "3. Support every claim with data (numbers, dates, sources)\n"
-    "4. Conclude with a balanced, evidence-based investment view\n"
+    "2. If the intent is provided, tailor the analysis and recommendation to that specific question\n"
+    "3. If the scenario is provided, add a stress-test section that shows how the asset might behave\n"
+    "   under that scenario, including downside and upside considerations\n"
+    "4. Structure the analysis clearly with defined sections\n"
+    "5. Support every claim with data (numbers, dates, sources)\n"
+    "6. Conclude with a balanced, evidence-based investment view\n"
     "\n"
     "## The prompt must instruct the premium model to cover (adapted to asset type):\n"
     "{cover_items}\n"
@@ -177,7 +182,7 @@ def _market_cap_tier(market_cap: int | float | None, country: str | None = None)
     return _TIER_LABELS[-1]
 
 
-def _build_analysis_prompt(*, ticker: str, info: dict, quick_mode: bool) -> str:
+def _build_analysis_prompt(*, ticker: str, info: dict, quick_mode: bool, intent: str = "", scenario: str = "") -> str:
     """Build the meta-prompt that instructs the AI to produce a stock analysis prompt."""
     name = info.get("longName") or info.get("shortName") or ""
     country = _country_to_iso2(info.get("country"))
@@ -191,6 +196,9 @@ def _build_analysis_prompt(*, ticker: str, info: dict, quick_mode: bool) -> str:
     else:
         sector_industry = ""
 
+    intent_section = "- Intent:     (none provided)\n" if not intent else f"- Intent:     {intent}\n"
+    scenario_section = "- Scenario:   (none provided)\n" if not scenario else f"- Scenario:   {scenario}\n"
+
     return _BASE_PROMPT_TEMPLATE.format(
         depth_word="concise" if quick_mode else "detailed",
         depth_phrase="one-page, focused" if quick_mode else "thorough",
@@ -200,6 +208,8 @@ def _build_analysis_prompt(*, ticker: str, info: dict, quick_mode: bool) -> str:
         sector_industry=sector_industry,
         exchange=info.get("fullExchangeName") or info.get("exchange") or "(n/a)",
         market_cap_tier=_market_cap_tier(info.get("marketCap"), country),
+        intent_section=intent_section,
+        scenario_section=scenario_section,
         cover_items=_QUICK_COVER_ITEMS if quick_mode else _FULL_COVER_ITEMS,
     )
 
@@ -214,6 +224,8 @@ async def analyze_ticker_stream(
     request: Request,
     ticker: str = Query(...),
     quick_mode: bool = Query(default=False),
+    intent: str = Query(default=""),
+    scenario: str = Query(default=""),
     user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
     async def event_generator():
@@ -250,7 +262,13 @@ async def analyze_ticker_stream(
             return
 
         build_prompt_task = config.ai_task_settings.tasks.get("ANALYZE_TICKER_BUILD_PROMPT")
-        prompt_request = _build_analysis_prompt(ticker=ticker, info=info, quick_mode=quick_mode)
+        prompt_request = _build_analysis_prompt(
+            ticker=ticker,
+            info=info,
+            quick_mode=quick_mode,
+            intent=intent,
+            scenario=scenario,
+        )
         prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
 
         if not prompt_result.success:
