@@ -47,6 +47,12 @@
                             <input type="text" class="form-control" id="investment-goals" name="investment_goals"
                                    placeholder="e.g. Retirement savings, Capital growth, Passive income, Beat inflation">
                         </div>
+                        <div class="col-12">
+                            <label for="scenario" class="form-label fw-semibold">Scenario (optional)</label>
+                            <input type="text" class="form-control" id="scenario" name="scenario"
+                                   placeholder="e.g. 2008 crash, rate hike shock, AI spending collapse">
+                            <div class="form-text">If provided, the review will include a stress-test under this scenario.</div>
+                        </div>
                     </div>
                     <div class="mt-3">
                         <button type="submit" class="btn btn-primary" id="review-btn">
@@ -126,6 +132,7 @@ document.getElementById('review-form').addEventListener('submit', function(e) {
     const investmentGoals = document.getElementById('investment-goals').value.trim();
     const targetMarket = document.getElementById('target-market').value.trim();
     const investmentHorizon = document.getElementById('investment-horizon').value;
+    const scenario = document.getElementById('scenario').value.trim();
 
     if (!holdings) return;
 
@@ -149,6 +156,7 @@ document.getElementById('review-form').addEventListener('submit', function(e) {
         investment_goals: investmentGoals,
         target_market: targetMarket,
         investment_horizon: investmentHorizon,
+        scenario: scenario,
     });
 
     const eventSource = new EventSource(`/review-portfolio/stream?${params.toString()}`);

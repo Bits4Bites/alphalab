@@ -19,6 +19,9 @@ _PROMPT_TEMPLATE = (
     "## Investor profile and goal\n"
     "{investor_context}\n"
     "\n"
+    "## Scenario stress test\n"
+    "{scenario_context}\n"
+    "\n"
     "## Your instructions\n"
     "Adapt the portfolio review prompt to both the investor's profile and the specific holdings above:\n"
     "- For concentrated portfolios (any single position > 2x equal weight): flag over-concentration risk explicitly\n"
@@ -30,11 +33,13 @@ _PROMPT_TEMPLATE = (
     "\n"
     "Write a prompt that tells the premium model to:\n"
     "1. Use its web search capability to fetch current prices, valuations, recent news, and analyst views\n"
-    "2. Assess each existing position individually and make a clear hold / trim / exit recommendation\n"
-    "3. Identify gaps in the portfolio and suggest specific new tickers to fill them\n"
-    "4. Propose a revised portfolio with concrete allocations — specific tickers and percentages\n"
-    "5. Justify every recommendation with data (valuation, fundamentals, portfolio fit)\n"
-    "6. Account for relevant tax implications of any suggested exits\n"
+    "2. If a scenario is provided, explicitly stress-test the portfolio under that scenario\n"
+    "   and note which holdings are most resilient or vulnerable\n"
+    "3. Assess each existing position individually and make a clear hold / trim / exit recommendation\n"
+    "4. Identify gaps in the portfolio and suggest specific new tickers to fill them\n"
+    "5. Propose a revised portfolio with concrete allocations — specific tickers and percentages\n"
+    "6. Justify every recommendation with data (valuation, fundamentals, portfolio fit)\n"
+    "7. Account for relevant tax implications of any suggested exits\n"
     "\n"
     "## The prompt must instruct the premium model to cover:\n"
     "\n"
@@ -100,6 +105,7 @@ async def review_portfolio_stream(
     investment_goals: str = Query(default=""),
     target_market: str = Query(default=""),
     investment_horizon: str = Query(default=""),
+    scenario: str = Query(default=""),
     user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
     async def event_generator():
@@ -138,8 +144,12 @@ async def review_portfolio_stream(
         if investment_horizon:
             context_parts.append(f"Investment Horizon: {investment_horizon}")
         investor_context = "\n".join(context_parts)
+        scenario_context = "- Scenario: (none provided)" if not scenario else f"- Scenario: {scenario}"
 
-        prompt_request = _PROMPT_TEMPLATE.format(investor_context=investor_context)
+        prompt_request = _PROMPT_TEMPLATE.format(
+            investor_context=investor_context,
+            scenario_context=scenario_context,
+        )
         prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
 
         if not prompt_result.success:
