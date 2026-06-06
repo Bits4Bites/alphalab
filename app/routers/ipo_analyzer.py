@@ -48,12 +48,12 @@ _PROMPT_TEMPLATE = (
 )
 
 
-@router.get("/ipo-analyzer", response_class=HTMLResponse)
+@router.get("/analyze-ipo", response_class=HTMLResponse)
 async def ipo_analyzer_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
     return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
 
 
-@router.get("/ipo-analyzer/stream")
+@router.get("/analyze-ipo/stream")
 async def ipo_analyzer_stream(
     request: Request,
     company_name: str = Query(...),

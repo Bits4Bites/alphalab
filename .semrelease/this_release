@@ -4,3 +4,4 @@
 #!VERSION=0.5.0
 - impr(analyze ticker): Improve Analyze Ticker feature with optional intent.
 - feat: IPO Analyzer.
+- patch(UI): Minor UI changes.

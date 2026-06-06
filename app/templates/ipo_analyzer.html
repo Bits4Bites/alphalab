@@ -1,8 +1,8 @@
 {% extends "app_layout.html" %}
 
-{% block title %}IPO Analyzer - {{ app_name }}{% endblock %}
+{% block title %}Analyze IPO - {{ app_name }}{% endblock %}
 {% block nav_ipo %}active{% endblock %}
-{% block page_title %}IPO Analyzer{% endblock %}
+{% block page_title %}Analyze IPO{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -114,7 +114,7 @@ document.getElementById('ipo-form').addEventListener('submit', function(e) {
         additional_notes: document.getElementById('additional-notes').value.trim(),
     });
 
-    const eventSource = new EventSource(`/ipo-analyzer/stream?${params.toString()}`);
+    const eventSource = new EventSource(`/analyze-ipo/stream?${params.toString()}`);
 
     eventSource.onmessage = function(event) {
         const data = JSON.parse(event.data);
