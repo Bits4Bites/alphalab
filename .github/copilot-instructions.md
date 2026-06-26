@@ -55,6 +55,14 @@ ruff format .                      # format
 - Ruff config in `pyproject.toml`: line length 120, rules `E, F, I, W, UP`
 - **Any change to existing logic must be confirmed with the user before applying.**
 
+### AI prompt-generation standard for future features
+
+- When a feature uses a lower-cost AI to generate a prompt for a premium AI, the lower-cost model must be instructed to act only as a prompt writer.
+- The prompt template should explicitly state that the model must not perform the research, analysis, recommendation, or summarization itself.
+- The output must be a single self-contained prompt for the premium model, with no preamble, no explanation, no commentary, and no analysis.
+- Prefer explicit sections such as `## Prompt-writing role and constraints` and `## Prompt-writing instructions` instead of vague headings like `## Your instructions`.
+- For future features, follow this pattern by default unless the user explicitly requests a different behavior.
+
 ### Import rules
 
 - **No re-exports.** Do not re-export modules (e.g. via `__init__.py`). If a module is needed, import it directly where used.
