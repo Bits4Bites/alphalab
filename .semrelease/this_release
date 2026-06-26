@@ -3,5 +3,6 @@
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
 #!VERSION=0.6.0
 - impr(prompt): Make sure the low-cost AI model focuses on generating prompts.
-- feat: Add feature Sector Rotation Radar.
 - patch(UI): Make Required/Optional fields more clear.
+- feat: New feature Sector Rotation Radar.
+- feat: New feature Watchlist Monitor.
