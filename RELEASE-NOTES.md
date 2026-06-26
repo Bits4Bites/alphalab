@@ -1,5 +1,13 @@
 # AlphaLab release notes
 
+## 2026-06-26 - v0.5.1
+
+### Fixed/Improvements
+
+- Impr(UX): Better error message if login is denied.
+- Impr(UX): Better error handling when login failed with invalid auth code.
+- Impr(UX): Force reauthentication for every login.
+
 ## 2026-06-06 - v0.5.0
 
 ### Added/Refactoring/Deprecation

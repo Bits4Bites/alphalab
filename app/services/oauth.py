@@ -13,6 +13,12 @@ linkedin_oauth_client = LinkedInOAuth2(
     client_secret=config.identity_settings.linkedin_client_secret,
 )
 
+AUTHORIZATION_EXTRAS_PARAMS = {
+    "github": {"prompt": "login", "login": "", "allow_signup": "false"},
+    "linkedin": {"prompt": "login"},
+}
+
+
 OAUTH_PROVIDERS: dict[str, dict] = {
     "github": {
         "client": github_oauth_client,
