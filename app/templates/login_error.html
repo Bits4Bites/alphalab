@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - {{ app_name }}</title>
+    <link rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        .auth-card {
+            max-width: 560px;
+            border: 0;
+            border-radius: 1rem;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-7">
+                <div class="card auth-card">
+                    <div class="card-body p-4 p-md-5">
+                        <div class="d-flex align-items-center gap-3 mb-4">
+                            <div class="rounded-circle bg-danger-subtle text-danger d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                <i class="bi bi-shield-exclamation fs-4"></i>
+                            </div>
+                            <div>
+                                <h1 class="h3 mb-1">{{ title }}</h1>
+                                <p class="text-muted mb-0">{{ app_name }} sign-in was not completed.</p>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-danger" role="alert">
+                            <strong>{{ message }}</strong>
+                            {% if detail %}
+                            <div class="mt-2">{{ detail }}</div>
+                            {% endif %}
+                        </div>
+
+                        {% if user_email %}
+                        <div class="alert alert-light border">
+                            <div class="fw-semibold mb-1">Email returned to the app</div>
+                            <div class="font-monospace">{{ user_email }}</div>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+                            <a href="/login" class="btn btn-primary">
+                                <i class="bi bi-arrow-left-circle me-2"></i>Try again
+                            </a>
+                            <a href="/" class="btn btn-outline-secondary">
+                                <i class="bi bi-house me-2"></i>Go home
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

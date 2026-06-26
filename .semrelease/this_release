@@ -1,3 +1,7 @@
 # This file has been cleaned up post-releasing version 0.5.0.
 # Generate its content quickly using the following command:
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
+#!VERSION=0.5.1
+- impr(UX): Better error message if login is denied.
+- impr(UX): Better error handling when login failed with invalid auth code.
+- impr(UX): Force reauthentication for every login.
