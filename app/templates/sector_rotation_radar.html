@@ -12,25 +12,37 @@
                 <form id="rotation-form">
                     <div class="row g-3">
                         <div class="col-12 col-lg-6">
-                            <label for="target-market" class="form-label fw-semibold">Target Market</label>
+                            <label for="target-market" class="form-label fw-semibold">
+                                Target Market
+                                <span class="text-danger ms-2">*</span>
+                            </label>
                             <input type="text" class="form-control" id="target-market" name="target_market"
                                    placeholder="e.g. US, Europe, Japan, Global" required>
-                            <div class="form-text">Required. The market or region to analyze.</div>
+                            <div class="form-text">The market or region to analyze.</div>
                         </div>
                         <div class="col-12 col-lg-6">
-                            <label for="sectors" class="form-label fw-semibold">Sectors</label>
+                            <label for="sectors" class="form-label fw-semibold">
+                                Sectors
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <input type="text" class="form-control" id="sectors" name="sectors"
                                    placeholder="e.g. Technology, Financials, Energy">
-                            <div class="form-text">Optional. Leave blank to analyze the broad market rotation.</div>
+                            <div class="form-text">Leave blank to analyze the broad market rotation.</div>
                         </div>
                         <div class="col-12 col-lg-6">
-                            <label for="timeframe" class="form-label fw-semibold">Timeframe</label>
+                            <label for="timeframe" class="form-label fw-semibold">
+                                Timeframe
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <input type="text" class="form-control" id="timeframe" name="timeframe"
                                    placeholder="Leave blank to use default horizons">
-                            <div class="form-text">Optional. If empty, the analysis covers next 1-2 weeks, next 1 month, and next 3 months.</div>
+                            <div class="form-text">If empty, the analysis covers next 1-2 weeks, next 1 month, and next 3 months.</div>
                         </div>
                         <div class="col-12 col-lg-6">
-                            <label for="bias" class="form-label fw-semibold">Bias</label>
+                            <label for="bias" class="form-label fw-semibold">
+                                Bias
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <select class="form-select" id="bias" name="bias">
                                 <option value="">No explicit bias</option>
                                 <option value="growth">Growth</option>
