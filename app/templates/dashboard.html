@@ -180,6 +180,7 @@ function displayRandomSuggestions() {
         const btn = document.createElement('button');
         btn.className = 'btn btn-outline-secondary btn-sm me-1 mb-1 suggestion-btn';
         btn.type = 'button';
+        btn.style.fontSize = 'smaller';
         btn.textContent = prompt;
         container.appendChild(btn);
     });
