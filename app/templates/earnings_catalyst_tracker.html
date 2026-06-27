@@ -1,0 +1,193 @@
+{% extends "app_layout.html" %}
+
+{% block title %}Earnings Catalyst Tracker - {{ app_name }}{% endblock %}
+{% block nav_earnings %}active{% endblock %}
+{% block page_title %}Earnings Catalyst Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form id="earnings-form">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="tickers" class="form-label fw-semibold">
+                                Tickers
+                                <span class="text-danger ms-2">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="tickers" name="tickers"
+                                   placeholder="e.g. AAPL, MSFT, NVDA" required>
+                            <div class="form-text">Enter a comma-separated list of tickers or companies to track.</div>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <label for="target-market" class="form-label fw-semibold">
+                                Target Market
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
+                            <input type="text" class="form-control" id="target-market" name="target_market"
+                                   value="US" placeholder="Leave blank to use US">
+                            <div class="form-text">Used to disambiguate symbols across exchanges and regions.</div>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <label for="event-focus" class="form-label fw-semibold">
+                                Event Focus
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
+                            <input type="text" class="form-control" id="event-focus" name="event_focus"
+                                   placeholder="e.g. upcoming earnings, guidance risk, surprise potential">
+                            <div class="form-text">Leave blank to cover all upcoming earnings catalysts.</div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary" id="earnings-btn">
+                            <i class="bi bi-calendar-event me-1"></i>Track Earnings Catalysts
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="progress-section" class="d-none mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold" id="progress-message">Starting...</div>
+                            <div class="progress mt-2" style="height: 6px;">
+                                <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small class="text-muted" id="progress-step">Step 0 of 4</small>
+                            <small class="text-muted d-none ms-2" id="wait-timer"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-section" class="d-none">
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span id="error-message"></span>
+            </div>
+        </div>
+
+        <style>
+        #earnings-result h1 {font-size: 1.5rem !important;}
+        #earnings-result h2 {font-size: 1.4rem !important;}
+        #earnings-result h3 {font-size: 1.3rem !important;}
+        #earnings-result h4 {font-size: 1.2rem !important;}
+        #earnings-result h5 {font-size: 1.1rem !important;}
+        </style>
+        <div id="result-section" class="d-none">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex align-items-center justify-content-between">
+                    <h4 class="fw-semibold mb-0">
+                        <i class="bi bi-calendar-event me-1"></i>Earnings Catalyst Tracker
+                    </h4>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="printEarningsResult()" title="Print">
+                        <i class="bi bi-printer"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning small mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
+                    </div>
+                    <div id="earnings-result"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.getElementById('earnings-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const tickers = document.getElementById('tickers').value.trim();
+    const targetMarket = document.getElementById('target-market').value.trim();
+    const eventFocus = document.getElementById('event-focus').value.trim();
+
+    if (!tickers) return;
+
+    const btn = document.getElementById('earnings-btn');
+    const progressSection = document.getElementById('progress-section');
+    const errorSection = document.getElementById('error-section');
+    const resultSection = document.getElementById('result-section');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Tracking...';
+    progressSection.classList.remove('d-none');
+    errorSection.classList.add('d-none');
+    resultSection.classList.add('d-none');
+    const waitTimer = new WaitTimer('wait-timer');
+    waitTimer.start();
+
+    const params = new URLSearchParams({
+        tickers: tickers,
+        target_market: targetMarket || 'US',
+        event_focus: eventFocus,
+    });
+
+    const eventSource = new EventSource(`/earnings-catalyst-tracker/stream?${params.toString()}`);
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'progress') {
+            const pct = Math.round((data.step / data.total) * 100);
+            document.getElementById('progress-message').textContent = data.message;
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
+        } else if (data.type === 'error') {
+            waitTimer.stop();
+            progressSection.classList.add('d-none');
+            errorSection.classList.remove('d-none');
+            document.getElementById('error-message').textContent = data.message;
+            eventSource.close();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-calendar-event me-1"></i>Track Earnings Catalysts';
+        } else if (data.type === 'result') {
+            waitTimer.stop();
+            progressSection.classList.add('d-none');
+            resultSection.classList.remove('d-none');
+            renderMarkdown(data.content, document.getElementById('earnings-result'));
+            eventSource.close();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-calendar-event me-1"></i>Track Earnings Catalysts';
+        }
+    };
+
+    eventSource.onerror = function() {
+        waitTimer.stop();
+        progressSection.classList.add('d-none');
+        errorSection.classList.remove('d-none');
+        document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
+        eventSource.close();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-calendar-event me-1"></i>Track Earnings Catalysts';
+    };
+});
+
+function printEarningsResult() {
+    const content = document.getElementById('earnings-result').innerHTML;
+    const html = `<html lang="en"><head><title>Earnings Catalyst Tracker - {{ app_name }}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+        <style>body { padding: 2rem; } @media print { body { padding: 0; } }</style>
+        </head><body><div class="container"><h1 class="mb-4">Earnings Catalyst Tracker</h1>${content}</div></body></html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const printWindow = window.open(url, '_blank');
+    printWindow.onload = function() {
+        printWindow.print();
+        URL.revokeObjectURL(url);
+    };
+}
+</script>
+{% endblock %}
