@@ -21,7 +21,7 @@ AI-powered market research lab.
 - **Build Portfolio** Generate a portfolio from scratch based on investor goals, risk tolerance, time horizon, market preference, and investment themes.
 - **Review Portfolio** Review an existing portfolio and identify strengths, weaknesses, concentration risks, and optimization opportunities, with optional scenario stress-testing.
 
-**Monitoring & Catalysts**
+**Signals**
 - **Watchlist Monitor** Review a watchlist and flag which names deserve attention, with news, technicals, valuation, and risk/reward framing.
 - **Earnings Catalyst Tracker** Track upcoming earnings and event catalysts that can move stocks quickly, including surprise potential and what to watch.
 
