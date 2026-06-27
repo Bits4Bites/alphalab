@@ -6,10 +6,24 @@ AI-powered market research lab.
 
 ## ✨Features
 
+- **Dashboard (Freestyle Mode)** Ask anything about the stock market in natural language and get AI-powered insights, plus a market news feed and AI-generated ideas.
+
+**Market Research**
+- **Market Outlook** Get an AI-generated outlook across one or more markets, covering index movements, sector rotations, and macro drivers.
+- **Sector Rotation Radar** Identify which sectors are gaining or losing momentum across multiple time horizons for a target market.
+
+**Stock Analysis**
 - **Analyze Ticker** Perform AI-driven analysis for individual stocks or ETFs using market data, technical signals, macro context, and sentiment insights.
+- **IPO / Listing Event** Analyze an upcoming or recent IPO / listing event, including valuation, risks, and outlook.
+- **Dividend Event** Evaluate a dividend event with yield, sustainability, ex-dividend timing, and tax considerations.
+
+**Portfolio**
 - **Build Portfolio** Generate a portfolio from scratch based on investor goals, risk tolerance, time horizon, market preference, and investment themes.
-- **Review Portfolio** Review an existing portfolio and identify strengths, weaknesses, concentration risks, and optimization opportunities.
-- **Freestyle Mode** Interact with the AI freely using natural language prompts for custom market research and investment exploration.
+- **Review Portfolio** Review an existing portfolio and identify strengths, weaknesses, concentration risks, and optimization opportunities, with optional scenario stress-testing.
+
+**Monitoring & Catalysts**
+- **Watchlist Monitor** Review a watchlist and flag which names deserve attention, with news, technicals, valuation, and risk/reward framing.
+- **Earnings Catalyst Tracker** Track upcoming earnings and event catalysts that can move stocks quickly, including surprise potential and what to watch.
 
 ### Screenshots
 

@@ -15,10 +15,13 @@ from app.routers import (
     build_portfolio,
     dashboard,
     dividend_event,
+    earnings_catalyst_tracker,
     health,
     ipo_analyzer,
     market_outlook,
     review_portfolio,
+    sector_rotation_radar,
+    watchlist_monitor,
 )
 from app.utils import scheduler as scheduler_mod
 
@@ -114,6 +117,9 @@ app.include_router(build_portfolio.router)
 app.include_router(review_portfolio.router)
 app.include_router(dividend_event.router)
 app.include_router(market_outlook.router)
+app.include_router(sector_rotation_radar.router)
+app.include_router(watchlist_monitor.router)
+app.include_router(earnings_catalyst_tracker.router)
 app.include_router(ipo_analyzer.router)
 app.include_router(ai_vendors.router)
 app.include_router(ai_tasks.router)

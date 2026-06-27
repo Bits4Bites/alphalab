@@ -42,6 +42,18 @@
             background: rgba(99, 102, 241, 0.2);
         }
         .sidebar .nav-link i { width: 24px; }
+        .sidebar-group-toggle { cursor: pointer; }
+        .sidebar-group-toggle .sidebar-chevron {
+            width: auto;
+            transition: transform 0.2s ease;
+        }
+        .sidebar-group-toggle[aria-expanded="true"] .sidebar-chevron {
+            transform: rotate(180deg);
+        }
+        .sidebar-subnav .nav-link {
+            padding-left: 44px;
+            font-size: 0.85rem;
+        }
         .sidebar-brand {
             padding: 20px;
             font-size: 1.25rem;
@@ -115,7 +127,6 @@
                 {{ app_name }}
             </a>
 
-            <div class="sidebar-section">Main</div>
             <ul class="nav flex-column">
                 <li class="nav-item">
                     <a class="nav-link {% block nav_dashboard %}{% endblock %}" href="/dashboard">
@@ -126,35 +137,94 @@
 
             <div class="sidebar-section">Labs</div>
             <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link {% block nav_outlook %}{% endblock %}" href="/market-outlook">
-                        <i class="bi bi-globe-americas me-2"></i>Market Outlook
+                <li class="nav-item sidebar-group">
+                    <a class="nav-link sidebar-group-toggle d-flex align-items-center" data-bs-toggle="collapse"
+                       href="#group-research" role="button" aria-expanded="false" aria-controls="group-research">
+                        <i class="bi bi-globe-americas me-2"></i>Market Research
+                        <i class="bi bi-chevron-down ms-auto sidebar-chevron"></i>
                     </a>
+                    <div class="collapse" id="group-research">
+                        <ul class="nav flex-column sidebar-subnav">
+                            <li class="nav-item">
+                                <a class="nav-link {% block nav_outlook %}{% endblock %}" href="/market-outlook">
+                                    <i class="bi bi-globe-americas me-2"></i>Market Outlook
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% block nav_rotation %}{% endblock %}" href="/sector-rotation-radar">
+                                    <i class="bi bi-diagram-3 me-2"></i>Sector Rotation Radar
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {% block nav_ipo %}{% endblock %}" href="/analyze-ipo">
-                        <i class="bi bi-graph-up-arrow me-2"></i>IPO / Listing Event
+                <li class="nav-item sidebar-group">
+                    <a class="nav-link sidebar-group-toggle d-flex align-items-center" data-bs-toggle="collapse"
+                       href="#group-stock" role="button" aria-expanded="false" aria-controls="group-stock">
+                        <i class="bi bi-graph-up me-2"></i>Stock Analysis
+                        <i class="bi bi-chevron-down ms-auto sidebar-chevron"></i>
                     </a>
+                    <div class="collapse" id="group-stock">
+                        <ul class="nav flex-column sidebar-subnav">
+                            <li class="nav-item">
+                                <a class="nav-link {% block nav_analyze %}{% endblock %}" href="/analyze-ticker">
+                                    <i class="bi bi-graph-up me-2"></i>Analyze Ticker
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% block nav_ipo %}{% endblock %}" href="/analyze-ipo">
+                                    <i class="bi bi-graph-up-arrow me-2"></i>IPO / Listing Event
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% block nav_dividend %}{% endblock %}" href="/dividend-event">
+                                    <i class="bi bi-cash-coin me-2"></i>Dividend Event
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {% block nav_analyze %}{% endblock %}" href="/analyze-ticker">
-                        <i class="bi bi-graph-up me-2"></i>Analyze Ticker
+                <li class="nav-item sidebar-group">
+                    <a class="nav-link sidebar-group-toggle d-flex align-items-center" data-bs-toggle="collapse"
+                       href="#group-portfolio" role="button" aria-expanded="false" aria-controls="group-portfolio">
+                        <i class="bi bi-briefcase me-2"></i>Portfolio
+                        <i class="bi bi-chevron-down ms-auto sidebar-chevron"></i>
                     </a>
+                    <div class="collapse" id="group-portfolio">
+                        <ul class="nav flex-column sidebar-subnav">
+                            <li class="nav-item">
+                                <a class="nav-link {% block nav_build %}{% endblock %}" href="/build-portfolio">
+                                    <i class="bi bi-pie-chart me-2"></i>Build Portfolio
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% block nav_review %}{% endblock %}" href="/review-portfolio">
+                                    <i class="bi bi-clipboard-data me-2"></i>Review Portfolio
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {% block nav_build %}{% endblock %}" href="/build-portfolio">
-                        <i class="bi bi-pie-chart me-2"></i>Build Portfolio
+                <li class="nav-item sidebar-group">
+                    <a class="nav-link sidebar-group-toggle d-flex align-items-center" data-bs-toggle="collapse"
+                       href="#group-monitoring" role="button" aria-expanded="false" aria-controls="group-monitoring">
+                        <i class="bi bi-binoculars me-2"></i>Monitoring &amp; Catalysts
+                        <i class="bi bi-chevron-down ms-auto sidebar-chevron"></i>
                     </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% block nav_review %}{% endblock %}" href="/review-portfolio">
-                        <i class="bi bi-clipboard-data me-2"></i>Review Portfolio
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% block nav_dividend %}{% endblock %}" href="/dividend-event">
-                        <i class="bi bi-cash-coin me-2"></i>Dividend Event
-                    </a>
+                    <div class="collapse" id="group-monitoring">
+                        <ul class="nav flex-column sidebar-subnav">
+                            <li class="nav-item">
+                                <a class="nav-link {% block nav_watchlist %}{% endblock %}" href="/watchlist-monitor">
+                                    <i class="bi bi-eye me-2"></i>Watchlist Monitor
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% block nav_earnings %}{% endblock %}" href="/earnings-catalyst-tracker">
+                                    <i class="bi bi-calendar-event me-2"></i>Earnings Catalyst Tracker
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </li>
             </ul>
 
@@ -214,6 +284,16 @@
         document.getElementById('sidebar').classList.toggle('show');
         document.getElementById('sidebar-overlay').classList.toggle('show');
     }
+    // Auto-expand the sidebar group that contains the active page
+    document.querySelectorAll('#sidebar .sidebar-group .collapse').forEach(function(group) {
+        if (group.querySelector('.nav-link.active')) {
+            group.classList.add('show');
+            var toggle = document.querySelector('[href="#' + group.id + '"]');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'true');
+            }
+        }
+    });
     </script>
     {% block scripts %}{% endblock %}
 </body>

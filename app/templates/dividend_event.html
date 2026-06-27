@@ -12,26 +12,41 @@
                 <form id="dividend-form">
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label for="ticker" class="form-label fw-semibold">Stock Ticker</label>
+                            <label for="ticker" class="form-label fw-semibold">
+                                Stock Ticker
+                                <span class="text-danger ms-2">*</span>
+                            </label>
                             <input type="text" class="form-control" id="ticker" name="ticker" required
                                    placeholder="e.g. AAPL, BHP.AX, MSFT">
                         </div>
                         <div class="col-md-4">
-                            <label for="dividend-amount" class="form-label fw-semibold">Dividend Amount (optional)</label>
+                            <label for="dividend-amount" class="form-label fw-semibold">
+                                Dividend Amount
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <input type="text" class="form-control" id="dividend-amount" name="dividend_amount"
                                    placeholder="e.g. $0.25 per share">
                         </div>
                         <div class="col-md-4">
-                            <label for="ex-dividend-date" class="form-label fw-semibold">Ex-Dividend Date (optional)</label>
+                            <label for="ex-dividend-date" class="form-label fw-semibold">
+                                Ex-Dividend Date
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <input type="date" class="form-control" id="ex-dividend-date" name="ex_dividend_date">
                         </div>
                         <div class="col-md-4">
-                            <label for="current-price" class="form-label fw-semibold">Current Price (optional)</label>
+                            <label for="current-price" class="form-label fw-semibold">
+                                Current Price
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <input type="text" class="form-control" id="current-price" name="current_price"
                                    placeholder="e.g. $150.00">
                         </div>
                         <div class="col-md-4">
-                            <label for="holding-period" class="form-label fw-semibold">Holding Period (optional)</label>
+                            <label for="holding-period" class="form-label fw-semibold">
+                                Holding Period
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <select class="form-select" id="holding-period" name="holding_period">
                                 <option value="">Select...</option>
                                 <option value="Short-term (days to weeks)">Short-term (days to weeks)</option>
@@ -41,7 +56,10 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label for="tax-bracket" class="form-label fw-semibold">Tax Situation (optional)</label>
+                            <label for="tax-bracket" class="form-label fw-semibold">
+                                Tax Situation
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <select class="form-select" id="tax-bracket" name="tax_bracket">
                                 <option value="">Select...</option>
                                 <option value="Tax-free account (e.g. ISA, Roth IRA)">Tax-free account</option>
@@ -51,7 +69,10 @@
                             </select>
                         </div>
                         <div class="col-12">
-                            <label for="additional-notes" class="form-label fw-semibold">Additional Notes (optional)</label>
+                            <label for="additional-notes" class="form-label fw-semibold">
+                                Additional Notes
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <textarea class="form-control" id="additional-notes" name="additional_notes" rows="2"
                                       placeholder="e.g. I already hold 100 shares, considering buying more before ex-date"></textarea>
                         </div>

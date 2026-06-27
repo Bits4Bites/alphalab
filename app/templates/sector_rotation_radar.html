@@ -1,87 +1,66 @@
 {% extends "app_layout.html" %}
 
-{% block title %}Review Portfolio - {{ app_name }}{% endblock %}
-{% block nav_review %}active{% endblock %}
-{% block page_title %}Review Portfolio{% endblock %}
+{% block title %}Sector Rotation Radar - {{ app_name }}{% endblock %}
+{% block nav_rotation %}active{% endblock %}
+{% block page_title %}Sector Rotation Radar{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
-                <form id="review-form">
+                <form id="rotation-form">
                     <div class="row g-3">
-                        <div class="col-12">
-                            <label for="holdings" class="form-label fw-semibold">
-                                Current Holdings
-                                <span class="text-danger ms-2">*</span>
-                            </label>
-                            <textarea class="form-control" id="holdings" name="holdings" rows="4" required
-                                      placeholder="e.g. AAPL 50 shares, MSFT 30 shares, VGS.AX 200 units, GOOGL 10 shares"></textarea>
-                            <div class="form-text">List your tickers and quantities for the AI to review.</div>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="risk-tolerance" class="form-label fw-semibold">
-                                Risk Tolerance
-                                <span class="text-muted ms-2">(Optional)</span>
-                            </label>
-                            <select class="form-select" id="risk-tolerance" name="risk_tolerance">
-                                <option value="">Select...</option>
-                                <option value="Conservative">Conservative</option>
-                                <option value="Moderate">Moderate</option>
-                                <option value="Aggressive">Aggressive</option>
-                                <option value="Very Aggressive">Very Aggressive</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-12 col-lg-6">
                             <label for="target-market" class="form-label fw-semibold">
                                 Target Market
-                                <span class="text-muted ms-2">(Optional)</span>
+                                <span class="text-danger ms-2">*</span>
                             </label>
                             <input type="text" class="form-control" id="target-market" name="target_market"
-                                   placeholder="e.g. US, Australia, Global">
+                                   placeholder="e.g. US, Europe, Japan, Global" required>
+                            <div class="form-text">The market or region to analyze.</div>
                         </div>
-                        <div class="col-md-4">
-                            <label for="investment-horizon" class="form-label fw-semibold">
-                                Investment Horizon
+                        <div class="col-12 col-lg-6">
+                            <label for="sectors" class="form-label fw-semibold">
+                                Sectors
                                 <span class="text-muted ms-2">(Optional)</span>
                             </label>
-                            <select class="form-select" id="investment-horizon" name="investment_horizon">
-                                <option value="">Select...</option>
-                                <option value="Short-term (< 1 year)">Short-term (&lt; 1 year)</option>
-                                <option value="Medium-term (1-3 years)">Medium-term (1-3 years)</option>
-                                <option value="Long-term (3-5 years)">Long-term (3-5 years)</option>
-                                <option value="Very long-term (5+ years)">Very long-term (5+ years)</option>
+                            <input type="text" class="form-control" id="sectors" name="sectors"
+                                   placeholder="e.g. Technology, Financials, Energy">
+                            <div class="form-text">Leave blank to analyze the broad market rotation.</div>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <label for="timeframe" class="form-label fw-semibold">
+                                Timeframe
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
+                            <input type="text" class="form-control" id="timeframe" name="timeframe"
+                                   placeholder="Leave blank to use default horizons">
+                            <div class="form-text">If empty, the analysis covers next 1-2 weeks, next 1 month, and next 3 months.</div>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <label for="bias" class="form-label fw-semibold">
+                                Bias
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
+                            <select class="form-select" id="bias" name="bias">
+                                <option value="">No explicit bias</option>
+                                <option value="growth">Growth</option>
+                                <option value="defensive">Defensive</option>
+                                <option value="cyclical">Cyclical</option>
+                                <option value="value">Value</option>
                             </select>
-                        </div>
-                        <div class="col-12">
-                            <label for="investment-goals" class="form-label fw-semibold">
-                                Investment Goals
-                                <span class="text-muted ms-2">(Optional)</span>
-                            </label>
-                            <input type="text" class="form-control" id="investment-goals" name="investment_goals"
-                                   placeholder="e.g. Retirement savings, Capital growth, Passive income, Beat inflation">
-                        </div>
-                        <div class="col-12">
-                            <label for="scenario" class="form-label fw-semibold">
-                                Scenario
-                                <span class="text-muted ms-2">(Optional)</span>
-                            </label>
-                            <input type="text" class="form-control" id="scenario" name="scenario"
-                                   placeholder="e.g. 2008 crash, rate hike shock, AI spending collapse">
-                            <div class="form-text">If provided, the review will include a stress-test under this scenario.</div>
                         </div>
                     </div>
                     <div class="mt-3">
-                        <button type="submit" class="btn btn-primary" id="review-btn">
-                            <i class="bi bi-clipboard-data me-1"></i>Review Portfolio
+                        <button type="submit" class="btn btn-primary" id="rotation-btn">
+                            <i class="bi bi-diagram-3 me-1"></i>Analyze Sector Rotation
                         </button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- Progress indicator -->
         <div id="progress-section" class="d-none mb-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -102,7 +81,6 @@
             </div>
         </div>
 
-        <!-- Error display -->
         <div id="error-section" class="d-none">
             <div class="alert alert-danger d-flex align-items-center" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -110,21 +88,20 @@
             </div>
         </div>
 
-        <!-- Result display -->
         <style>
-        #review-result h1 {font-size: 1.5rem !important;}
-        #review-result h2 {font-size: 1.4rem !important;}
-        #review-result h3 {font-size: 1.3rem !important;}
-        #review-result h4 {font-size: 1.2rem !important;}
-        #review-result h5 {font-size: 1.1rem !important;}
+        #rotation-result h1 {font-size: 1.5rem !important;}
+        #rotation-result h2 {font-size: 1.4rem !important;}
+        #rotation-result h3 {font-size: 1.3rem !important;}
+        #rotation-result h4 {font-size: 1.2rem !important;}
+        #rotation-result h5 {font-size: 1.1rem !important;}
         </style>
         <div id="result-section" class="d-none">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex align-items-center justify-content-between">
                     <h4 class="fw-semibold mb-0">
-                        <i class="bi bi-clipboard-data me-1"></i>Portfolio Review
+                        <i class="bi bi-diagram-3 me-1"></i>Sector Rotation Radar
                     </h4>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="printReview()" title="Print">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="printRotationResult()" title="Print">
                         <i class="bi bi-printer"></i>
                     </button>
                 </div>
@@ -133,7 +110,7 @@
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
                     </div>
-                    <div id="review-result"></div>
+                    <div id="rotation-result"></div>
                 </div>
             </div>
         </div>
@@ -142,26 +119,21 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
-document.getElementById('review-form').addEventListener('submit', function(e) {
+document.getElementById('rotation-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
-    const holdings = document.getElementById('holdings').value.trim();
-    const riskTolerance = document.getElementById('risk-tolerance').value;
-    const investmentGoals = document.getElementById('investment-goals').value.trim();
     const targetMarket = document.getElementById('target-market').value.trim();
-    const investmentHorizon = document.getElementById('investment-horizon').value;
-    const scenario = document.getElementById('scenario').value.trim();
+    const sectors = document.getElementById('sectors').value.trim();
+    const timeframe = document.getElementById('timeframe').value.trim();
+    const bias = document.getElementById('bias').value.trim();
 
-    if (!holdings) return;
-
-    const btn = document.getElementById('review-btn');
+    const btn = document.getElementById('rotation-btn');
     const progressSection = document.getElementById('progress-section');
     const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
 
-    // Reset UI
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Reviewing...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing...';
     progressSection.classList.remove('d-none');
     errorSection.classList.add('d-none');
     resultSection.classList.add('d-none');
@@ -169,15 +141,13 @@ document.getElementById('review-form').addEventListener('submit', function(e) {
     waitTimer.start();
 
     const params = new URLSearchParams({
-        holdings: holdings,
-        risk_tolerance: riskTolerance,
-        investment_goals: investmentGoals,
         target_market: targetMarket,
-        investment_horizon: investmentHorizon,
-        scenario: scenario,
+        sectors: sectors,
+        timeframe: timeframe,
+        bias: bias,
     });
 
-    const eventSource = new EventSource(`/review-portfolio/stream?${params.toString()}`);
+    const eventSource = new EventSource(`/sector-rotation-radar/stream?${params.toString()}`);
 
     eventSource.onmessage = function(event) {
         const data = JSON.parse(event.data);
@@ -194,15 +164,15 @@ document.getElementById('review-form').addEventListener('submit', function(e) {
             document.getElementById('error-message').textContent = data.message;
             eventSource.close();
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-clipboard-data me-1"></i>Review Portfolio';
+            btn.innerHTML = '<i class="bi bi-diagram-3 me-1"></i>Analyze Sector Rotation';
         } else if (data.type === 'result') {
             waitTimer.stop();
             progressSection.classList.add('d-none');
             resultSection.classList.remove('d-none');
-            renderMarkdown(data.content, document.getElementById('review-result'));
+            renderMarkdown(data.content, document.getElementById('rotation-result'));
             eventSource.close();
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-clipboard-data me-1"></i>Review Portfolio';
+            btn.innerHTML = '<i class="bi bi-diagram-3 me-1"></i>Analyze Sector Rotation';
         }
     };
 
@@ -213,17 +183,17 @@ document.getElementById('review-form').addEventListener('submit', function(e) {
         document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
         eventSource.close();
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-clipboard-data me-1"></i>Review Portfolio';
+        btn.innerHTML = '<i class="bi bi-diagram-3 me-1"></i>Analyze Sector Rotation';
     };
 });
 
-function printReview() {
-    const content = document.getElementById('review-result').innerHTML;
-    const html = `<html lang="en"><head><title>Portfolio Review - {{ app_name }}</title>
+function printRotationResult() {
+    const content = document.getElementById('rotation-result').innerHTML;
+    const html = `<html lang="en"><head><title>Sector Rotation Radar - {{ app_name }}</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
         <style>body { padding: 2rem; } @media print { body { padding: 0; } }</style>
-        </head><body><div class="container"><h1 class="mb-4">Portfolio Review</h1>${content}</div></body></html>`;
+        </head><body><div class="container"><h1 class="mb-4">Sector Rotation Radar</h1>${content}</div></body></html>`;
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const printWindow = window.open(url, '_blank');

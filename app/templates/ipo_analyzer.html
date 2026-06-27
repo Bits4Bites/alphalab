@@ -12,13 +12,19 @@
                 <form id="ipo-form">
                     <div class="row g-3">
                         <div class="col-12">
-                            <label for="company-name" class="form-label fw-semibold">Company Name</label>
+                            <label for="company-name" class="form-label fw-semibold">
+                                Company Name
+                                <span class="text-danger ms-2">*</span>
+                            </label>
                             <input type="text" class="form-control" id="company-name" name="company_name" required
                                    placeholder="e.g. Stripe, Databricks, or the IPO issuer name">
                             <div class="form-text">This is required to start the IPO analysis.</div>
                         </div>
                         <div class="col-12">
-                            <label for="additional-notes" class="form-label fw-semibold">Additional Notes (optional)</label>
+                            <label for="additional-notes" class="form-label fw-semibold">
+                                Additional Notes
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <textarea class="form-control" id="additional-notes" name="additional_notes" rows="3"
                                       placeholder="e.g. Recent news, expected market sentiment, investor interest"></textarea>
                         </div>
