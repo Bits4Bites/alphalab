@@ -11,6 +11,7 @@ AI-powered market research lab.
 **Market Research**
 - **Market Outlook** Get an AI-generated outlook across one or more markets, covering index movements, sector rotations, and macro drivers.
 - **Sector Rotation Radar** Identify which sectors are gaining or losing momentum across multiple time horizons for a target market.
+- **IPO Scanner** Scan a target market for upcoming IPO events (up to 20), verified against official sources, with public offer details, conditions, key dates, and source links - pure factual information, no analysis. Results are cached so you can revisit them without re-scanning.
 
 **Stock Analysis**
 - **Analyze Ticker** Perform AI-driven analysis for individual stocks or ETFs using market data, technical signals, macro context, and sentiment insights.
@@ -21,7 +22,7 @@ AI-powered market research lab.
 - **Build Portfolio** Generate a portfolio from scratch based on investor goals, risk tolerance, time horizon, market preference, and investment themes.
 - **Review Portfolio** Review an existing portfolio and identify strengths, weaknesses, concentration risks, and optimization opportunities, with optional scenario stress-testing.
 
-**Monitoring & Catalysts**
+**Signals**
 - **Watchlist Monitor** Review a watchlist and flag which names deserve attention, with news, technicals, valuation, and risk/reward framing.
 - **Earnings Catalyst Tracker** Track upcoming earnings and event catalysts that can move stocks quickly, including surprise potential and what to watch.
 
@@ -121,20 +122,20 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 
 **Optional configurations:**
 
-| Variable                           | Default                    | Description                                                     |
-|------------------------------------|----------------------------|-----------------------------------------------------------------|
-| `AL_DEBUG`                         | `false`                    | Enable debug mode                                               |
-| `AL_BASE_URL`                      | `http://localhost:8000`    | Base URL for OAuth callbacks                                    |
-| `AL_PRIMARY_MARKETS`               | _(empty)_                  | Comma-separated list of primary markets (e.g. `US,ASX,LSE`)     |
-| `AL_SECRET_KEY`                    | `change-me-in-production`  | JWT signing secret                                              |
-| `AL_JWT_ALGORITHM`                 | `HS256`                    | JWT algorithm                                                   |
-| `AL_JWT_EXPIRE_MINUTES`            | `10080` (7 days)           | JWT token expiry                                                |
-| `AL_LLM__<VENDOR>__<TIER>__MODELS` | _(empty)_                  | Comma-separated list of available models                        |
-| `AL_TASK__<TASK>__VENDOR`          | _(empty)_                  | AI vendor for a specific task                                   |
-| `AL_TASK__<TASK>__TIER`            | _(empty)_                  | AI tier for a specific task                                     |
-| `AL_TASK__<TASK>__MODEL`           | _(empty)_                  | Model for a specific task                                       |
-| `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Redis connection URL (enables dashboard market news & AI ideas) |
-| `AL_DATASTORE_REDIS_KEY_PREFIX`    | `alphalab:`                | Key namespace prefix for all Redis keys                         |
+| Variable                           | Default                    | Description                                                                                                                                                               |
+|------------------------------------|----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `AL_DEBUG`                         | `false`                    | Enable debug mode                                                                                                                                                         |
+| `AL_BASE_URL`                      | `http://localhost:8000`    | Base URL for OAuth callbacks                                                                                                                                              |
+| `AL_PRIMARY_MARKETS`               | _(empty)_                  | Comma-separated list of primary markets (e.g. `US,ASX,LSE`)                                                                                                               |
+| `AL_SECRET_KEY`                    | `change-me-in-production`  | JWT signing secret                                                                                                                                                        |
+| `AL_JWT_ALGORITHM`                 | `HS256`                    | JWT algorithm                                                                                                                                                             |
+| `AL_JWT_EXPIRE_MINUTES`            | `10080` (7 days)           | JWT token expiry                                                                                                                                                          |
+| `AL_LLM__<VENDOR>__<TIER>__MODELS` | _(empty)_                  | Comma-separated list of available models                                                                                                                                  |
+| `AL_TASK__<TASK>__VENDOR`          | _(empty)_                  | AI vendor for a specific task                                                                                                                                             |
+| `AL_TASK__<TASK>__TIER`            | _(empty)_                  | AI tier for a specific task                                                                                                                                               |
+| `AL_TASK__<TASK>__MODEL`           | _(empty)_                  | Model for a specific task                                                                                                                                                 |
+| `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Redis connection URL (optional; enables persistent caching for dashboard market news, AI ideas, and IPO scanner results - falls back to in-memory cache when unavailable) |
+| `AL_DATASTORE_REDIS_KEY_PREFIX`    | `alphalab:`                | Key namespace prefix for all Redis keys                                                                                                                                   |
 
 **Examples:**
 

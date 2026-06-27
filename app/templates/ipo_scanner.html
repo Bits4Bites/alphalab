@@ -1,0 +1,432 @@
+{% extends "app_layout.html" %}
+
+{% block title %}IPO Scanner - {{ app_name }}{% endblock %}
+{% block nav_ipo_scanner %}active{% endblock %}
+{% block page_title %}IPO Scanner{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form id="ipo-scanner-form">
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-6">
+                            <label for="target-market" class="form-label fw-semibold">
+                                Target Market
+                                <span class="text-danger ms-2">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="target-market" name="target_market"
+                                   placeholder="e.g. US, Australia, Hong Kong, Global" required>
+                            <div class="form-text">The market or region to scan for upcoming IPO events.</div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary" id="ipo-scanner-btn">
+                            <i class="bi bi-radar me-1"></i>Scan for IPOs
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="progress-section" class="d-none mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold" id="progress-message">Starting...</div>
+                            <div class="progress mt-2" style="height: 6px;">
+                                <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small class="text-muted" id="progress-step">Step 0 of 4</small>
+                            <small class="text-muted d-none ms-2" id="wait-timer"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-section" class="d-none">
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span id="error-message"></span>
+            </div>
+        </div>
+
+        <style>
+        #ipo-scanner-fallback h1 {font-size: 1.5rem !important;}
+        #ipo-scanner-fallback h2 {font-size: 1.4rem !important;}
+        #ipo-scanner-fallback h3 {font-size: 1.3rem !important;}
+        #ipo-scanner-fallback h4 {font-size: 1.2rem !important;}
+        #ipo-scanner-fallback h5 {font-size: 1.1rem !important;}
+        </style>
+        <div id="result-section" class="d-none">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h4 class="fw-semibold mb-0">
+                    <i class="bi bi-radar me-1"></i>Upcoming IPOs
+                    <span class="badge bg-secondary ms-2" id="ipo-count">0</span>
+                </h4>
+            </div>
+            <div id="cached-notice" class="text-muted small mb-3 d-none">
+                <i class="bi bi-clock-history me-1"></i>
+                Showing last cached result for <span class="fw-semibold" id="cached-market"></span>,
+                generated <span id="cached-age"></span>. Run a scan to refresh.
+            </div>
+            <div class="alert alert-warning small mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
+            </div>
+            <div class="row g-3" id="ipo-cards"></div>
+            <div id="ipo-unconfirmed-section" class="d-none mt-4">
+                <h6 class="text-muted fw-semibold mb-2">
+                    <i class="bi bi-question-circle me-1"></i>Needs confirmation
+                    <span class="badge bg-light text-muted ms-1" id="ipo-unconfirmed-count">0</span>
+                </h6>
+                <p class="text-muted small mb-3">
+                    These candidates appear plausible but could not be fully confirmed against official sources.
+                </p>
+                <div class="row g-3" id="ipo-unconfirmed-cards"></div>
+            </div>
+            <div id="ipo-scanner-fallback" class="card border-0 shadow-sm d-none"><div class="card-body"></div></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+function stripCodeFences(text) {
+    let t = (text || '').trim();
+    const fenceMatch = t.match(/^```[a-zA-Z]*\s*([\s\S]*?)\s*```$/);
+    if (fenceMatch) {
+        t = fenceMatch[1].trim();
+    }
+    return t;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function offerBadge(available) {
+    const value = (available || '').toString().toLowerCase();
+    if (value === 'yes') {
+        return '<span class="badge bg-success">Public offer available</span>';
+    }
+    return '<span class="badge bg-secondary">No public offer</span>';
+}
+
+function buildAnalyzeNotes(ipo) {
+    const parts = [];
+    if (ipo.exchange) parts.push('Exchange: ' + ipo.exchange);
+    if (ipo.ticker) parts.push('Listed symbol: ' + ipo.ticker);
+    if (ipo.sector) parts.push('Sector: ' + ipo.sector);
+    if (ipo.expected_listing_date) parts.push('Expected listing: ' + ipo.expected_listing_date);
+    if (ipo.price_range) parts.push('Price range: ' + ipo.price_range);
+    if (ipo.offer_size) parts.push('Offer size: ' + ipo.offer_size);
+    if (ipo.public_offer_available) parts.push('Public offer: ' + ipo.public_offer_available);
+    if (ipo.offer_open_date) parts.push('Offer opens: ' + ipo.offer_open_date);
+    if (ipo.offer_close_date) parts.push('Offer closes: ' + ipo.offer_close_date);
+    if (ipo.offer_conditions) parts.push('Conditions: ' + ipo.offer_conditions);
+    return parts.join('\n');
+}
+
+function statusBadge(status) {
+    const s = (status || '').toString().toLowerCase();
+    if (s === 'verified') {
+        return '<span class="badge bg-success-subtle text-success border border-success-subtle">'
+            + '<i class="bi bi-patch-check me-1"></i>Verified</span>';
+    }
+    if (s === 'unconfirmed') {
+        return '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">'
+            + '<i class="bi bi-hourglass-split me-1"></i>Unconfirmed</span>';
+    }
+    return '';
+}
+
+function buildIpoCard(ipo) {
+    const company = ipo.company_name || 'Unnamed company';
+    const tickerBadge = ipo.ticker
+        ? `<span class="badge bg-primary ms-2">${escapeHtml(ipo.ticker)}</span>` : '';
+
+    const meta = [];
+    if (ipo.exchange) meta.push(escapeHtml(ipo.exchange));
+    if (ipo.sector) meta.push(escapeHtml(ipo.sector));
+    const metaLine = meta.length
+        ? `<div class="text-muted small mb-2">${meta.join(' &middot; ')}</div>` : '';
+
+    const description = ipo.description
+        ? `<p class="card-text small mb-2">${escapeHtml(ipo.description)}</p>` : '';
+
+    const rows = [];
+    if (ipo.expected_listing_date) rows.push(['Expected listing', ipo.expected_listing_date]);
+    if (ipo.price_range) rows.push(['Price', ipo.price_range]);
+    if (ipo.offer_size) rows.push(['Offer size', ipo.offer_size]);
+    const isPublicOffer = (ipo.public_offer_available || '').toString().toLowerCase() === 'yes';
+    if (isPublicOffer && ipo.offer_open_date) rows.push(['Offer opens', ipo.offer_open_date]);
+    if (isPublicOffer && ipo.offer_close_date) rows.push(['Offer closes', ipo.offer_close_date]);
+    if (isPublicOffer && ipo.offer_conditions) rows.push(['Conditions', ipo.offer_conditions]);
+    const detailRows = rows
+        .map(([label, value]) =>
+            `<div class="d-flex small mb-1"><div class="text-muted me-2" style="min-width:120px;">${label}</div><div>${escapeHtml(value)}</div></div>`)
+        .join('');
+
+    const notesText = ipo.verification_notes
+        ? `<p class="text-muted fst-italic small mb-2">${escapeHtml(ipo.verification_notes)}</p>` : '';
+
+    const notes = buildAnalyzeNotes(ipo);
+    const analyzeUrl = `/analyze-ipo?company_name=${encodeURIComponent(company)}&additional_notes=${encodeURIComponent(notes)}`;
+
+    let sourceLink = '';
+    if (ipo.source_url) {
+        const safeUrl = encodeURI(ipo.source_url);
+        sourceLink = `<a class="btn btn-outline-secondary btn-sm" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Official source
+                    </a>`;
+    }
+
+    const col = document.createElement('div');
+    col.className = 'col-12 col-lg-6';
+    col.innerHTML = `
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex align-items-start justify-content-between mb-1">
+                    <h5 class="fw-semibold mb-0">${escapeHtml(company)}${tickerBadge}</h5>
+                    <div class="ms-2 flex-shrink-0">${statusBadge(ipo.verification_status)}</div>
+                </div>
+                ${metaLine}
+                <div class="mb-2">${offerBadge(ipo.public_offer_available)}</div>
+                ${description}
+                ${detailRows}
+                ${notesText}
+                <div class="mt-auto pt-2 d-flex flex-wrap gap-2">
+                    <a class="btn btn-outline-primary btn-sm" href="${analyzeUrl}">
+                        <i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event
+                    </a>
+                    ${sourceLink}
+                </div>
+            </div>
+        </div>`;
+    return col;
+}
+
+function renderIpoCards(parsed) {
+    const cardsContainer = document.getElementById('ipo-cards');
+    const unconfirmedSection = document.getElementById('ipo-unconfirmed-section');
+    const unconfirmedContainer = document.getElementById('ipo-unconfirmed-cards');
+    const fallback = document.getElementById('ipo-scanner-fallback');
+    cardsContainer.innerHTML = '';
+    unconfirmedContainer.innerHTML = '';
+    unconfirmedSection.classList.add('d-none');
+    fallback.classList.add('d-none');
+
+    const all = (parsed && Array.isArray(parsed.ipos)) ? parsed.ipos : [];
+    // Drop rejected entries; split the rest into verified vs unconfirmed.
+    const verified = [];
+    const unconfirmed = [];
+    all.forEach(ipo => {
+        const status = (ipo.verification_status || '').toString().toLowerCase();
+        if (status === 'rejected') return;
+        if (status === 'unconfirmed') {
+            unconfirmed.push(ipo);
+        } else {
+            verified.push(ipo);
+        }
+    });
+
+    document.getElementById('ipo-count').textContent = verified.length;
+
+    verified.forEach(ipo => cardsContainer.appendChild(buildIpoCard(ipo)));
+
+    if (unconfirmed.length) {
+        unconfirmed.forEach(ipo => unconfirmedContainer.appendChild(buildIpoCard(ipo)));
+        document.getElementById('ipo-unconfirmed-count').textContent = unconfirmed.length;
+        unconfirmedSection.classList.remove('d-none');
+    }
+
+    if (!verified.length && !unconfirmed.length) {
+        cardsContainer.innerHTML =
+            '<div class="col-12"><div class="alert alert-info mb-0">No upcoming IPO events were found for this market.</div></div>';
+    }
+}
+
+function extractJsonObject(text) {
+    // Extract the first balanced {...} object, even if wrapped in prose.
+    const start = text.indexOf('{');
+    if (start === -1) return null;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let i = start; i < text.length; i++) {
+        const ch = text[i];
+        if (inString) {
+            if (escaped) {
+                escaped = false;
+            } else if (ch === '\\') {
+                escaped = true;
+            } else if (ch === '"') {
+                inString = false;
+            }
+            continue;
+        }
+        if (ch === '"') {
+            inString = true;
+        } else if (ch === '{') {
+            depth++;
+        } else if (ch === '}') {
+            depth--;
+            if (depth === 0) {
+                return text.slice(start, i + 1);
+            }
+        }
+    }
+    return null;
+}
+
+function renderScanResult(content) {
+    const cleaned = stripCodeFences(content);
+    let parsed = null;
+    try {
+        parsed = JSON.parse(cleaned);
+    } catch (err) {
+        parsed = null;
+    }
+
+    // Fallback: the model may wrap the JSON in prose; extract the first balanced object.
+    if (!parsed || !Array.isArray(parsed.ipos)) {
+        const extracted = extractJsonObject(cleaned);
+        if (extracted) {
+            try {
+                parsed = JSON.parse(extracted);
+            } catch (err) {
+                parsed = null;
+            }
+        }
+    }
+
+    if (parsed && Array.isArray(parsed.ipos)) {
+        renderIpoCards(parsed);
+        return;
+    }
+
+    // Fallback: render raw content as markdown if it is not valid JSON
+    document.getElementById('ipo-cards').innerHTML = '';
+    document.getElementById('ipo-count').textContent = '—';
+    document.getElementById('ipo-unconfirmed-cards').innerHTML = '';
+    document.getElementById('ipo-unconfirmed-section').classList.add('d-none');
+    const fallback = document.getElementById('ipo-scanner-fallback');
+    fallback.classList.remove('d-none');
+    renderMarkdown(content, fallback.querySelector('.card-body'));
+}
+
+document.getElementById('ipo-scanner-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const targetMarket = document.getElementById('target-market').value.trim();
+
+    if (!targetMarket) return;
+
+    const btn = document.getElementById('ipo-scanner-btn');
+    const progressSection = document.getElementById('progress-section');
+    const errorSection = document.getElementById('error-section');
+    const resultSection = document.getElementById('result-section');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scanning...';
+    progressSection.classList.remove('d-none');
+    errorSection.classList.add('d-none');
+    resultSection.classList.add('d-none');
+    const waitTimer = new WaitTimer('wait-timer');
+    waitTimer.start();
+
+    const params = new URLSearchParams({
+        target_market: targetMarket,
+    });
+
+    const eventSource = new EventSource(`/ipo-scanner/stream?${params.toString()}`);
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'progress') {
+            const pct = Math.round((data.step / data.total) * 100);
+            document.getElementById('progress-message').textContent = data.message;
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
+        } else if (data.type === 'error') {
+            waitTimer.stop();
+            progressSection.classList.add('d-none');
+            errorSection.classList.remove('d-none');
+            document.getElementById('error-message').textContent = data.message;
+            eventSource.close();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-radar me-1"></i>Scan for IPOs';
+        } else if (data.type === 'result') {
+            waitTimer.stop();
+            progressSection.classList.add('d-none');
+            document.getElementById('cached-notice').classList.add('d-none');
+            resultSection.classList.remove('d-none');
+            renderScanResult(data.content);
+            eventSource.close();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-radar me-1"></i>Scan for IPOs';
+        }
+    };
+
+    eventSource.onerror = function() {
+        waitTimer.stop();
+        progressSection.classList.add('d-none');
+        errorSection.classList.remove('d-none');
+        document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
+        eventSource.close();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-radar me-1"></i>Scan for IPOs';
+    };
+});
+
+function formatCacheAge(generatedAt) {
+    if (!generatedAt) return 'recently';
+    const seconds = Math.max(0, Math.floor(Date.now() / 1000 - generatedAt));
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+}
+
+document.addEventListener('DOMContentLoaded', function initCachedResult() {
+    const node = document.getElementById('ipo-cached-data');
+    if (!node) return;
+    let cached;
+    try {
+        cached = JSON.parse(node.textContent);
+    } catch (err) {
+        return;
+    }
+    if (!cached || !cached.content) return;
+
+    if (cached.target_market) {
+        document.getElementById('target-market').value = cached.target_market;
+    }
+
+    const notice = document.getElementById('cached-notice');
+    document.getElementById('cached-market').textContent = cached.target_market || 'this market';
+    document.getElementById('cached-age').textContent = formatCacheAge(cached.generated_at);
+    notice.classList.remove('d-none');
+
+    document.getElementById('result-section').classList.remove('d-none');
+    renderScanResult(cached.content);
+});
+</script>
+{% if cached_result %}
+<script id="ipo-cached-data" type="application/json">{{ cached_result | tojson }}</script>
+{% endif %}
+{% endblock %}

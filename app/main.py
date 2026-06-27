@@ -18,6 +18,7 @@ from app.routers import (
     earnings_catalyst_tracker,
     health,
     ipo_analyzer,
+    ipo_scanner,
     market_outlook,
     review_portfolio,
     sector_rotation_radar,
@@ -28,23 +29,41 @@ from app.utils import scheduler as scheduler_mod
 logger = logging.getLogger(__name__)
 scheduler = scheduler_mod.BackgroundScheduler()
 
+# Tracks the last known Redis availability so the periodic check logs only on
+# state transitions (None = unknown / not yet checked).
+_redis_was_enabled: bool | None = None
+
 
 async def _check_redis() -> None:
-    """Check Redis connectivity and set datastore_redis_enabled flag."""
+    """Check Redis connectivity and toggle the data store enabled flag.
+
+    Safe to call repeatedly from a periodic task: it reuses the existing client
+    when possible, only creating a new connection when one is not established, and
+    logs only on state transitions to avoid noisy repeated messages.
+    """
+    global _redis_was_enabled
+
     from redis import asyncio as redis_asyncio
 
     from app import config
 
+    settings = config.datastore_settings
     try:
-        client = redis_asyncio.from_url(config.datastore_settings.redis_url, decode_responses=True)
+        client = settings.redis_client
+        if client is None:
+            client = redis_asyncio.from_url(settings.redis_url, decode_responses=True)
         await client.ping()
-        config.datastore_settings.redis_enabled = True
-        config.datastore_settings.redis_client = client
-        logger.info("Redis connection OK")
+        settings.redis_enabled = True
+        settings.redis_client = client
+        if _redis_was_enabled is not True:
+            logger.info("Redis connection OK, data store enabled")
+        _redis_was_enabled = True
     except Exception as exc:
-        config.datastore_settings.redis_enabled = False
-        config.datastore_settings.redis_client = None
-        logger.warning("Redis unavailable, data store disabled: %s", exc)
+        settings.redis_enabled = False
+        settings.redis_client = None
+        if _redis_was_enabled is not False:
+            logger.warning("Redis unavailable, data store disabled: %s", exc)
+        _redis_was_enabled = False
 
 
 async def _generate_sample_prompts_task() -> None:
@@ -72,6 +91,14 @@ async def _fetch_market_news_task() -> None:
 
 
 # Register periodic tasks
+scheduler.register(
+    scheduler_mod.PeriodicTask(
+        name="check_redis",
+        func=_check_redis,
+        interval_seconds=60,
+        run_on_start=False,
+    )
+)
 scheduler.register(
     scheduler_mod.PeriodicTask(
         name="generate_sample_prompts",
@@ -118,6 +145,7 @@ app.include_router(review_portfolio.router)
 app.include_router(dividend_event.router)
 app.include_router(market_outlook.router)
 app.include_router(sector_rotation_radar.router)
+app.include_router(ipo_scanner.router)
 app.include_router(watchlist_monitor.router)
 app.include_router(earnings_catalyst_tracker.router)
 app.include_router(ipo_analyzer.router)
