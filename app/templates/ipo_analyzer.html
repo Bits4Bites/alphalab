@@ -35,6 +35,11 @@
                         </button>
                     </div>
                 </form>
+                <div class="text-muted small mt-3 pt-3 border-top">
+                    <i class="bi bi-radar me-1"></i>
+                    Not sure which IPO to analyze?
+                    <a href="/ipo-scanner">Discover upcoming IPOs with the IPO Scanner</a>.
+                </div>
             </div>
         </div>
 
@@ -96,6 +101,19 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
+// Pre-fill the form from query params (e.g. when arriving from the IPO Scanner)
+(function prefillFromQuery() {
+    const params = new URLSearchParams(window.location.search);
+    const companyName = params.get('company_name');
+    const additionalNotes = params.get('additional_notes');
+    if (companyName) {
+        document.getElementById('company-name').value = companyName;
+    }
+    if (additionalNotes) {
+        document.getElementById('additional-notes').value = additionalNotes;
+    }
+})();
+
 document.getElementById('ipo-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
