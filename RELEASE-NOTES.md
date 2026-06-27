@@ -1,5 +1,15 @@
 # AlphaLab release notes
 
+## 2026-06-27 - v0.7.0
+
+### Added/Refactoring/Deprecation
+
+- Feat: New feature IPO scanner.
+
+### Fixed/Improvements
+
+- Patch: Make Redis check periodically.
+
 ## 2026-06-27 - v0.6.0
 
 ### Added/Refactoring/Deprecation
