@@ -1,5 +1,18 @@
 # AlphaLab release notes
 
+## 2026-06-27 - v0.6.0
+
+### Added/Refactoring/Deprecation
+
+- Feat: New feature Sector Rotation Radar.
+- Feat: New feature Watchlist Monitor.
+- Feat: New feature Earnings Catalyst Tracker.
+
+### Fixed/Improvements
+
+- Impr(prompt): Make sure the low-cost AI model focuses on generating prompts.
+- Patch(UI): Make Required/Optional fields more clear.
+
 ## 2026-06-26 - v0.5.1
 
 ### Fixed/Improvements

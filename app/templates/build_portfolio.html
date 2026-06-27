@@ -12,7 +12,10 @@
                 <form id="portfolio-form">
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label for="risk-tolerance" class="form-label fw-semibold">Risk Tolerance</label>
+                            <label for="risk-tolerance" class="form-label fw-semibold">
+                                Risk Tolerance
+                                <span class="text-danger ms-2">*</span>
+                            </label>
                             <select class="form-select" id="risk-tolerance" name="risk_tolerance" required>
                                 <option value="">Select...</option>
                                 <option value="Conservative">Conservative</option>
@@ -22,12 +25,18 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label for="target-market" class="form-label fw-semibold">Target Market</label>
+                            <label for="target-market" class="form-label fw-semibold">
+                                Target Market
+                                <span class="text-danger ms-2">*</span>
+                            </label>
                             <input type="text" class="form-control" id="target-market" name="target_market"
                                    placeholder="e.g. US, Australia, Vietnam, Global" required>
                         </div>
                         <div class="col-md-4">
-                            <label for="investment-horizon" class="form-label fw-semibold">Investment Horizon</label>
+                            <label for="investment-horizon" class="form-label fw-semibold">
+                                Investment Horizon
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <select class="form-select" id="investment-horizon" name="investment_horizon">
                                 <option value="">Select...</option>
                                 <option value="Short-term (< 1 year)">Short-term (&lt; 1 year)</option>
@@ -37,17 +46,26 @@
                             </select>
                         </div>
                         <div class="col-md-8">
-                            <label for="investment-theme" class="form-label fw-semibold">Investment Theme / Flavor</label>
+                            <label for="investment-theme" class="form-label fw-semibold">
+                                Investment Theme / Flavor
+                                <span class="text-danger ms-2">*</span>
+                            </label>
                             <input type="text" class="form-control" id="investment-theme" name="investment_theme"
                                    placeholder="e.g. AI & Technology, Green Energy, Dividends, Growth, Value" required>
                         </div>
                         <div class="col-md-4">
-                            <label for="budget" class="form-label fw-semibold">Budget (optional)</label>
+                            <label for="budget" class="form-label fw-semibold">
+                                Budget
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <input type="text" class="form-control" id="budget" name="budget"
                                    placeholder="e.g. $10,000">
                         </div>
                         <div class="col-12">
-                            <label for="existing-holdings" class="form-label fw-semibold">Existing Holdings (optional)</label>
+                            <label for="existing-holdings" class="form-label fw-semibold">
+                                Existing Holdings
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
                             <textarea class="form-control" id="existing-holdings" name="existing_holdings" rows="3"
                                       placeholder="e.g. AAPL 50 shares, MSFT 30 shares, VGS.AX 200 units"></textarea>
                             <div class="form-text">List your current tickers/holdings so the AI can factor them into the recommendation.</div>

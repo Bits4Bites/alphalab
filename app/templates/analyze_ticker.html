@@ -10,18 +10,27 @@
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
                 <form id="analyze-form">
-                    <label for="ticker" class="form-label fw-semibold">Stock Ticker</label>
+                    <label for="ticker" class="form-label fw-semibold">
+                        Stock Ticker
+                        <span class="text-danger ms-2">*</span>
+                    </label>
                     <input type="text" class="form-control" id="ticker" name="ticker"
                            placeholder="e.g. ASX:CBA, NYSE:AAPL, HOSE:VNM" required>
                     <div class="form-text">Enter ticker in EXCHANGE:SYMBOL format.</div>
                     <div class="mt-3">
-                        <label for="intent" class="form-label fw-semibold">Intent (optional)</label>
+                        <label for="intent" class="form-label fw-semibold">
+                            Intent
+                            <span class="text-muted ms-2">(Optional)</span>
+                        </label>
                         <input type="text" class="form-control" id="intent" name="intent"
                                placeholder="e.g. Should I buy, sell, or hold?">
                         <div class="form-text">Add your question or goal for the analysis.</div>
                     </div>
                     <div class="mt-3">
-                        <label for="scenario" class="form-label fw-semibold">Scenario (optional)</label>
+                        <label for="scenario" class="form-label fw-semibold">
+                            Scenario
+                            <span class="text-muted ms-2">(Optional)</span>
+                        </label>
                         <input type="text" class="form-control" id="scenario" name="scenario"
                                placeholder="e.g. 2008 crash, rate hike shock, AI spending collapse">
                         <div class="form-text">If provided, the analysis will include a stress test for this scenario.</div>
