@@ -106,7 +106,9 @@ async def generate_sample_prompts() -> None:
     try:
         from app.utils.ai import execute_prompt
 
-        result = await execute_prompt(client, task_config.model, _build_system_prompt())
+        result = await execute_prompt(
+            client, task_config.model, _build_system_prompt(), temperature=task_config.temperature
+        )
     except Exception as exc:
         logger.error("Sample prompt generation failed: %s", exc)
         return

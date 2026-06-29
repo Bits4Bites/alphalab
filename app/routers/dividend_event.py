@@ -146,7 +146,9 @@ async def dividend_event_stream(
         event_context = "\n".join(context_parts)
 
         prompt_request = _PROMPT_TEMPLATE.format(event_context=event_context)
-        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(
+            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
+        )
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate analysis prompt: {prompt_result.error}")}
@@ -160,7 +162,9 @@ async def dividend_event_stream(
             return
 
         analyze_task = config.ai_task_settings.tasks.get("DIVIDEND_EVENT_ANALYZE")
-        analyze_result = await ai.execute_prompt(analyze_client, analyze_task.model, prompt_result.completion)
+        analyze_result = await ai.execute_prompt(
+            analyze_client, analyze_task.model, prompt_result.completion, temperature=analyze_task.temperature
+        )
 
         if not analyze_result.success:
             yield {"data": error(f"Failed to analyze dividend event: {analyze_result.error}")}

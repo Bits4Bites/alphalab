@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.utils.ai import AIResponse, _is_debug_mode, execute_prompt
+from app.utils.ai import DEFAULT_TEMPERATURE, AIResponse, _is_debug_mode, execute_prompt
 
 # --- Fixtures and helpers ---
 
@@ -261,3 +261,31 @@ class TestExecutePromptDebugLogging:
         assert result.success is True
         assert "my secret prompt" in caplog.text
         assert "debug output" in caplog.text
+
+
+class TestExecutePromptTemperature:
+    @pytest.mark.asyncio
+    async def test_default_temperature_used_when_none(self) -> None:
+        """When temperature is not provided, DEFAULT_TEMPERATURE is passed to backend."""
+        from openai import AsyncOpenAI
+
+        client = MagicMock(spec=AsyncOpenAI)
+        client.base_url = "https://api.openai.com/v1"
+        client.responses.create = AsyncMock(return_value=FakeResponsesResponse(output_text="ok", usage=None))
+
+        await execute_prompt(client, "gpt-4o", "test")
+
+        assert client.responses.create.call_args.kwargs["temperature"] == DEFAULT_TEMPERATURE
+
+    @pytest.mark.asyncio
+    async def test_explicit_temperature_passed_through(self) -> None:
+        """An explicit temperature is forwarded to the backend call."""
+        from openai import AsyncOpenAI
+
+        client = MagicMock(spec=AsyncOpenAI)
+        client.base_url = "https://api.openai.com/v1"
+        client.responses.create = AsyncMock(return_value=FakeResponsesResponse(output_text="ok", usage=None))
+
+        await execute_prompt(client, "gpt-4o", "test", temperature=0.6)
+
+        assert client.responses.create.call_args.kwargs["temperature"] == 0.6

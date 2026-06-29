@@ -94,7 +94,9 @@ async def ipo_analyzer_stream(
             context_parts.append(f"Additional Notes: {additional_notes.strip()}")
 
         prompt_request = _PROMPT_TEMPLATE.format(ipo_context="\n".join(context_parts))
-        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(
+            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
+        )
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate IPO analysis prompt: {prompt_result.error}")}
@@ -107,7 +109,9 @@ async def ipo_analyzer_stream(
             return
 
         analyze_task = config.ai_task_settings.tasks.get("IPO_ANALYZER_ANALYZE")
-        analyze_result = await ai.execute_prompt(analyze_client, analyze_task.model, prompt_result.completion)
+        analyze_result = await ai.execute_prompt(
+            analyze_client, analyze_task.model, prompt_result.completion, temperature=analyze_task.temperature
+        )
 
         if not analyze_result.success:
             yield {"data": error(f"Failed to analyze IPO: {analyze_result.error}")}

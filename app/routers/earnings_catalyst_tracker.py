@@ -135,7 +135,9 @@ async def earnings_catalyst_tracker_stream(
             target_market=target_market,
             event_focus=event_focus,
         )
-        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(
+            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
+        )
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate earnings catalyst prompt: {prompt_result.error}")}
@@ -148,7 +150,9 @@ async def earnings_catalyst_tracker_stream(
             return
 
         analyze_task = config.ai_task_settings.tasks.get("EARNINGS_CATALYST_TRACKER_ANALYZE")
-        analysis_result = await ai.execute_prompt(analyze_client, analyze_task.model, prompt_result.completion)
+        analysis_result = await ai.execute_prompt(
+            analyze_client, analyze_task.model, prompt_result.completion, temperature=analyze_task.temperature
+        )
 
         if not analysis_result.success:
             yield {"data": error(f"Failed to analyze earnings catalysts: {analysis_result.error}")}
