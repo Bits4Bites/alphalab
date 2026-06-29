@@ -1,5 +1,12 @@
 # AlphaLab release notes
 
+## 2026-06-29 - v0.7.1
+
+### Fixed/Improvements
+
+- Patch: Prompt update for Build Portfolio and Review Portfolio features.
+- Patch: temperature value is now configurable per task.
+
 ## 2026-06-27 - v0.7.0
 
 ### Added/Refactoring/Deprecation
