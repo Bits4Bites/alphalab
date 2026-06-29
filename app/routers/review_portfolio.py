@@ -72,6 +72,9 @@ _PROMPT_TEMPLATE = (
     "  - Key risks specific to this position\n"
     "\n"
     "### 4. Revised portfolio proposal\n"
+    "- A summary table (in Markdown) of the revised portfolio listing every position, with at minimum\n"
+    "  these columns: ticker, approximate allocation %, approximate number of shares, approximate cost,\n"
+    "  and the ticker's role in the portfolio (e.g. Yield Booster, Defensive, Growth, Core, Hedge)\n"
     "- Full revised holdings list: existing positions (with adjusted allocations) + new additions\n"
     "- Side-by-side comparison: current allocation % vs. proposed allocation %\n"
     "- How to get from current to proposed (what to sell, what to buy, in what order)\n"
@@ -155,7 +158,9 @@ async def review_portfolio_stream(
             investor_context=investor_context,
             scenario_context=scenario_context,
         )
-        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(
+            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
+        )
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate review prompt: {prompt_result.error}")}
@@ -169,7 +174,9 @@ async def review_portfolio_stream(
             return
 
         review_task = config.ai_task_settings.tasks.get("REVIEW_PORTFOLIO_ANALYZE")
-        review_result = await ai.execute_prompt(review_client, review_task.model, prompt_result.completion)
+        review_result = await ai.execute_prompt(
+            review_client, review_task.model, prompt_result.completion, temperature=review_task.temperature
+        )
 
         if not review_result.success:
             yield {"data": error(f"Failed to review portfolio: {review_result.error}")}
