@@ -274,7 +274,9 @@ async def analyze_ticker_stream(
             intent=intent,
             scenario=scenario,
         )
-        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(
+            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
+        )
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate analysis prompt: {prompt_result.error}")}
@@ -295,7 +297,9 @@ async def analyze_ticker_stream(
             return
 
         analyze_task = config.ai_task_settings.tasks.get(analyze_task_id)
-        analysis_result = await ai.execute_prompt(analyze_client, analyze_task.model, prompt_result.completion)
+        analysis_result = await ai.execute_prompt(
+            analyze_client, analyze_task.model, prompt_result.completion, temperature=analyze_task.temperature
+        )
 
         if not analysis_result.success:
             yield {"data": error(f"Failed to analyze ticker: {analysis_result.error}")}

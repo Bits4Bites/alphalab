@@ -137,7 +137,9 @@ async def sector_rotation_radar_stream(
             timeframe=timeframe,
             bias=bias,
         )
-        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(
+            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
+        )
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate sector rotation prompt: {prompt_result.error}")}
@@ -150,7 +152,9 @@ async def sector_rotation_radar_stream(
             return
 
         analyze_task = config.ai_task_settings.tasks.get("SECTOR_ROTATION_RADAR_ANALYZE")
-        analysis_result = await ai.execute_prompt(analyze_client, analyze_task.model, prompt_result.completion)
+        analysis_result = await ai.execute_prompt(
+            analyze_client, analyze_task.model, prompt_result.completion, temperature=analyze_task.temperature
+        )
 
         if not analysis_result.success:
             yield {"data": error(f"Failed to analyze sector rotation: {analysis_result.error}")}
