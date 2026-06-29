@@ -147,7 +147,9 @@ async def _generate_actionable_prompts(news: list[dict]) -> list[str] | None:
     try:
         from app.utils.ai import execute_prompt
 
-        result = await execute_prompt(client, task_config.model, _build_actionable_prompts_prompt(news))
+        result = await execute_prompt(
+            client, task_config.model, _build_actionable_prompts_prompt(news), temperature=task_config.temperature
+        )
     except Exception as exc:
         logger.error("Actionable prompt generation failed: %s", exc)
         return None
@@ -203,7 +205,12 @@ async def _execute_actionable_prompts(prompts: list[str]) -> None:
         cache_key = f"{prefix}{REDIS_KEY_PROMPT_RESULT_PREFIX}{prompt_id}"
 
         try:
-            result = await execute_prompt(client, task_config.model, EXECUTE_PROMPT_TEMPLATE.format(prompt=prompt))
+            result = await execute_prompt(
+                client,
+                task_config.model,
+                EXECUTE_PROMPT_TEMPLATE.format(prompt=prompt),
+                temperature=task_config.temperature,
+            )
             if result.success and result.completion:
                 payload = json.dumps({"prompt": prompt, "result": result.completion.strip()})
                 await redis.set(cache_key, payload, ex=CACHE_TTL_SECONDS)
@@ -260,7 +267,9 @@ async def fetch_market_news() -> None:
     try:
         from app.utils.ai import execute_prompt
 
-        result = await execute_prompt(client, task_config.model, _build_system_prompt())
+        result = await execute_prompt(
+            client, task_config.model, _build_system_prompt(), temperature=task_config.temperature
+        )
     except Exception as exc:
         logger.error("Market news fetch failed: %s", exc)
         return

@@ -182,6 +182,7 @@ class AITaskConfig(BaseSettings):
     vendor: str = ""
     tier: str = ""
     model: str = ""
+    temperature: float | None = None
 
 
 class AITaskSettings(BaseSettings):

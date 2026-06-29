@@ -9,6 +9,9 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
+# Default sampling temperature used when a task does not configure one explicitly.
+DEFAULT_TEMPERATURE = 0.1
+
 
 def _is_debug_mode() -> bool:
     return os.getenv("LLM_DEBUG_MODE", "").lower() in ("1", "true", "yes")
@@ -24,20 +27,22 @@ class AIResponse:
     token_usage_total: int = 0
 
 
-async def execute_prompt(client, model: str, prompt: str) -> AIResponse:
+async def execute_prompt(client, model: str, prompt: str, temperature: float | None = None) -> AIResponse:
     """Execute a prompt against an AI client and return the result.
 
     Supports:
     - google.genai.Client (Gemini)
     - openai.AsyncOpenAI / AsyncAzureOpenAI (OpenAI-compatible)
 
-    Web search is enabled where supported.
+    Web search is enabled where supported. ``temperature`` controls sampling; when
+    None, ``DEFAULT_TEMPERATURE`` is used.
     """
     from google import genai
     from openai import AsyncOpenAI
 
+    resolved_temperature = DEFAULT_TEMPERATURE if temperature is None else temperature
     vendor = type(client).__name__
-    logger.info("Executing prompt | vendor=%s | model=%s", vendor, model)
+    logger.info("Executing prompt | vendor=%s | model=%s | temperature=%.2f", vendor, model, resolved_temperature)
     if _is_debug_mode():
         logger.debug("Prompt text:\n%s", prompt)
 
@@ -45,9 +50,9 @@ async def execute_prompt(client, model: str, prompt: str) -> AIResponse:
 
     try:
         if isinstance(client, genai.Client):
-            result = await _execute_gemini(client, model, prompt)
+            result = await _execute_gemini(client, model, prompt, resolved_temperature)
         elif isinstance(client, AsyncOpenAI):
-            result = await _execute_openai(client, model, prompt)
+            result = await _execute_openai(client, model, prompt, resolved_temperature)
         else:
             result = AIResponse(success=False, error=f"Unsupported client type: {vendor}")
     except Exception as e:
@@ -80,13 +85,13 @@ async def execute_prompt(client, model: str, prompt: str) -> AIResponse:
     return result
 
 
-async def _execute_gemini(client, model: str, prompt: str) -> AIResponse:
+async def _execute_gemini(client, model: str, prompt: str, temperature: float) -> AIResponse:
     """Execute prompt using Google Gemini client with grounding (web search)."""
     from google.genai.types import GenerateContentConfig, GoogleSearch, Tool
 
     config = GenerateContentConfig(
         tools=[Tool(google_search=GoogleSearch())],
-        temperature=0.1,
+        temperature=temperature,
     )
 
     response = await client.aio.models.generate_content(
@@ -112,7 +117,7 @@ async def _execute_gemini(client, model: str, prompt: str) -> AIResponse:
     )
 
 
-async def _execute_openai(client, model: str, prompt: str) -> AIResponse:
+async def _execute_openai(client, model: str, prompt: str, temperature: float) -> AIResponse:
     """Execute prompt using OpenAI-compatible client with web search."""
     base_url = str(client.base_url) if client.base_url else ""
     is_openrouter = "openrouter" in base_url.lower()
@@ -122,16 +127,14 @@ async def _execute_openai(client, model: str, prompt: str) -> AIResponse:
             model=model,
             messages=[{"role": "user", "content": prompt}],
             extra_body={"plugins": [{"id": "web"}]},
-            temperature=0.1,
-            top_p=0.1,
+            temperature=temperature,
         )
     else:
         response = await client.responses.create(
             model=model,
             input=prompt,
             tools=[{"type": "web_search_preview"}],
-            temperature=0.1,
-            top_p=0.1,
+            temperature=temperature,
         )
 
     completion = ""

@@ -419,7 +419,9 @@ async def ipo_scanner_stream(
             return
         validate_task = config.ai_task_settings.tasks.get("IPO_SCANNER_VALIDATE_MARKET")
         validate_request = _build_validate_market_request(target_market=cleaned_target_market)
-        validate_result = await ai.execute_prompt(validate_client, validate_task.model, validate_request)
+        validate_result = await ai.execute_prompt(
+            validate_client, validate_task.model, validate_request, temperature=validate_task.temperature
+        )
         if not validate_result.success:
             yield {"data": error(f"Failed to validate target market: {validate_result.error}")}
             return
@@ -443,7 +445,10 @@ async def ipo_scanner_stream(
         build_discovery_task = config.ai_task_settings.tasks.get("IPO_SCANNER_BUILD_DISCOVERY_PROMPT")
         discovery_prompt_request = _build_discovery_prompt_request(target_market=cleaned_target_market)
         discovery_prompt_result = await ai.execute_prompt(
-            build_discovery_client, build_discovery_task.model, discovery_prompt_request
+            build_discovery_client,
+            build_discovery_task.model,
+            discovery_prompt_request,
+            temperature=build_discovery_task.temperature,
         )
         if not discovery_prompt_result.success:
             yield {"data": error(f"Failed to generate discovery prompt: {discovery_prompt_result.error}")}
@@ -457,7 +462,10 @@ async def ipo_scanner_stream(
             return
         discover_task = config.ai_task_settings.tasks.get("IPO_SCANNER_DISCOVER")
         discover_result = await ai.execute_prompt(
-            discover_client, discover_task.model, discovery_prompt_result.completion
+            discover_client,
+            discover_task.model,
+            discovery_prompt_result.completion,
+            temperature=discover_task.temperature,
         )
         if not discover_result.success:
             yield {"data": error(f"Failed to discover IPOs: {discover_result.error}")}
@@ -480,7 +488,10 @@ async def ipo_scanner_stream(
             target_market=cleaned_target_market, candidate_count=len(candidates)
         )
         verify_prompt_result = await ai.execute_prompt(
-            build_verify_client, build_verify_task.model, verify_prompt_request
+            build_verify_client,
+            build_verify_task.model,
+            verify_prompt_request,
+            temperature=build_verify_task.temperature,
         )
         if not verify_prompt_result.success:
             yield {"data": error(f"Failed to generate verification prompt: {verify_prompt_result.error}")}
@@ -496,7 +507,9 @@ async def ipo_scanner_stream(
         executable_verify_prompt = _build_executable_verify_prompt(
             verify_instructions=verify_prompt_result.completion, candidates=candidates
         )
-        verify_result = await ai.execute_prompt(verify_client, verify_task.model, executable_verify_prompt)
+        verify_result = await ai.execute_prompt(
+            verify_client, verify_task.model, executable_verify_prompt, temperature=verify_task.temperature
+        )
         if not verify_result.success:
             yield {"data": error(f"Failed to verify IPOs: {verify_result.error}")}
             return

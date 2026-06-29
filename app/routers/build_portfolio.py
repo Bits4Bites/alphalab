@@ -38,9 +38,12 @@ _PROMPT_TEMPLATE = (
     "3. Justify every pick with data (valuation, growth profile, role in the portfolio)\n"
     "4. Define the allocation clearly (percentage per position)\n"
     "5. Flag key risks for the overall portfolio and for individual positions\n"
-    "6. Keep the portfolio manageable (typically 8–15 positions unless the investor profile suggests otherwise)\n"
+    "6. Keep the portfolio manageable (no more than 15 positions unless the investor profile suggests otherwise)\n"
     "\n"
     "## The prompt must instruct the premium model to cover:\n"
+    "- A portfolio summary table (in Markdown) listing every position, with at minimum these columns:\n"
+    "  ticker, approximate allocation %, approximate number of shares, approximate cost, and the\n"
+    "  ticker's role in the portfolio (e.g. Yield Booster, Defensive, Growth, Core, Hedge)\n"
     "- Proposed asset allocation strategy (equities / ETFs / REITs / bonds / cash %)\n"
     "- Individual stock/ETF picks with:\n"
     "  - Ticker and full name\n"
@@ -128,7 +131,9 @@ async def build_portfolio_stream(
                 else ""
             ),
         )
-        prompt_result = await ai.execute_prompt(build_prompt_client, build_prompt_task.model, prompt_request)
+        prompt_result = await ai.execute_prompt(
+            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
+        )
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate portfolio prompt: {prompt_result.error}")}
@@ -148,7 +153,9 @@ async def build_portfolio_stream(
             return
 
         portfolio_task = config.ai_task_settings.tasks.get("BUILD_PORTFOLIO_ANALYZE")
-        portfolio_result = await ai.execute_prompt(portfolio_client, portfolio_task.model, prompt_result.completion)
+        portfolio_result = await ai.execute_prompt(
+            portfolio_client, portfolio_task.model, prompt_result.completion, temperature=portfolio_task.temperature
+        )
 
         if not portfolio_result.success:
             yield {"data": error(f"Failed to build portfolio: {portfolio_result.error}")}
