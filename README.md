@@ -15,7 +15,8 @@ AI-powered market research lab.
 
 **Stock Analysis**
 - **Analyze Ticker** Perform AI-driven analysis for individual stocks or ETFs using market data, technical signals, macro context, and sentiment insights.
-- **IPO / Listing Event** Analyze an upcoming or recent IPO / listing event, including valuation, risks, and outlook.
+- **IPO / Listing Event** Analyze an upcoming or recent IPO / listing event, including valuation, risks, and
+  outlook, with an optional uploaded PDF prospectus for deeper source-based analysis.
 - **Dividend Event** Evaluate a dividend event with yield, sustainability, ex-dividend timing, and tax considerations.
 
 **Portfolio**

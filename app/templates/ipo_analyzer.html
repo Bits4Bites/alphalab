@@ -28,6 +28,15 @@
                             <textarea class="form-control" id="additional-notes" name="additional_notes" rows="3"
                                       placeholder="e.g. Recent news, expected market sentiment, investor interest"></textarea>
                         </div>
+                        <div class="col-12">
+                            <label for="prospectus-document" class="form-label fw-semibold">
+                                Prospectus Document
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
+                            <input type="file" class="form-control" id="prospectus-document" name="prospectus"
+                                   accept=".pdf,application/pdf" aria-describedby="prospectus-help">
+                            <div class="form-text" id="prospectus-help">PDF only, up to 20 MB.</div>
+                        </div>
                     </div>
                     <div class="mt-3">
                         <button type="submit" class="btn btn-primary" id="ipo-btn">
@@ -60,6 +69,13 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div id="warning-section" class="d-none">
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span id="warning-message"></span>
             </div>
         </div>
 
@@ -114,22 +130,55 @@
     }
 })();
 
-document.getElementById('ipo-form').addEventListener('submit', function(e) {
+document.getElementById('ipo-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
+    const maxProspectusSize = 20 * 1024 * 1024;
     const companyName = document.getElementById('company-name').value.trim();
-    if (!companyName) return;
-
+    const prospectus = document.getElementById('prospectus-document').files[0];
     const btn = document.getElementById('ipo-btn');
     const progressSection = document.getElementById('progress-section');
     const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
+    const warningSection = document.getElementById('warning-section');
+    const warningMessage = document.getElementById('warning-message');
+    const errorMessage = document.getElementById('error-message');
+    const progressMessage = document.getElementById('progress-message');
+    const progressBar = document.getElementById('progress-bar');
+    const progressStep = document.getElementById('progress-step');
+
+    warningSection.classList.add('d-none');
+    warningMessage.textContent = '';
+    errorSection.classList.add('d-none');
+
+    if (!companyName) return;
+
+    let validationMessage = '';
+    if (prospectus && !prospectus.name.toLowerCase().endsWith('.pdf')) {
+        validationMessage = 'Please select a PDF prospectus document.';
+    } else if (prospectus && prospectus.type
+            && !['application/pdf', 'application/x-pdf'].includes(prospectus.type.toLowerCase())) {
+        validationMessage = 'The selected prospectus must be a PDF document.';
+    } else if (prospectus && prospectus.size > maxProspectusSize) {
+        validationMessage = 'The prospectus document must be 20 MB or smaller.';
+    }
+
+    if (validationMessage) {
+        progressSection.classList.add('d-none');
+        resultSection.classList.add('d-none');
+        errorMessage.textContent = validationMessage;
+        errorSection.classList.remove('d-none');
+        return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing...';
     progressSection.classList.remove('d-none');
-    errorSection.classList.add('d-none');
     resultSection.classList.add('d-none');
+    const totalSteps = prospectus ? 5 : 4;
+    progressMessage.textContent = prospectus ? 'Uploading prospectus document...' : 'Starting...';
+    progressBar.style.width = '0%';
+    progressStep.textContent = `Step 0 of ${totalSteps}`;
     const waitTimer = new WaitTimer('wait-timer');
     waitTimer.start();
 
@@ -138,43 +187,131 @@ document.getElementById('ipo-form').addEventListener('submit', function(e) {
         additional_notes: document.getElementById('additional-notes').value.trim(),
     });
 
+    function restoreButton() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
+    }
+
+    function showTerminalError(message) {
+        waitTimer.stop();
+        progressSection.classList.add('d-none');
+        errorMessage.textContent = message;
+        errorSection.classList.remove('d-none');
+        restoreButton();
+    }
+
+    function showWarning(message) {
+        warningMessage.textContent = message || 'The analysis completed with a warning.';
+        warningSection.classList.remove('d-none');
+    }
+
+    function getUploadErrorDetail(data) {
+        const detail = data && data.detail;
+        if (typeof detail === 'string') return detail;
+        if (detail && typeof detail.message === 'string') return detail.message;
+        if (Array.isArray(detail)) {
+            return detail
+                .map(item => typeof item === 'string' ? item : item && item.msg)
+                .filter(message => typeof message === 'string' && message)
+                .join(' ');
+        }
+        return '';
+    }
+
+    if (prospectus) {
+        const formData = new FormData();
+        formData.append('prospectus', prospectus);
+
+        let response;
+        try {
+            response = await fetch('/analyze-ipo/prospectus', {
+                method: 'POST',
+                body: formData,
+            });
+        } catch (error) {
+            showTerminalError('Unable to upload the prospectus document. Check your connection and try again.');
+            return;
+        }
+
+        let uploadData;
+        try {
+            uploadData = await response.json();
+        } catch (error) {
+            const message = response.ok
+                ? 'The prospectus upload returned an invalid response. Please try again.'
+                : `Prospectus upload failed (HTTP ${response.status}). Please try again.`;
+            showTerminalError(message);
+            return;
+        }
+
+        if (!response.ok) {
+            const detail = getUploadErrorDetail(uploadData);
+            showTerminalError(detail || `Prospectus upload failed (HTTP ${response.status}). Please try again.`);
+            return;
+        }
+
+        if (!uploadData || typeof uploadData.document_id !== 'string'
+                || !/^[0-9a-f]{32}$/i.test(uploadData.document_id)) {
+            showTerminalError('The prospectus upload returned an invalid document identifier. Please try again.');
+            return;
+        }
+
+        params.set('prospectus_id', uploadData.document_id);
+        progressMessage.textContent = 'Prospectus uploaded. Starting analysis...';
+    }
+
     const eventSource = new EventSource(`/analyze-ipo/stream?${params.toString()}`);
 
+    function handleWarningEvent(event) {
+        try {
+            const data = JSON.parse(event.data);
+            showWarning(typeof data === 'string' ? data : data.message);
+        } catch (error) {
+            showWarning(event.data);
+        }
+    }
+
+    eventSource.addEventListener('warning', handleWarningEvent);
+
     eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
+        let data;
+        try {
+            data = JSON.parse(event.data);
+        } catch (error) {
+            eventSource.close();
+            showTerminalError('Received an invalid response from the analysis service. Please try again.');
+            return;
+        }
 
         if (data.type === 'progress') {
-            const pct = Math.round((data.step / data.total) * 100);
-            document.getElementById('progress-message').textContent = data.message;
-            document.getElementById('progress-bar').style.width = pct + '%';
-            document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
+            const sourceStep = Number(data.step);
+            const sourceTotal = Number(data.total);
+            const displayTotal = Number.isFinite(sourceTotal) && sourceTotal > 0 ? sourceTotal : totalSteps;
+            const displayStep = Number.isFinite(sourceStep)
+                ? Math.min(displayTotal, Math.max(0, sourceStep))
+                : 0;
+            const pct = Math.round((displayStep / displayTotal) * 100);
+            progressMessage.textContent = data.message || 'Analysis in progress...';
+            progressBar.style.width = pct + '%';
+            progressStep.textContent = `Step ${displayStep} of ${displayTotal}`;
+        } else if (data.type === 'warning') {
+            showWarning(data.message);
         } else if (data.type === 'error') {
-            waitTimer.stop();
-            progressSection.classList.add('d-none');
-            errorSection.classList.remove('d-none');
-            document.getElementById('error-message').textContent = data.message;
             eventSource.close();
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
+            showTerminalError(data.message || 'The analysis could not be completed. Please try again.');
         } else if (data.type === 'result') {
             waitTimer.stop();
             progressSection.classList.add('d-none');
             resultSection.classList.remove('d-none');
             renderMarkdown(data.content, document.getElementById('ipo-result'));
             eventSource.close();
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
+            restoreButton();
         }
     };
 
     eventSource.onerror = function() {
-        waitTimer.stop();
-        progressSection.classList.add('d-none');
-        errorSection.classList.remove('d-none');
-        document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
         eventSource.close();
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
+        showTerminalError('Connection lost. Please try again.');
     };
 });
 

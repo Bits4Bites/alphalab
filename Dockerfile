@@ -15,6 +15,7 @@ ADD *.py $HOMEDIR
 ADD *.md $HOMEDIR
 ADD *.env $HOMEDIR
 ADD app $HOMEDIR/app
+RUN mkdir -p $HOMEDIR/uploads
 
 RUN cd $HOMEDIR \
     && python -m venv .venv \
