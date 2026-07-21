@@ -16,7 +16,8 @@ AI-powered market research lab.
 **Stock Analysis**
 - **Analyze Ticker** Perform AI-driven analysis for individual stocks or ETFs using market data, technical signals, macro context, and sentiment insights.
 - **IPO / Listing Event** Analyze an upcoming or recent IPO / listing event, including valuation, risks, and
-  outlook, with an optional uploaded PDF prospectus for deeper source-based analysis.
+  outlook, with an optional PDF prospectus (up to 20 MB). The prospectus is converted to Markdown for deeper
+  source-based analysis and deleted after the analysis finishes.
 - **Dividend Event** Evaluate a dividend event with yield, sustainability, ex-dividend timing, and tax considerations.
 
 **Portfolio**
@@ -120,6 +121,10 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 | OpenRouter    | `OPENROUTER`     | OpenAI-compatible, supports web search plugin |
 
 **Pricing tiers (`<TIER>`):** `FREE`, `LOWCOST`, `PREMIUM` (or any custom tier name)
+
+> **Uploaded-document model recommendation:** Configure tasks that analyze uploaded files, currently
+> `IPO_ANALYZER_ANALYZE`, with a model that supports at least 250,000 input tokens. Converted PDF content can be
+> very long, and models with smaller context windows may reject or truncate the analysis request.
 
 **Optional configurations:**
 
