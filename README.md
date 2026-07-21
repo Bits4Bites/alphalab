@@ -123,7 +123,7 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 **Pricing tiers (`<TIER>`):** `FREE`, `LOWCOST`, `PREMIUM` (or any custom tier name)
 
 > **Uploaded-document model recommendation:** Configure tasks that analyze uploaded files, currently
-> `IPO_ANALYZER_ANALYZE`, with a model that supports at least 250,000 input tokens. Converted PDF content can be
+> `IPO_ANALYZER_ANALYZE`, with a model that supports at least 250k input tokens. Converted PDF content can be
 > very long, and models with smaller context windows may reject or truncate the analysis request.
 
 **Optional configurations:**
