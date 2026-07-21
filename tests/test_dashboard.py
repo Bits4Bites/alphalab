@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.services.auth import create_access_token
+from app.utils import local_storage
 
 
 def test_dashboard_redirects_when_unauthenticated(client: TestClient) -> None:
@@ -26,3 +27,6 @@ def test_dashboard_renders_when_authenticated(client: TestClient) -> None:
     assert "Analyze Ticker" in response.text
     assert "Build Portfolio" in response.text
     assert "Review Portfolio" in response.text
+    storage_key = local_storage.derive_user_key(user_data)
+    assert f'name="alphalab-storage-user-key" content="{storage_key}"' in response.text
+    assert response.text.index("js/local-storage.js") < response.text.index("js/main.js")

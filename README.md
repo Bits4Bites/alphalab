@@ -141,7 +141,7 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 | `AL_TASK__<TASK>__TIER`            | _(empty)_                  | AI tier for a specific task                                                                                                                                               |
 | `AL_TASK__<TASK>__MODEL`           | _(empty)_                  | Model for a specific task                                                                                                                                                 |
 | `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Redis connection URL (optional; enables persistent caching for dashboard market news, AI ideas, and IPO scanner results - falls back to in-memory cache when unavailable) |
-| `AL_DATASTORE_REDIS_KEY_PREFIX`    | `alphalab:`                | Key namespace prefix for all Redis keys                                                                                                                                   |
+| `AL_DATASTORE_REDIS_KEY_PREFIX`    | `al:`                      | Key namespace prefix for all Redis keys                                                                                                                                   |
 
 **Examples:**
 

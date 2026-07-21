@@ -3,3 +3,4 @@
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
 #!VERSION=0.8.0
 - feat: Add optional prospectus PDF uploads to IPO event analysis.
+- feat: Add user-scoped local storage infrastructure.
