@@ -9,6 +9,10 @@
     <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
+                <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
+                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                    <span id="storage-warning-message"></span>
+                </div>
                 <form id="portfolio-form">
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -128,6 +132,10 @@
                     </button>
                 </div>
                 <div class="card-body">
+                    <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none" role="status">
+                        <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                        <span>This is a cached analysis completed on <span id="cached-result-time"></span>. Running it again will refresh it.</span>
+                    </div>
                     <div class="alert alert-warning small mb-3" role="alert">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
@@ -141,6 +149,144 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
+const BUILD_PORTFOLIO_STORAGE_FEATURE = 'build-portfolio';
+const BUILD_PORTFOLIO_STORAGE_SCHEMA_VERSION = 1;
+const BUILD_PORTFOLIO_INPUT_FIELDS = [
+    'risk_tolerance',
+    'investment_theme',
+    'target_market',
+    'investment_horizon',
+    'budget',
+    'existing_holdings'
+];
+const BUILD_PORTFOLIO_RISK_TOLERANCES = ['Conservative', 'Moderate', 'Aggressive', 'Very Aggressive'];
+const BUILD_PORTFOLIO_HORIZONS = [
+    '',
+    'Short-term (< 1 year)',
+    'Medium-term (1-3 years)',
+    'Long-term (3-5 years)',
+    'Very long-term (5+ years)'
+];
+const BUILD_PORTFOLIO_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+
+function hasExactBuildPortfolioStringFields(value, fields) {
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && Object.keys(value).length === fields.length
+        && fields.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field)
+                && typeof value[field] === 'string';
+        });
+}
+
+function hasValidBuildPortfolioInputs(value) {
+    return BUILD_PORTFOLIO_RISK_TOLERANCES.includes(value.risk_tolerance)
+        && value.investment_theme.trim().length > 0
+        && value.target_market.trim().length > 0
+        && BUILD_PORTFOLIO_HORIZONS.includes(value.investment_horizon);
+}
+
+function isValidStoredBuildPortfolio(value) {
+    return hasExactBuildPortfolioStringFields(value, BUILD_PORTFOLIO_INPUT_FIELDS)
+        && hasValidBuildPortfolioInputs(value);
+}
+
+function isValidCachedBuildPortfolio(value) {
+    const fields = [...BUILD_PORTFOLIO_INPUT_FIELDS, 'content', 'generated_at'];
+
+    return hasExactBuildPortfolioStringFields(value, fields)
+        && hasValidBuildPortfolioInputs(value)
+        && value.content.trim().length > 0
+        && BUILD_PORTFOLIO_ISO_TIMESTAMP_PATTERN.test(value.generated_at)
+        && !Number.isNaN(new Date(value.generated_at).getTime());
+}
+
+function showStorageWarning(message) {
+    const warning = document.getElementById('storage-warning');
+    const warningMessage = document.getElementById('storage-warning-message');
+    if (!warning || !warningMessage) {
+        return;
+    }
+
+    warningMessage.textContent = message;
+    warning.classList.remove('d-none');
+}
+
+window.addEventListener('alphalab:storage-warning', function(event) {
+    const detail = event.detail;
+    if (!detail || (detail.feature !== BUILD_PORTFOLIO_STORAGE_FEATURE && detail.feature !== null)) {
+        return;
+    }
+
+    const resetCodes = ['corrupt-value', 'validation-failed', 'migration-failed', 'schema-mismatch'];
+    if (resetCodes.includes(detail.code)) {
+        showStorageWarning('Saved portfolio inputs could not be read and were reset.');
+        return;
+    }
+
+    showStorageWarning('Local storage could not be used. You can continue, but your portfolio inputs may not persist.');
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+    const riskToleranceInput = document.getElementById('risk-tolerance');
+    const investmentThemeInput = document.getElementById('investment-theme');
+    const targetMarketInput = document.getElementById('target-market');
+    const investmentHorizonInput = document.getElementById('investment-horizon');
+    const budgetInput = document.getElementById('budget');
+    const existingHoldingsInput = document.getElementById('existing-holdings');
+
+    try {
+        const storedData = window.AlphaLabStorage.load(BUILD_PORTFOLIO_STORAGE_FEATURE, {
+            schemaVersion: BUILD_PORTFOLIO_STORAGE_SCHEMA_VERSION,
+            defaultValue: {
+                risk_tolerance: '',
+                investment_theme: '',
+                target_market: '',
+                investment_horizon: '',
+                budget: '',
+                existing_holdings: ''
+            },
+            validate: isValidStoredBuildPortfolio
+        });
+
+        if (isValidStoredBuildPortfolio(storedData)) {
+            riskToleranceInput.value = storedData.risk_tolerance;
+            investmentThemeInput.value = storedData.investment_theme;
+            targetMarketInput.value = storedData.target_market;
+            investmentHorizonInput.value = storedData.investment_horizon;
+            budgetInput.value = storedData.budget;
+            existingHoldingsInput.value = storedData.existing_holdings;
+        }
+    } catch (error) {
+        showStorageWarning('Saved portfolio inputs could not be restored. You can continue with the analysis.');
+    }
+
+    const cachedDataNode = document.getElementById('cached-result-data');
+    if (!cachedDataNode) {
+        return;
+    }
+
+    try {
+        const cachedData = JSON.parse(cachedDataNode.textContent);
+        if (!isValidCachedBuildPortfolio(cachedData)) {
+            return;
+        }
+
+        const generatedAt = new Date(cachedData.generated_at);
+        if (Number.isNaN(generatedAt.getTime())) {
+            return;
+        }
+
+        renderMarkdown(cachedData.content, document.getElementById('portfolio-result'));
+        document.getElementById('cached-result-time').textContent = generatedAt.toLocaleString();
+        document.getElementById('cached-result-notice').classList.remove('d-none');
+        document.getElementById('result-section').classList.remove('d-none');
+    } catch (error) {
+        // Ignore malformed cached data so the form remains usable.
+    }
+});
+
 document.getElementById('portfolio-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
@@ -153,10 +299,35 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
 
     if (!riskTolerance || !investmentTheme || !targetMarket) return;
 
+    try {
+        const persisted = window.AlphaLabStorage.save(
+            BUILD_PORTFOLIO_STORAGE_FEATURE,
+            {
+                risk_tolerance: riskTolerance,
+                investment_theme: investmentTheme,
+                target_market: targetMarket,
+                investment_horizon: investmentHorizon,
+                budget: budget,
+                existing_holdings: existingHoldings
+            },
+            {
+                schemaVersion: BUILD_PORTFOLIO_STORAGE_SCHEMA_VERSION,
+                validate: isValidStoredBuildPortfolio
+            }
+        );
+
+        if (persisted === false) {
+            showStorageWarning('Your portfolio inputs are available only for this page and could not be persisted.');
+        }
+    } catch (error) {
+        showStorageWarning('Your portfolio inputs are available only for this page and could not be persisted.');
+    }
+
     const btn = document.getElementById('build-btn');
     const progressSection = document.getElementById('progress-section');
     const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
+    const cachedResultNotice = document.getElementById('cached-result-notice');
 
     // Reset UI
     btn.disabled = true;
@@ -164,6 +335,7 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
     progressSection.classList.remove('d-none');
     errorSection.classList.add('d-none');
     resultSection.classList.add('d-none');
+    cachedResultNotice.classList.add('d-none');
     const waitTimer = new WaitTimer('wait-timer');
     waitTimer.start();
 
@@ -197,6 +369,7 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
         } else if (data.type === 'result') {
             waitTimer.stop();
             progressSection.classList.add('d-none');
+            cachedResultNotice.classList.add('d-none');
             resultSection.classList.remove('d-none');
             renderMarkdown(data.content, document.getElementById('portfolio-result'));
             eventSource.close();
@@ -232,4 +405,7 @@ function printPortfolio() {
     };
 }
 </script>
+{% if cached_result %}
+<script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
+{% endif %}
 {% endblock %}

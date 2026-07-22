@@ -5,10 +5,20 @@ from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
+from app.services import analysis_cache
 from app.utils import ai
 
 router = APIRouter(tags=["review_portfolio"])
 TEMPLATE = "review_portfolio.html"
+_CACHE_FEATURE = "review-portfolio"
+_CACHE_INPUT_FIELDS = (
+    "holdings",
+    "risk_tolerance",
+    "investment_goals",
+    "target_market",
+    "investment_horizon",
+    "scenario",
+)
 
 _PROMPT_TEMPLATE = (
     "You are an expert financial advisor and prompt engineer.\n"
@@ -102,7 +112,16 @@ _PROMPT_TEMPLATE = (
 
 @router.get("/review-portfolio", response_class=HTMLResponse)
 async def review_portfolio_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
-    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
+    cached_result = await analysis_cache.get_cached_result(
+        user,
+        feature=_CACHE_FEATURE,
+        input_fields=_CACHE_INPUT_FIELDS,
+    )
+    return templating.templates.TemplateResponse(
+        request,
+        TEMPLATE,
+        {"user": user, "cached_result": cached_result},
+    )
 
 
 @router.get("/review-portfolio/stream")
@@ -116,6 +135,13 @@ async def review_portfolio_stream(
     scenario: str = Query(default=""),
     user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
+    cleaned_holdings = holdings.strip()
+    cleaned_risk_tolerance = risk_tolerance.strip()
+    cleaned_investment_goals = investment_goals.strip()
+    cleaned_target_market = target_market.strip()
+    cleaned_investment_horizon = investment_horizon.strip()
+    cleaned_scenario = scenario.strip()
+
     async def event_generator():
         def progress(step: int, total: int, message: str):
             return json.dumps({"type": "progress", "step": step, "total": total, "message": message})
@@ -130,7 +156,7 @@ async def review_portfolio_stream(
 
         # Step 1: Validate inputs
         yield {"data": progress(1, total_steps, "Validating inputs...")}
-        if not holdings.strip():
+        if not cleaned_holdings:
             yield {"data": error("Holdings are required.")}
             return
 
@@ -142,17 +168,17 @@ async def review_portfolio_stream(
             return
 
         build_prompt_task = config.ai_task_settings.tasks.get("REVIEW_PORTFOLIO_BUILD_PROMPT")
-        context_parts = [f"Current Holdings:\n{holdings.strip()}"]
-        if risk_tolerance:
-            context_parts.append(f"Risk Tolerance: {risk_tolerance}")
-        if investment_goals:
-            context_parts.append(f"Investment Goals: {investment_goals}")
-        if target_market:
-            context_parts.append(f"Target Market: {target_market}")
-        if investment_horizon:
-            context_parts.append(f"Investment Horizon: {investment_horizon}")
+        context_parts = [f"Current Holdings:\n{cleaned_holdings}"]
+        if cleaned_risk_tolerance:
+            context_parts.append(f"Risk Tolerance: {cleaned_risk_tolerance}")
+        if cleaned_investment_goals:
+            context_parts.append(f"Investment Goals: {cleaned_investment_goals}")
+        if cleaned_target_market:
+            context_parts.append(f"Target Market: {cleaned_target_market}")
+        if cleaned_investment_horizon:
+            context_parts.append(f"Investment Horizon: {cleaned_investment_horizon}")
         investor_context = "\n".join(context_parts)
-        scenario_context = "- Scenario: (none provided)" if not scenario else f"- Scenario: {scenario}"
+        scenario_context = "- Scenario: (none provided)" if not cleaned_scenario else f"- Scenario: {cleaned_scenario}"
 
         prompt_request = _PROMPT_TEMPLATE.format(
             investor_context=investor_context,
@@ -184,6 +210,19 @@ async def review_portfolio_stream(
 
         # Step 4: Done
         yield {"data": progress(4, total_steps, "Review complete!")}
+        await analysis_cache.set_cached_result(
+            user,
+            feature=_CACHE_FEATURE,
+            inputs={
+                "holdings": cleaned_holdings,
+                "risk_tolerance": cleaned_risk_tolerance,
+                "investment_goals": cleaned_investment_goals,
+                "target_market": cleaned_target_market,
+                "investment_horizon": cleaned_investment_horizon,
+                "scenario": cleaned_scenario,
+            },
+            content=review_result.completion,
+        )
         yield {"data": result(review_result.completion)}
 
     return EventSourceResponse(event_generator())
