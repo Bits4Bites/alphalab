@@ -9,6 +9,10 @@
     <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
+                <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
+                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                    <span id="storage-warning-message"></span>
+                </div>
                 <form id="analyze-form">
                     <label for="ticker" class="form-label fw-semibold">
                         Stock Ticker
@@ -96,6 +100,10 @@
                     </button>
                 </div>
                 <div class="card-body">
+                    <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none" role="status">
+                        <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                        <span>This is a cached analysis completed on <span id="cached-result-time"></span>. Running it again will refresh it.</span>
+                    </div>
                     <div class="alert alert-warning small mb-3" role="alert">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
@@ -109,6 +117,124 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
+const ANALYZE_TICKER_STORAGE_FEATURE = 'analyze-ticker';
+const ANALYZE_TICKER_STORAGE_SCHEMA_VERSION = 1;
+const ANALYZE_TICKER_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+
+function isValidStoredAnalyzeTicker(value) {
+    const fields = ['ticker', 'intent', 'scenario', 'quick_mode'];
+
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && Object.keys(value).length === fields.length
+        && fields.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field);
+        })
+        && typeof value.ticker === 'string'
+        && typeof value.intent === 'string'
+        && typeof value.scenario === 'string'
+        && typeof value.quick_mode === 'boolean';
+}
+
+function isValidCachedAnalyzeTicker(value) {
+    const fields = ['ticker', 'quick_mode', 'intent', 'scenario', 'content', 'generated_at'];
+
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && Object.keys(value).length === fields.length
+        && fields.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field)
+                && typeof value[field] === 'string';
+        })
+        && value.ticker.trim().length > 0
+        && value.content.trim().length > 0
+        && (value.quick_mode === 'true' || value.quick_mode === 'false')
+        && ANALYZE_TICKER_ISO_TIMESTAMP_PATTERN.test(value.generated_at)
+        && !Number.isNaN(new Date(value.generated_at).getTime());
+}
+
+function showStorageWarning(message) {
+    const warning = document.getElementById('storage-warning');
+    const warningMessage = document.getElementById('storage-warning-message');
+    if (!warning || !warningMessage) {
+        return;
+    }
+
+    warningMessage.textContent = message;
+    warning.classList.remove('d-none');
+}
+
+window.addEventListener('alphalab:storage-warning', function(event) {
+    const detail = event.detail;
+    if (!detail || (detail.feature !== ANALYZE_TICKER_STORAGE_FEATURE && detail.feature !== null)) {
+        return;
+    }
+
+    const resetCodes = ['corrupt-value', 'validation-failed', 'migration-failed', 'schema-mismatch'];
+    if (resetCodes.includes(detail.code)) {
+        showStorageWarning('Saved inputs could not be read and were reset.');
+        return;
+    }
+
+    showStorageWarning('Local storage could not be used. You can continue, but your inputs may not persist.');
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+    const tickerInput = document.getElementById('ticker');
+    const intentInput = document.getElementById('intent');
+    const scenarioInput = document.getElementById('scenario');
+    const quickModeInput = document.getElementById('quick-mode');
+
+    try {
+        const storedData = window.AlphaLabStorage.load(ANALYZE_TICKER_STORAGE_FEATURE, {
+            schemaVersion: ANALYZE_TICKER_STORAGE_SCHEMA_VERSION,
+            defaultValue: {
+                ticker: '',
+                intent: '',
+                scenario: '',
+                quick_mode: true
+            },
+            validate: isValidStoredAnalyzeTicker
+        });
+
+        if (isValidStoredAnalyzeTicker(storedData)) {
+            tickerInput.value = storedData.ticker;
+            intentInput.value = storedData.intent;
+            scenarioInput.value = storedData.scenario;
+            quickModeInput.checked = storedData.quick_mode;
+        }
+    } catch (error) {
+        showStorageWarning('Saved inputs could not be restored. You can continue with the analysis.');
+    }
+
+    const cachedDataNode = document.getElementById('cached-result-data');
+    if (!cachedDataNode) {
+        return;
+    }
+
+    try {
+        const cachedData = JSON.parse(cachedDataNode.textContent);
+        if (!isValidCachedAnalyzeTicker(cachedData)) {
+            return;
+        }
+
+        const generatedAt = new Date(cachedData.generated_at);
+        if (Number.isNaN(generatedAt.getTime())) {
+            return;
+        }
+
+        renderMarkdown(cachedData.content, document.getElementById('analysis-result'));
+        document.getElementById('result-ticker').textContent = cachedData.ticker;
+        document.getElementById('cached-result-time').textContent = generatedAt.toLocaleString();
+        document.getElementById('cached-result-notice').classList.remove('d-none');
+        document.getElementById('result-section').classList.remove('d-none');
+    } catch (error) {
+        // Ignore malformed cached data so the form remains usable.
+    }
+});
+
 document.getElementById('analyze-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
@@ -118,10 +244,34 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
     const quickMode = document.getElementById('quick-mode').checked;
     const intent = document.getElementById('intent').value.trim();
     const scenario = document.getElementById('scenario').value.trim();
+
+    try {
+        const persisted = window.AlphaLabStorage.save(
+            ANALYZE_TICKER_STORAGE_FEATURE,
+            {
+                ticker: ticker,
+                intent: intent,
+                scenario: scenario,
+                quick_mode: quickMode
+            },
+            {
+                schemaVersion: ANALYZE_TICKER_STORAGE_SCHEMA_VERSION,
+                validate: isValidStoredAnalyzeTicker
+            }
+        );
+
+        if (persisted === false) {
+            showStorageWarning('Your inputs are available only for the current page and could not be persisted.');
+        }
+    } catch (error) {
+        showStorageWarning('Your inputs are available only for the current page and could not be persisted.');
+    }
+
     const btn = document.getElementById('analyze-btn');
     const progressSection = document.getElementById('progress-section');
     const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
+    const cachedResultNotice = document.getElementById('cached-result-notice');
 
     // Reset UI
     btn.disabled = true;
@@ -129,6 +279,7 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
     progressSection.classList.remove('d-none');
     errorSection.classList.add('d-none');
     resultSection.classList.add('d-none');
+    cachedResultNotice.classList.add('d-none');
     const waitTimer = new WaitTimer('wait-timer');
     waitTimer.start();
 
@@ -159,6 +310,7 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
         } else if (data.type === 'result') {
             waitTimer.stop();
             progressSection.classList.add('d-none');
+            cachedResultNotice.classList.add('d-none');
             resultSection.classList.remove('d-none');
             document.getElementById('result-ticker').textContent = ticker;
             renderMarkdown(data.content, document.getElementById('analysis-result'));
@@ -175,7 +327,7 @@ document.getElementById('analyze-form').addEventListener('submit', function(e) {
         document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
         eventSource.close();
         btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-graph-up me-1"></i>Analyze Ticker';
+        btn.innerHTML = '<i class="bi bi-graph-up me-1"></i>Analyze Ticker';
     };
 });
 
@@ -196,4 +348,7 @@ function printAnalysis() {
     };
 }
 </script>
+{% if cached_result %}
+<script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
+{% endif %}
 {% endblock %}

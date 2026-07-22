@@ -1,3 +1,14 @@
 # This file has been cleaned up post-releasing version 0.7.1.
 # Generate its content quickly using the following command:
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
+#!VERSION=0.8.0
+- feat: Add optional prospectus PDF uploads to IPO event analysis.
+- feat: Add user-scoped local storage infrastructure.
+- feat: Cache Market Outlook inputs and results in user-scope storage.
+- feat: Cache Sector Rotation inputs and results in user-scope storage.
+- feat: Cache Analyze Ticker inputs and results in user-scope storage.
+- feat: Cache IPO event inputs and results in user-scope storage.
+- feat: Cache Dividend Event inputs and results in user-scope storage.
+- feat: Cache Build and Review Portfolio inputs and results in user-scope storage.
+- feat: Cache Watchlist Monitor inputs and results in user-scope storage.
+- feat: Cache Earnings Catalyst Tracker inputs and results in user-scope storage.

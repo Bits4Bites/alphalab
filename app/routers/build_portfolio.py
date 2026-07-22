@@ -5,10 +5,20 @@ from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
+from app.services import analysis_cache
 from app.utils import ai
 
 router = APIRouter(tags=["build_portfolio"])
 TEMPLATE = "build_portfolio.html"
+_CACHE_FEATURE = "build-portfolio"
+_CACHE_INPUT_FIELDS = (
+    "risk_tolerance",
+    "investment_theme",
+    "target_market",
+    "investment_horizon",
+    "budget",
+    "existing_holdings",
+)
 
 _PROMPT_TEMPLATE = (
     "You are an expert financial advisor and prompt engineer.\n"
@@ -70,7 +80,16 @@ _PROMPT_TEMPLATE = (
 
 @router.get("/build-portfolio", response_class=HTMLResponse)
 async def build_portfolio_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
-    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
+    cached_result = await analysis_cache.get_cached_result(
+        user,
+        feature=_CACHE_FEATURE,
+        input_fields=_CACHE_INPUT_FIELDS,
+    )
+    return templating.templates.TemplateResponse(
+        request,
+        TEMPLATE,
+        {"user": user, "cached_result": cached_result},
+    )
 
 
 @router.get("/build-portfolio/stream")
@@ -84,6 +103,13 @@ async def build_portfolio_stream(
     existing_holdings: str = Query(default=""),
     user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
+    cleaned_risk_tolerance = risk_tolerance.strip()
+    cleaned_investment_theme = investment_theme.strip()
+    cleaned_target_market = target_market.strip()
+    cleaned_investment_horizon = investment_horizon.strip()
+    cleaned_budget = budget.strip()
+    cleaned_existing_holdings = existing_holdings.strip()
+
     async def event_generator():
         def progress(step: int, total: int, message: str):
             return json.dumps({"type": "progress", "step": step, "total": total, "message": message})
@@ -98,7 +124,7 @@ async def build_portfolio_stream(
 
         # Step 1: Validate inputs
         yield {"data": progress(1, total_steps, "Validating inputs...")}
-        if not risk_tolerance or not investment_theme or not target_market:
+        if not cleaned_risk_tolerance or not cleaned_investment_theme or not cleaned_target_market:
             yield {"data": error("Risk tolerance, investment theme, and target market are required.")}
             return
 
@@ -111,23 +137,23 @@ async def build_portfolio_stream(
 
         build_prompt_task = config.ai_task_settings.tasks.get("BUILD_PORTFOLIO_BUILD_PROMPT")
         context_parts = [
-            f"Risk Tolerance: {risk_tolerance}",
-            f"Investment Theme/Flavor: {investment_theme}",
-            f"Target Market: {target_market}",
+            f"Risk Tolerance: {cleaned_risk_tolerance}",
+            f"Investment Theme/Flavor: {cleaned_investment_theme}",
+            f"Target Market: {cleaned_target_market}",
         ]
-        if investment_horizon:
-            context_parts.append(f"Investment Horizon: {investment_horizon}")
-        if budget:
-            context_parts.append(f"Budget: {budget}")
-        if existing_holdings:
-            context_parts.append(f"Existing Holdings: {existing_holdings}")
+        if cleaned_investment_horizon:
+            context_parts.append(f"Investment Horizon: {cleaned_investment_horizon}")
+        if cleaned_budget:
+            context_parts.append(f"Budget: {cleaned_budget}")
+        if cleaned_existing_holdings:
+            context_parts.append(f"Existing Holdings: {cleaned_existing_holdings}")
         investor_profile = "\n".join(context_parts)
 
         prompt_request = _PROMPT_TEMPLATE.format(
             investor_profile=investor_profile,
             existing_holdings_instruction=(
                 "- How the new recommendations complement or adjust the existing holdings\n"
-                if existing_holdings
+                if cleaned_existing_holdings
                 else ""
             ),
         )
@@ -163,6 +189,19 @@ async def build_portfolio_stream(
 
         # Step 4: Done
         yield {"data": progress(4, total_steps, "Portfolio complete!")}
+        await analysis_cache.set_cached_result(
+            user,
+            feature=_CACHE_FEATURE,
+            inputs={
+                "risk_tolerance": cleaned_risk_tolerance,
+                "investment_theme": cleaned_investment_theme,
+                "target_market": cleaned_target_market,
+                "investment_horizon": cleaned_investment_horizon,
+                "budget": cleaned_budget,
+                "existing_holdings": cleaned_existing_holdings,
+            },
+            content=portfolio_result.completion,
+        )
         yield {"data": result(portfolio_result.completion)}
 
     return EventSourceResponse(event_generator())

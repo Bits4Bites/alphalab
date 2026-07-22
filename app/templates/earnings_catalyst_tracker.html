@@ -9,6 +9,10 @@
     <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
+                <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
+                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                    <span id="storage-warning-message"></span>
+                </div>
                 <form id="earnings-form">
                     <div class="row g-3">
                         <div class="col-12">
@@ -93,6 +97,10 @@
                     </button>
                 </div>
                 <div class="card-body">
+                    <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none" role="status">
+                        <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                        <span>This is a cached analysis completed on <span id="cached-result-time"></span>. Running it again will refresh it.</span>
+                    </div>
                     <div class="alert alert-warning small mb-3" role="alert">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
@@ -106,6 +114,113 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
+const EARNINGS_CATALYST_STORAGE_FEATURE = 'earnings-catalyst-tracker';
+const EARNINGS_CATALYST_STORAGE_SCHEMA_VERSION = 1;
+const EARNINGS_CATALYST_INPUT_FIELDS = ['tickers', 'target_market', 'event_focus'];
+const EARNINGS_CATALYST_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+
+function hasExactEarningsCatalystStringFields(value, fields) {
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && Object.keys(value).length === fields.length
+        && fields.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field)
+                && typeof value[field] === 'string';
+        });
+}
+
+function isValidStoredEarningsCatalyst(value) {
+    return hasExactEarningsCatalystStringFields(value, EARNINGS_CATALYST_INPUT_FIELDS)
+        && value.tickers.trim().length > 0;
+}
+
+function isValidCachedEarningsCatalyst(value) {
+    const fields = [...EARNINGS_CATALYST_INPUT_FIELDS, 'content', 'generated_at'];
+
+    return hasExactEarningsCatalystStringFields(value, fields)
+        && value.tickers.trim().length > 0
+        && value.content.trim().length > 0
+        && EARNINGS_CATALYST_ISO_TIMESTAMP_PATTERN.test(value.generated_at)
+        && !Number.isNaN(new Date(value.generated_at).getTime());
+}
+
+function showStorageWarning(message) {
+    const warning = document.getElementById('storage-warning');
+    const warningMessage = document.getElementById('storage-warning-message');
+    if (!warning || !warningMessage) {
+        return;
+    }
+
+    warningMessage.textContent = message;
+    warning.classList.remove('d-none');
+}
+
+window.addEventListener('alphalab:storage-warning', function(event) {
+    const detail = event.detail;
+    if (!detail || (detail.feature !== EARNINGS_CATALYST_STORAGE_FEATURE && detail.feature !== null)) {
+        return;
+    }
+
+    const resetCodes = ['corrupt-value', 'validation-failed', 'migration-failed', 'schema-mismatch'];
+    if (resetCodes.includes(detail.code)) {
+        showStorageWarning('Saved earnings inputs could not be read and were reset.');
+        return;
+    }
+
+    showStorageWarning('Local storage could not be used. You can continue, but your earnings inputs may not persist.');
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+    const tickersInput = document.getElementById('tickers');
+    const targetMarketInput = document.getElementById('target-market');
+    const eventFocusInput = document.getElementById('event-focus');
+
+    try {
+        const storedData = window.AlphaLabStorage.load(EARNINGS_CATALYST_STORAGE_FEATURE, {
+            schemaVersion: EARNINGS_CATALYST_STORAGE_SCHEMA_VERSION,
+            defaultValue: {
+                tickers: '',
+                target_market: 'US',
+                event_focus: ''
+            },
+            validate: isValidStoredEarningsCatalyst
+        });
+
+        if (isValidStoredEarningsCatalyst(storedData)) {
+            tickersInput.value = storedData.tickers;
+            targetMarketInput.value = storedData.target_market;
+            eventFocusInput.value = storedData.event_focus;
+        }
+    } catch (error) {
+        showStorageWarning('Saved earnings inputs could not be restored. You can continue with the analysis.');
+    }
+
+    const cachedDataNode = document.getElementById('cached-result-data');
+    if (!cachedDataNode) {
+        return;
+    }
+
+    try {
+        const cachedData = JSON.parse(cachedDataNode.textContent);
+        if (!isValidCachedEarningsCatalyst(cachedData)) {
+            return;
+        }
+
+        const generatedAt = new Date(cachedData.generated_at);
+        if (Number.isNaN(generatedAt.getTime())) {
+            return;
+        }
+
+        renderMarkdown(cachedData.content, document.getElementById('earnings-result'));
+        document.getElementById('cached-result-time').textContent = generatedAt.toLocaleString();
+        document.getElementById('cached-result-notice').classList.remove('d-none');
+        document.getElementById('result-section').classList.remove('d-none');
+    } catch (error) {
+        // Ignore malformed cached data so the form remains usable.
+    }
+});
+
 document.getElementById('earnings-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
@@ -115,16 +230,39 @@ document.getElementById('earnings-form').addEventListener('submit', function(e) 
 
     if (!tickers) return;
 
+    try {
+        const persisted = window.AlphaLabStorage.save(
+            EARNINGS_CATALYST_STORAGE_FEATURE,
+            {
+                tickers: tickers,
+                target_market: targetMarket,
+                event_focus: eventFocus
+            },
+            {
+                schemaVersion: EARNINGS_CATALYST_STORAGE_SCHEMA_VERSION,
+                validate: isValidStoredEarningsCatalyst
+            }
+        );
+
+        if (persisted === false) {
+            showStorageWarning('Your earnings inputs are available only for this page and could not be persisted.');
+        }
+    } catch (error) {
+        showStorageWarning('Your earnings inputs are available only for this page and could not be persisted.');
+    }
+
     const btn = document.getElementById('earnings-btn');
     const progressSection = document.getElementById('progress-section');
     const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
+    const cachedResultNotice = document.getElementById('cached-result-notice');
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Tracking...';
     progressSection.classList.remove('d-none');
     errorSection.classList.add('d-none');
     resultSection.classList.add('d-none');
+    cachedResultNotice.classList.add('d-none');
     const waitTimer = new WaitTimer('wait-timer');
     waitTimer.start();
 
@@ -155,6 +293,7 @@ document.getElementById('earnings-form').addEventListener('submit', function(e) 
         } else if (data.type === 'result') {
             waitTimer.stop();
             progressSection.classList.add('d-none');
+            cachedResultNotice.classList.add('d-none');
             resultSection.classList.remove('d-none');
             renderMarkdown(data.content, document.getElementById('earnings-result'));
             eventSource.close();
@@ -190,4 +329,7 @@ function printEarningsResult() {
     };
 }
 </script>
+{% if cached_result %}
+<script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
+{% endif %}
 {% endblock %}

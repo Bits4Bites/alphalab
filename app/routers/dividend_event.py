@@ -5,10 +5,21 @@ from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
+from app.services import analysis_cache
 from app.utils import ai
 
 router = APIRouter(tags=["dividend_event"])
 TEMPLATE = "dividend_event.html"
+_CACHE_FEATURE = "dividend-event"
+_CACHE_INPUT_FIELDS = (
+    "ticker",
+    "dividend_amount",
+    "ex_dividend_date",
+    "current_price",
+    "holding_period",
+    "tax_bracket",
+    "additional_notes",
+)
 
 _PROMPT_TEMPLATE = (
     "You are an expert financial analyst and prompt engineer specializing in dividend strategies.\n"
@@ -89,7 +100,16 @@ _PROMPT_TEMPLATE = (
 
 @router.get("/dividend-event", response_class=HTMLResponse)
 async def dividend_event_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
-    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
+    cached_result = await analysis_cache.get_cached_result(
+        user,
+        feature=_CACHE_FEATURE,
+        input_fields=_CACHE_INPUT_FIELDS,
+    )
+    return templating.templates.TemplateResponse(
+        request,
+        TEMPLATE,
+        {"user": user, "cached_result": cached_result},
+    )
 
 
 @router.get("/dividend-event/stream")
@@ -104,6 +124,14 @@ async def dividend_event_stream(
     additional_notes: str = Query(default=""),
     user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
+    cleaned_ticker = ticker.strip().upper()
+    cleaned_dividend_amount = dividend_amount.strip()
+    cleaned_ex_dividend_date = ex_dividend_date.strip()
+    cleaned_current_price = current_price.strip()
+    cleaned_holding_period = holding_period.strip()
+    cleaned_tax_bracket = tax_bracket.strip()
+    cleaned_additional_notes = additional_notes.strip()
+
     async def event_generator():
         def progress(step: int, total: int, message: str):
             return json.dumps({"type": "progress", "step": step, "total": total, "message": message})
@@ -118,7 +146,7 @@ async def dividend_event_stream(
 
         # Step 1: Validate inputs
         yield {"data": progress(1, total_steps, "Validating inputs...")}
-        if not ticker.strip():
+        if not cleaned_ticker:
             yield {"data": error("Stock ticker is required.")}
             return
 
@@ -130,19 +158,19 @@ async def dividend_event_stream(
             return
 
         build_prompt_task = config.ai_task_settings.tasks.get("DIVIDEND_EVENT_BUILD_PROMPT")
-        context_parts = [f"Stock Ticker: {ticker.strip().upper()}"]
-        if dividend_amount:
-            context_parts.append(f"Dividend Amount (per share): {dividend_amount}")
-        if ex_dividend_date:
-            context_parts.append(f"Ex-Dividend Date: {ex_dividend_date}")
-        if current_price:
-            context_parts.append(f"Current Stock Price: {current_price}")
-        if holding_period:
-            context_parts.append(f"Intended Holding Period: {holding_period}")
-        if tax_bracket:
-            context_parts.append(f"Tax Bracket / Situation: {tax_bracket}")
-        if additional_notes:
-            context_parts.append(f"Additional Notes: {additional_notes}")
+        context_parts = [f"Stock Ticker: {cleaned_ticker}"]
+        if cleaned_dividend_amount:
+            context_parts.append(f"Dividend Amount (per share): {cleaned_dividend_amount}")
+        if cleaned_ex_dividend_date:
+            context_parts.append(f"Ex-Dividend Date: {cleaned_ex_dividend_date}")
+        if cleaned_current_price:
+            context_parts.append(f"Current Stock Price: {cleaned_current_price}")
+        if cleaned_holding_period:
+            context_parts.append(f"Intended Holding Period: {cleaned_holding_period}")
+        if cleaned_tax_bracket:
+            context_parts.append(f"Tax Bracket / Situation: {cleaned_tax_bracket}")
+        if cleaned_additional_notes:
+            context_parts.append(f"Additional Notes: {cleaned_additional_notes}")
         event_context = "\n".join(context_parts)
 
         prompt_request = _PROMPT_TEMPLATE.format(event_context=event_context)
@@ -172,6 +200,20 @@ async def dividend_event_stream(
 
         # Step 4: Done
         yield {"data": progress(4, total_steps, "Analysis complete!")}
+        await analysis_cache.set_cached_result(
+            user,
+            feature=_CACHE_FEATURE,
+            inputs={
+                "ticker": cleaned_ticker,
+                "dividend_amount": cleaned_dividend_amount,
+                "ex_dividend_date": cleaned_ex_dividend_date,
+                "current_price": cleaned_current_price,
+                "holding_period": cleaned_holding_period,
+                "tax_bracket": cleaned_tax_bracket,
+                "additional_notes": cleaned_additional_notes,
+            },
+            content=analyze_result.completion,
+        )
         yield {"data": result(analyze_result.completion)}
 
     return EventSourceResponse(event_generator())
