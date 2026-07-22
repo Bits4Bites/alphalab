@@ -135,17 +135,11 @@ async def test_successful_stream_ranks_and_caches_structured_result(
     core_call = execute_prompt.await_args_list[1]
     assert core_call.kwargs["schema_name"] == "investment_comparison_core_research"
     assert core_call.kwargs["enable_web_search"] is True
-    assert (
-        core_call.kwargs["response_json_schema"]
-        == investment_comparison.core_research_schema()
-    )
+    assert core_call.kwargs["response_json_schema"] == investment_comparison.core_research_schema()
     scenario_call = execute_prompt.await_args_list[2]
     assert scenario_call.kwargs["schema_name"] == "investment_comparison_scenario_research"
     assert scenario_call.kwargs["enable_web_search"] is True
-    assert (
-        scenario_call.kwargs["response_json_schema"]
-        == investment_comparison.scenario_research_schema()
-    )
+    assert scenario_call.kwargs["response_json_schema"] == investment_comparison.scenario_research_schema()
     assert execute_prompt.await_args_list[0].kwargs["enable_web_search"] is False
     assert "Recession" not in execute_prompt.await_args_list[0].args[2]
     assert "Recession" not in core_call.args[2]
@@ -338,9 +332,7 @@ async def test_unassessed_scenario_response_is_not_emitted_or_cached(
             ),
             ai.AIResponse(
                 success=True,
-                completion=json.dumps(
-                    comparison_fixtures._scenario_research_data(assessed=False)
-                ),
+                completion=json.dumps(comparison_fixtures._scenario_research_data(assessed=False)),
             ),
         ]
     )
@@ -442,10 +434,7 @@ async def test_stream_without_scenario_skips_scenario_model(
         "message": "Comparison complete!",
     }
     assert events[-1]["type"] == "result"
-    assert all(
-        candidate["scenario"]["impact"] == "not_assessed"
-        for candidate in events[-1]["result"]["candidates"]
-    )
+    assert all(candidate["scenario"]["impact"] == "not_assessed" for candidate in events[-1]["result"]["candidates"])
     set_cached_payload.assert_awaited_once()
 
 
@@ -482,10 +471,7 @@ def test_page_restores_cached_structured_comparison(
     cache_call = get_cached_payload.await_args
     assert cache_call.kwargs["feature"] == "compare-investments"
     assert cache_call.kwargs["input_fields"] == ("tickers", "target_market", "scenario")
-    assert (
-        cache_call.kwargs["payload_validator"]
-        is compare_investments.investment_comparison.is_valid_cache_payload
-    )
+    assert cache_call.kwargs["payload_validator"] is compare_investments.investment_comparison.is_valid_cache_payload
     assert "Compare stocks and ETFs" in response.text
     assert 'id="comparison-form"' in response.text
     assert 'id="cached-result-data"' in response.text
@@ -502,18 +488,13 @@ def test_score_formatter_keeps_close_scores_visually_distinct() -> None:
     if node is None:
         pytest.skip("Node.js is required for the rendered score-format regression test.")
 
-    template = pathlib.Path("app/templates/compare_investments.html").read_text(
-        encoding="utf-8"
-    )
+    template = pathlib.Path("app/templates/compare_investments.html").read_text(encoding="utf-8")
     formatter = re.search(
         r"function formatScore\(value\) \{\s+return Number\(value\)\.toFixed\(\d+\);\s+\}",
         template,
     )
     assert formatter is not None
-    script = (
-        f"{formatter.group(0)}\n"
-        "process.stdout.write(JSON.stringify([formatScore(69.95), formatScore(70)]));"
-    )
+    script = f"{formatter.group(0)}\nprocess.stdout.write(JSON.stringify([formatScore(69.95), formatScore(70)]));"
 
     completed = subprocess.run(
         [node, "-e", script],

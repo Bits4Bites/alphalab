@@ -153,14 +153,8 @@ class CandidateResearch(CoreCandidateResearch):
 
 
 def _candidate_source_references(candidate: CoreCandidateResearch) -> set[str]:
-    references = {
-        source_id
-        for category in candidate.categories
-        for source_id in category.source_ids
-    }
-    references.update(
-        source_id for metric in candidate.metrics for source_id in metric.source_ids
-    )
+    references = {source_id for category in candidate.categories for source_id in category.source_ids}
+    references.update(source_id for metric in candidate.metrics for source_id in metric.source_ids)
     return references
 
 
@@ -219,9 +213,7 @@ class ComparisonScenarioResearch(_StrictModel):
         known_sources = set(source_ids)
         for candidate in self.candidates:
             if not set(candidate.scenario.source_ids).issubset(known_sources):
-                raise ValueError(
-                    f"scenario candidate {candidate.ticker} references an unknown source"
-                )
+                raise ValueError(f"scenario candidate {candidate.ticker} references an unknown source")
         return self
 
 
@@ -312,27 +304,14 @@ class ComparisonResult(_StrictModel):
         previous_score: float | None = None
         previous_rank = 0
         for index, ranking in enumerate(self.rankings, start=1):
-            candidate = next(
-                candidate
-                for candidate in self.candidates
-                if candidate.ticker == ranking.ticker
-            )
-            scores = {
-                assessment.category: assessment.score
-                for assessment in candidate.categories
-            }
+            candidate = next(candidate for candidate in self.candidates if candidate.ticker == ranking.ticker)
+            scores = {assessment.category: assessment.score for assessment in candidate.categories}
             expected_score = sum(
                 Decimal(scores[category]) * Decimal(weight) / Decimal(100)
                 for category, weight in CATEGORY_WEIGHT_MAP.items()
             )
             confidences = {assessment.confidence for assessment in candidate.categories}
-            expected_confidence = (
-                "low"
-                if "low" in confidences
-                else "high"
-                if confidences == {"high"}
-                else "medium"
-            )
+            expected_confidence = "low" if "low" in confidences else "high" if confidences == {"high"} else "medium"
             if Decimal(str(ranking.weighted_score)) != expected_score:
                 raise ValueError("weighted scores must match the fixed comparison methodology")
             if ranking.confidence != expected_confidence:
@@ -352,17 +331,11 @@ class ComparisonResult(_StrictModel):
         candidate_by_ticker = {candidate.ticker: candidate for candidate in self.candidates}
         for category, winner in winners.items():
             scores = {
-                ticker: next(
-                    assessment.score
-                    for assessment in candidate.categories
-                    if assessment.category == category
-                )
+                ticker: next(assessment.score for assessment in candidate.categories if assessment.category == category)
                 for ticker, candidate in candidate_by_ticker.items()
             }
             winning_score = max(scores.values())
-            winning_tickers = sorted(
-                ticker for ticker, score in scores.items() if score == winning_score
-            )
+            winning_tickers = sorted(ticker for ticker, score in scores.items() if score == winning_score)
             if winner.score != winning_score or winner.tickers != winning_tickers:
                 raise ValueError("category winners must match candidate scores")
 
@@ -371,16 +344,8 @@ class ComparisonResult(_StrictModel):
             raise ValueError("result source IDs must be unique")
         known_sources = set(source_ids)
         for candidate in self.candidates:
-            references = {
-                source_id
-                for category in candidate.categories
-                for source_id in category.source_ids
-            }
-            references.update(
-                source_id
-                for metric in candidate.metrics
-                for source_id in metric.source_ids
-            )
+            references = {source_id for category in candidate.categories for source_id in category.source_ids}
+            references.update(source_id for metric in candidate.metrics for source_id in metric.source_ids)
             references.update(candidate.scenario.source_ids)
             if not references.issubset(known_sources):
                 raise ValueError(f"candidate {candidate.ticker} references an unknown result source")
@@ -389,8 +354,7 @@ class ComparisonResult(_StrictModel):
             raise ValueError("all snapshots must use the comparison currency")
         scenario_was_requested = bool(self.scenario)
         if any(
-            (candidate.scenario.impact != "not_assessed") != scenario_was_requested
-            for candidate in self.candidates
+            (candidate.scenario.impact != "not_assessed") != scenario_was_requested for candidate in self.candidates
         ):
             raise ValueError("scenario assessments must match the comparison request")
         return self

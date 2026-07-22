@@ -164,9 +164,7 @@ async def compare_investments_stream(
 
     async def event_generator():
         def progress(step: int, total: int, message: str) -> str:
-            return json.dumps(
-                {"type": "progress", "step": step, "total": total, "message": message}
-            )
+            return json.dumps({"type": "progress", "step": step, "total": total, "message": message})
 
         def error(message: str) -> str:
             return json.dumps({"type": "error", "message": message})
@@ -203,16 +201,10 @@ async def compare_investments_stream(
 
         # Step 3: Ask the low-cost model to write the premium research prompt.
         yield {"data": progress(3, total_steps, "Generating comparison research prompt...")}
-        prompt_client = config.ai_task_settings.get_ai_client(
-            "COMPARE_INVESTMENTS_BUILD_PROMPT"
-        )
+        prompt_client = config.ai_task_settings.get_ai_client("COMPARE_INVESTMENTS_BUILD_PROMPT")
         prompt_task = config.ai_task_settings.tasks.get("COMPARE_INVESTMENTS_BUILD_PROMPT")
         if not prompt_client or not prompt_task:
-            yield {
-                "data": error(
-                    "AI task 'COMPARE_INVESTMENTS_BUILD_PROMPT' is not configured."
-                )
-            }
+            yield {"data": error("AI task 'COMPARE_INVESTMENTS_BUILD_PROMPT' is not configured.")}
             return
 
         prompt_result = await ai.execute_prompt(
@@ -226,11 +218,7 @@ async def compare_investments_stream(
             enable_web_search=False,
         )
         if not prompt_result.success:
-            yield {
-                "data": error(
-                    f"Failed to generate comparison prompt: {prompt_result.error}"
-                )
-            }
+            yield {"data": error(f"Failed to generate comparison prompt: {prompt_result.error}")}
             return
 
         # Step 4: Run sourced premium research with the strict response contract.
@@ -238,9 +226,7 @@ async def compare_investments_stream(
         analyze_client = config.ai_task_settings.get_ai_client("COMPARE_INVESTMENTS_ANALYZE")
         analyze_task = config.ai_task_settings.tasks.get("COMPARE_INVESTMENTS_ANALYZE")
         if not analyze_client or not analyze_task:
-            yield {
-                "data": error("AI task 'COMPARE_INVESTMENTS_ANALYZE' is not configured.")
-            }
+            yield {"data": error("AI task 'COMPARE_INVESTMENTS_ANALYZE' is not configured.")}
             return
 
         analysis_result = await ai.execute_prompt(
@@ -253,11 +239,7 @@ async def compare_investments_stream(
             enable_web_search=True,
         )
         if not analysis_result.success:
-            yield {
-                "data": error(
-                    f"Failed to research comparison candidates: {analysis_result.error}"
-                )
-            }
+            yield {"data": error(f"Failed to research comparison candidates: {analysis_result.error}")}
             return
 
         try:
@@ -275,18 +257,10 @@ async def compare_investments_stream(
         if cleaned_scenario:
             # Step 5: Assess the scenario separately so it cannot affect core scores.
             yield {"data": progress(5, total_steps, "Assessing the stress scenario...")}
-            scenario_client = config.ai_task_settings.get_ai_client(
-                "COMPARE_INVESTMENTS_ANALYZE_SCENARIO"
-            )
-            scenario_task = config.ai_task_settings.tasks.get(
-                "COMPARE_INVESTMENTS_ANALYZE_SCENARIO"
-            )
+            scenario_client = config.ai_task_settings.get_ai_client("COMPARE_INVESTMENTS_ANALYZE_SCENARIO")
+            scenario_task = config.ai_task_settings.tasks.get("COMPARE_INVESTMENTS_ANALYZE_SCENARIO")
             if not scenario_client or not scenario_task:
-                yield {
-                    "data": error(
-                        "AI task 'COMPARE_INVESTMENTS_ANALYZE_SCENARIO' is not configured."
-                    )
-                }
+                yield {"data": error("AI task 'COMPARE_INVESTMENTS_ANALYZE_SCENARIO' is not configured.")}
                 return
 
             scenario_result = await ai.execute_prompt(
@@ -304,18 +278,12 @@ async def compare_investments_stream(
                 enable_web_search=True,
             )
             if not scenario_result.success:
-                yield {
-                    "data": error(
-                        f"Failed to assess the comparison scenario: {scenario_result.error}"
-                    )
-                }
+                yield {"data": error(f"Failed to assess the comparison scenario: {scenario_result.error}")}
                 return
 
             try:
                 scenario_research = investment_comparison.validate_scenario_research(
-                    investment_comparison.parse_scenario_research(
-                        scenario_result.completion
-                    ),
+                    investment_comparison.parse_scenario_research(scenario_result.completion),
                     tickers=normalized_tickers,
                     scenario=cleaned_scenario,
                 )

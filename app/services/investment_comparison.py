@@ -11,9 +11,7 @@ from pydantic import ValidationError
 from app.schemas import investment_comparison as comparison_schemas
 from app.services import portfolio_market_data
 
-CATEGORY_WEIGHTS: tuple[tuple[str, int], ...] = tuple(
-    comparison_schemas.CATEGORY_WEIGHT_MAP.items()
-)
+CATEGORY_WEIGHTS: tuple[tuple[str, int], ...] = tuple(comparison_schemas.CATEGORY_WEIGHT_MAP.items())
 MIN_CANDIDATES = 2
 MAX_CANDIDATES = 5
 _TICKER_SPLIT_PATTERN = re.compile(r"[\s,;]+")
@@ -34,9 +32,7 @@ class ComparisonResearchError(ComparisonError):
 def parse_tickers(value: str, market: portfolio_market_data.MarketDefinition) -> tuple[str, ...]:
     raw_tickers = [ticker for ticker in _TICKER_SPLIT_PATTERN.split(value.strip()) if ticker]
     if len(raw_tickers) < MIN_CANDIDATES or len(raw_tickers) > MAX_CANDIDATES:
-        raise ComparisonInputError(
-            f"Enter between {MIN_CANDIDATES} and {MAX_CANDIDATES} ticker symbols."
-        )
+        raise ComparisonInputError(f"Enter between {MIN_CANDIDATES} and {MAX_CANDIDATES} ticker symbols.")
 
     normalized: list[str] = []
     seen: set[str] = set()
@@ -125,9 +121,7 @@ def parse_scenario_research(value: str) -> comparison_schemas.ComparisonScenario
             )
         )
     except ValidationError as exc:
-        raise ComparisonResearchError(
-            "The AI scenario analysis failed structured validation."
-        ) from exc
+        raise ComparisonResearchError("The AI scenario analysis failed structured validation.") from exc
 
 
 def _validate_research_time(
@@ -172,12 +166,8 @@ def validate_core_research(
         if quote is None:
             raise ComparisonResearchError(f"Validated market data is missing for {ticker}.")
         if candidate.asset_type != quote.asset_type:
-            raise ComparisonResearchError(
-                f"The AI asset type for {ticker} does not match validated market data."
-            )
-        normalized_candidates.append(
-            candidate.model_copy(update={"name": quote.display_name or candidate.name})
-        )
+            raise ComparisonResearchError(f"The AI asset type for {ticker} does not match validated market data.")
+        normalized_candidates.append(candidate.model_copy(update={"name": quote.display_name or candidate.name}))
 
     if any(quote.currency != market.currency for quote in quotes.values()):
         raise ComparisonResearchError("Validated quotes do not use the selected market currency.")
@@ -192,9 +182,7 @@ def validate_scenario_research(
 ) -> comparison_schemas.ComparisonScenarioResearch:
     cleaned_scenario = scenario.strip()
     if not cleaned_scenario or research.scenario != cleaned_scenario:
-        raise ComparisonResearchError(
-            "The AI scenario analysis does not match the comparison request."
-        )
+        raise ComparisonResearchError("The AI scenario analysis does not match the comparison request.")
 
     _validate_research_time(
         research.as_of,
@@ -204,18 +192,12 @@ def validate_scenario_research(
     expected = set(tickers)
     returned = {candidate.ticker for candidate in research.candidates}
     if returned != expected:
-        raise ComparisonResearchError(
-            "The AI scenario analysis did not return the exact requested ticker set."
-        )
+        raise ComparisonResearchError("The AI scenario analysis did not return the exact requested ticker set.")
     if any(candidate.scenario.impact == "not_assessed" for candidate in research.candidates):
-        raise ComparisonResearchError(
-            "The AI scenario assessments do not match the comparison request."
-        )
+        raise ComparisonResearchError("The AI scenario assessments do not match the comparison request.")
 
     by_ticker = {candidate.ticker: candidate for candidate in research.candidates}
-    return research.model_copy(
-        update={"candidates": [by_ticker[ticker] for ticker in tickers]}
-    )
+    return research.model_copy(update={"candidates": [by_ticker[ticker] for ticker in tickers]})
 
 
 def combine_research(
@@ -238,9 +220,7 @@ def combine_research(
             for candidate in core_research.candidates
         }
     else:
-        source_ids_by_url = {
-            str(source.url): source.id for source in core_research.sources
-        }
+        source_ids_by_url = {str(source.url): source.id for source in core_research.sources}
         used_source_ids = {source.id for source in core_research.sources}
         remapped_source_ids: dict[str, str] = {}
         for index, source in enumerate(scenario_research.sources, start=1):
@@ -259,20 +239,11 @@ def combine_research(
 
         scenarios = {
             candidate.ticker: candidate.scenario.model_copy(
-                update={
-                    "source_ids": [
-                        remapped_source_ids[source_id]
-                        for source_id in candidate.scenario.source_ids
-                    ]
-                }
+                update={"source_ids": [remapped_source_ids[source_id] for source_id in candidate.scenario.source_ids]}
             )
             for candidate in scenario_research.candidates
         }
-        combined_caveats.extend(
-            caveat
-            for caveat in scenario_research.caveats
-            if caveat not in combined_caveats
-        )
+        combined_caveats.extend(caveat for caveat in scenario_research.caveats if caveat not in combined_caveats)
         combined_as_of = max(combined_as_of, scenario_research.as_of)
 
     candidates = [
@@ -316,9 +287,7 @@ def validate_research(
     for candidate in research.candidates:
         scenario_was_assessed = candidate.scenario.impact != "not_assessed"
         if scenario_was_assessed != scenario_was_requested:
-            raise ComparisonResearchError(
-                "The AI scenario assessments do not match the comparison request."
-            )
+            raise ComparisonResearchError("The AI scenario assessments do not match the comparison request.")
 
     normalized_candidates: list[comparison_schemas.CandidateResearch] = []
     by_ticker = {candidate.ticker: candidate for candidate in research.candidates}
@@ -328,12 +297,8 @@ def validate_research(
         if quote is None:
             raise ComparisonResearchError(f"Validated market data is missing for {ticker}.")
         if candidate.asset_type != quote.asset_type:
-            raise ComparisonResearchError(
-                f"The AI asset type for {ticker} does not match validated market data."
-            )
-        normalized_candidates.append(
-            candidate.model_copy(update={"name": quote.display_name or candidate.name})
-        )
+            raise ComparisonResearchError(f"The AI asset type for {ticker} does not match validated market data.")
+        normalized_candidates.append(candidate.model_copy(update={"name": quote.display_name or candidate.name}))
 
     if any(quote.currency != market.currency for quote in quotes.values()):
         raise ComparisonResearchError("Validated quotes do not use the selected market currency.")
@@ -351,10 +316,7 @@ def _overall_confidence(candidate: comparison_schemas.CandidateResearch) -> str:
 
 def _weighted_score(candidate: comparison_schemas.CandidateResearch) -> Decimal:
     scores = {assessment.category: assessment.score for assessment in candidate.categories}
-    return sum(
-        Decimal(scores[category]) * Decimal(weight) / Decimal(100)
-        for category, weight in CATEGORY_WEIGHTS
-    )
+    return sum(Decimal(scores[category]) * Decimal(weight) / Decimal(100) for category, weight in CATEGORY_WEIGHTS)
 
 
 def build_result(
@@ -367,10 +329,7 @@ def build_result(
 ) -> comparison_schemas.ComparisonResult:
     by_ticker = {candidate.ticker: candidate for candidate in research.candidates}
     scored = sorted(
-        (
-            (ticker, _weighted_score(by_ticker[ticker]), _overall_confidence(by_ticker[ticker]))
-            for ticker in tickers
-        ),
+        ((ticker, _weighted_score(by_ticker[ticker]), _overall_confidence(by_ticker[ticker])) for ticker in tickers),
         key=lambda item: (-item[1], item[0]),
     )
 
@@ -394,9 +353,7 @@ def build_result(
     for category, _ in CATEGORY_WEIGHTS:
         category_scores = {
             ticker: next(
-                assessment.score
-                for assessment in by_ticker[ticker].categories
-                if assessment.category == category
+                assessment.score for assessment in by_ticker[ticker].categories if assessment.category == category
             )
             for ticker in tickers
         }
@@ -405,11 +362,7 @@ def build_result(
             comparison_schemas.CategoryWinner(
                 category=category,
                 score=winning_score,
-                tickers=sorted(
-                    ticker
-                    for ticker, score in category_scores.items()
-                    if score == winning_score
-                ),
+                tickers=sorted(ticker for ticker, score in category_scores.items() if score == winning_score),
             )
         )
 

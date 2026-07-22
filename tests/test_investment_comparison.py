@@ -160,9 +160,7 @@ def _core_research_data() -> dict[str, object]:
 
 
 def _core_research() -> comparison_schemas.CoreComparisonResearch:
-    return comparison_schemas.CoreComparisonResearch.model_validate(
-        _core_research_data()
-    )
+    return comparison_schemas.CoreComparisonResearch.model_validate(_core_research_data())
 
 
 def _scenario_research_data(
@@ -307,9 +305,7 @@ def test_build_result_calculates_rankings_winners_and_profile_neutral_scores() -
     ]
     assert result.rankings[0].confidence == "high"
     assert result.rankings[1].confidence == "medium"
-    valuation_winner = next(
-        winner for winner in result.category_winners if winner.category == "valuation"
-    )
+    valuation_winner = next(winner for winner in result.category_winners if winner.category == "valuation")
     assert valuation_winner.tickers == ["AAPL"]
     assert result.scenario == "Recession"
     assert [candidate.ticker for candidate in result.candidates] == ["QQQ", "AAPL"]
@@ -387,9 +383,7 @@ def test_validate_research_requires_scenario_assessment_to_match_request() -> No
     )
 
     assert result.scenario == ""
-    assert investment_comparison.is_valid_cache_payload(
-        investment_comparison.cache_payload(result)
-    )
+    assert investment_comparison.is_valid_cache_payload(investment_comparison.cache_payload(result))
 
 
 def test_scenario_research_is_validated_and_merged_after_core_research() -> None:
@@ -400,9 +394,7 @@ def test_scenario_research_is_validated_and_merged_after_core_research() -> None
         quotes=quotes,
         market=_market(),
     )
-    scenario = comparison_schemas.ComparisonScenarioResearch.model_validate(
-        _scenario_research_data()
-    )
+    scenario = comparison_schemas.ComparisonScenarioResearch.model_validate(_scenario_research_data())
     scenario = investment_comparison.validate_scenario_research(
         scenario,
         tickers=("AAPL", "QQQ"),
@@ -421,9 +413,7 @@ def test_scenario_research_is_validated_and_merged_after_core_research() -> None
 
 
 def test_scenario_research_rejects_unassessed_or_mismatched_scenario() -> None:
-    unassessed = comparison_schemas.ComparisonScenarioResearch.model_validate(
-        _scenario_research_data(assessed=False)
-    )
+    unassessed = comparison_schemas.ComparisonScenarioResearch.model_validate(_scenario_research_data(assessed=False))
     with pytest.raises(investment_comparison.ComparisonResearchError, match="scenario assessments"):
         investment_comparison.validate_scenario_research(
             unassessed,
