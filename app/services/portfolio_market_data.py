@@ -54,6 +54,8 @@ class MarketQuote:
     currency: str
     exchange: str
     retrieved_at: datetime.datetime
+    asset_type: str = "stock"
+    display_name: str = ""
 
 
 _MARKETS = (
@@ -99,13 +101,11 @@ def configured_markets(configured: set[str] | None) -> tuple[MarketDefinition, .
 
     if unsupported:
         logger.warning(
-            "Ignoring primary markets unsupported by Portfolio Rebalance Planner: %s",
+            "Ignoring primary markets unsupported by market-data features: %s",
             ", ".join(sorted(str(value) for value in unsupported)),
         )
     if not resolved_codes:
-        raise MarketConfigurationError(
-            "Portfolio Rebalance Planner requires at least one supported primary market (US or AU)."
-        )
+        raise MarketConfigurationError("At least one supported primary market (US or AU) is required.")
     return tuple(market for market in _MARKETS if market.code in resolved_codes)
 
 
@@ -197,6 +197,8 @@ def _fetch_quote_sync(symbol: str, market: MarketDefinition) -> MarketQuote:
         currency=currency,
         exchange=exchange,
         retrieved_at=datetime.datetime.now(datetime.UTC),
+        asset_type="etf" if quote_type == "ETF" else "stock",
+        display_name=str(info.get("longName") or info.get("shortName") or symbol),
     )
 
 
@@ -210,7 +212,7 @@ async def fetch_quotes(
     if not unique_symbols:
         return {}
     if len(unique_symbols) > MAX_QUOTE_SYMBOLS:
-        raise MarketDataError(f"A rebalance plan supports at most {MAX_QUOTE_SYMBOLS} market symbols.")
+        raise MarketDataError(f"Market data supports at most {MAX_QUOTE_SYMBOLS} symbols per request.")
     if timeout_seconds <= 0:
         raise ValueError("Quote timeout must be greater than zero.")
 

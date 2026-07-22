@@ -17,12 +17,16 @@ technical item is required to deliver a business feature safely or reliably.
 
 Help investors choose two to five stocks or ETFs using a consistent scorecard.
 
+**Status: Implemented**
+
 **MVP**
 
 - Compare valuation, financial quality, growth, momentum, catalysts, and risks.
 - Include scenario sensitivity and suitability for different investor profiles.
 - Present a side-by-side summary table, category winners, and a balanced overall ranking.
 - Persist comparison inputs locally and cache the latest successful comparison per user.
+- Keep category weights fixed and transparent, and calculate winners and ranks deterministically on the backend.
+- Support mixed stock and ETF comparisons within one selected US or Australian market.
 
 #### Filing and Earnings Report Analyzer
 
@@ -121,13 +125,12 @@ and additional privacy and operational controls.
 
 ## Recommended Sequence
 
-Review Portfolio: Rebalance Planner has been delivered.
+Compare Investments and Review Portfolio: Rebalance Planner have been delivered.
 
-1. Compare Investments, including the minimum structured result contract needed for reliable comparisons.
-2. Filing and Earnings Report Analyzer.
-3. Investment Thesis Tracker.
-4. Unified Catalyst Calendar after selecting a trustworthy event-data source.
-5. Real-time alerts and multi-device sync only after approving persistent storage and background processing.
+1. Filing and Earnings Report Analyzer.
+2. Investment Thesis Tracker.
+3. Unified Catalyst Calendar after selecting a trustworthy event-data source.
+4. Real-time alerts and multi-device sync only after approving persistent storage and background processing.
 
 Technical improvements should be delivered incrementally with the business feature that first needs them rather than as
 large standalone rewrites.
@@ -136,7 +139,7 @@ large standalone rewrites.
 
 | Area | Priority | Initiative | Primary Outcome |
 |---|---|---|---|
-| Business | High | Compare Investments | Faster, evidence-based selection between competing investments |
+| Business | High | Compare Investments (delivered) | Faster, evidence-based selection between competing investments |
 | Business | High | Filing and Earnings Report Analyzer | Deeper source-backed company research |
 | Business | High | Review Portfolio: Rebalance Planner (delivered) | Concrete, market-specific adjustment plan |
 | Business | Medium | Investment Thesis Tracker | Research continuity and repeat engagement |

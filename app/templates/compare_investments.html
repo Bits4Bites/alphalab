@@ -1,0 +1,1390 @@
+{% extends "app_layout.html" %}
+
+{% block title %}Compare Investments - {{ app_name }}{% endblock %}
+{% block nav_compare %}active{% endblock %}
+{% block page_title %}Compare Investments{% endblock %}
+
+{% block content %}
+<style>
+    .comparison-workspace {
+        --comparison-accent: #5b5bd6;
+        --comparison-soft: rgba(91, 91, 214, .08);
+    }
+    .comparison-workspace .section-kicker {
+        color: var(--comparison-accent);
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+    .comparison-workspace .comparison-panel {
+        background: linear-gradient(135deg, var(--comparison-soft), rgba(13, 202, 240, .04));
+        border: 1px solid rgba(91, 91, 214, .16);
+    }
+    .comparison-workspace .score-value {
+        font-variant-numeric: tabular-nums;
+    }
+    .comparison-workspace .table-responsive {
+        scrollbar-width: thin;
+    }
+    .comparison-workspace th:first-child {
+        min-width: 10rem;
+    }
+    .comparison-workspace .candidate-detail {
+        break-inside: avoid;
+    }
+    .comparison-workspace .result-list {
+        padding-left: 1.25rem;
+    }
+    .comparison-workspace .result-list li + li {
+        margin-top: .25rem;
+    }
+    .comparison-workspace :focus-visible {
+        outline: 3px solid rgba(13, 110, 253, .35);
+        outline-offset: 2px;
+    }
+    @media print {
+        .comparison-workspace .no-print,
+        .comparison-workspace form,
+        .comparison-workspace #progress-section,
+        .comparison-workspace #error-section {
+            display: none !important;
+        }
+        .comparison-workspace .card {
+            box-shadow: none !important;
+        }
+        .comparison-workspace .table-responsive {
+            overflow: visible !important;
+        }
+    }
+</style>
+
+<div class="comparison-workspace">
+    <div class="row">
+        <div class="col-12">
+            <section class="card border-0 shadow-sm mb-4" aria-labelledby="compare-investments-heading">
+                <div class="card-body p-3 p-md-4">
+                    <div class="mb-3">
+                        <h2 class="h4 mb-1" id="compare-investments-heading">Compare stocks and ETFs</h2>
+                        <p class="text-muted mb-0">
+                            Compare two to five investments with a consistent scorecard, current market context, and
+                            practical decision support.
+                        </p>
+                    </div>
+
+                    <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none"
+                         role="status" aria-live="polite">
+                        <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                        <span id="storage-warning-message"></span>
+                    </div>
+
+                    <form id="comparison-form" aria-labelledby="compare-investments-heading">
+                        <div class="row g-3">
+                            <div class="col-12 col-lg-8">
+                                <label for="tickers" class="form-label fw-semibold">
+                                    Tickers <span class="text-danger" aria-hidden="true">*</span>
+                                </label>
+                                <textarea class="form-control text-uppercase" id="tickers" name="tickers" rows="3"
+                                          maxlength="256" required aria-required="true"
+                                          aria-describedby="tickers-help"
+                                          placeholder="e.g. AAPL, MSFT, QQQ"></textarea>
+                                <div id="tickers-help" class="form-text">
+                                    Enter 2-5 bare symbols separated by commas or new lines for one selected market.
+                                    Stocks and ETFs may be mixed.
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-lg-4">
+                                <label for="target-market" class="form-label fw-semibold">
+                                    Target Market <span class="text-danger" aria-hidden="true">*</span>
+                                </label>
+                                <select class="form-select" id="target-market" name="target_market"
+                                        required aria-required="true" aria-describedby="target-market-help">
+                                    {% for market in market_options %}
+                                    <option value="{{ market.code }}"
+                                            {% if market.code == default_market %}selected{% endif %}>
+                                        {{ market.label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div id="target-market-help" class="form-text">
+                                    Quotes, listings, and currency are validated against this market.
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="scenario" class="form-label fw-semibold">
+                                    Stress Scenario <span class="text-muted fw-normal">(Optional)</span>
+                                </label>
+                                <textarea class="form-control" id="scenario" name="scenario" rows="2"
+                                          maxlength="1000" aria-describedby="scenario-help"
+                                          placeholder="e.g. Recession with higher-for-longer interest rates"></textarea>
+                                <div id="scenario-help" class="form-text">
+                                    If provided, each candidate is assessed under the same scenario. Scores remain
+                                    profile-neutral and scenario suitability is shown separately.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary" id="compare-btn">
+                                <i class="bi bi-bar-chart-steps me-1" aria-hidden="true"></i>
+                                <span id="compare-btn-label">Compare Investments</span>
+                            </button>
+                            <span class="small text-muted">Required fields are marked with an asterisk.</span>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <section id="progress-section" class="d-none mb-4" aria-labelledby="progress-message">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-3" role="status" aria-live="polite">
+                            <div class="spinner-border spinner-border-sm text-primary" aria-hidden="true"></div>
+                            <div class="flex-grow-1">
+                                <div class="fw-semibold" id="progress-message">Starting...</div>
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar" id="progress-bar" role="progressbar"
+                                         style="width: 0%" aria-valuemin="0" aria-valuemax="100"
+                                         aria-valuenow="0" aria-label="Comparison progress"></div>
+                                </div>
+                                <small class="text-muted" id="progress-step">Step 0 of 6</small>
+                                <small class="text-muted d-none ms-2" id="wait-timer"></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="error-section" class="d-none mb-4" tabindex="-1" aria-live="assertive"
+                     aria-labelledby="comparison-error-heading">
+                <div class="alert alert-danger mb-0" role="alert">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-exclamation-triangle-fill mt-1" aria-hidden="true"></i>
+                        <div>
+                            <h2 id="comparison-error-heading" class="h6 mb-1">
+                                The investment comparison could not be completed
+                            </h2>
+                            <div id="error-message"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="result-section" class="d-none mb-4" tabindex="-1"
+                     aria-labelledby="comparison-result-heading">
+                <div class="card border-0 shadow-sm" id="comparison-print-area">
+                    <div class="card-header bg-white border-bottom-0 pt-3 px-3 px-md-4 pb-0
+                                d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <div class="section-kicker mb-1">Decision support</div>
+                            <h2 id="comparison-result-heading" class="h4 fw-semibold mb-0">
+                                <i class="bi bi-bar-chart-steps me-1" aria-hidden="true"></i>Investment Comparison
+                            </h2>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 no-print">
+                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                    id="export-comparison-btn" disabled>
+                                <i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>Export CSV
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    id="print-comparison-btn" disabled
+                                    aria-label="Print the visible investment comparison">
+                                <i class="bi bi-printer me-1" aria-hidden="true"></i>Print
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body px-3 px-md-4">
+                        <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none no-print"
+                             role="status">
+                            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                            This is a cached comparison completed on
+                            <time id="cached-result-time"></time>. Running it again will refresh it.
+                        </div>
+
+                        <div class="alert alert-secondary small mb-3" role="note">
+                            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                            <strong>Decision-support disclaimer:</strong> This AI-assisted comparison is general
+                            information, not financial advice or a recommendation. Verify the evidence and consider
+                            your objectives, circumstances, and professional advice before investing.
+                        </div>
+
+                        <div id="comparison-result" aria-live="polite"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+const COMPARE_INVESTMENTS_STORAGE_FEATURE = 'compare-investments';
+const COMPARE_INVESTMENTS_STORAGE_SCHEMA_VERSION = 1;
+const COMPARE_INVESTMENTS_MARKET_CODES = {{ market_codes | tojson }};
+const COMPARE_INVESTMENTS_DEFAULT_MARKET = {{ default_market | tojson }};
+const COMPARE_INVESTMENTS_INPUT_FIELDS = ['tickers', 'target_market', 'scenario'];
+const COMPARE_INVESTMENTS_CATEGORY_KEYS = [
+    'valuation', 'quality', 'growth', 'momentum', 'catalysts', 'risk_resilience'
+];
+const COMPARE_INVESTMENTS_METRIC_KEYS = [
+    'size', 'valuation', 'growth', 'income_yield', 'volatility', 'cost'
+];
+const COMPARE_INVESTMENTS_PROFILE_KEYS = ['conservative', 'moderate', 'aggressive'];
+const COMPARE_INVESTMENTS_CONFIDENCE_VALUES = ['high', 'medium', 'low'];
+const COMPARE_INVESTMENTS_TICKER_PATTERN = /^[A-Z0-9][A-Z0-9.-]{0,19}$/;
+const COMPARE_INVESTMENTS_ISO_TIMESTAMP_PATTERN =
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+const COMPARE_INVESTMENTS_PRINT_TITLE = {{ ('Investment Comparison - ' ~ app_name) | tojson }};
+const CATEGORY_LABELS = {
+    valuation: 'Valuation',
+    quality: 'Quality',
+    growth: 'Growth',
+    momentum: 'Momentum',
+    catalysts: 'Catalysts',
+    risk_resilience: 'Risk & Resilience'
+};
+const PROFILE_LABELS = {
+    conservative: 'Conservative',
+    moderate: 'Moderate',
+    aggressive: 'Aggressive'
+};
+let currentComparisonResult = null;
+
+function isRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasExactKeys(value, fields) {
+    return isRecord(value)
+        && Object.keys(value).length === fields.length
+        && fields.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field);
+        });
+}
+
+function isNonEmptyString(value, maxLength) {
+    return typeof value === 'string'
+        && value.trim().length > 0
+        && value.length <= maxLength;
+}
+
+function isIsoTimestamp(value) {
+    return typeof value === 'string'
+        && COMPARE_INVESTMENTS_ISO_TIMESTAMP_PATTERN.test(value)
+        && !Number.isNaN(new Date(value).getTime());
+}
+
+function canonicalTicker(token, market) {
+    let normalized = token.trim().toUpperCase();
+    if (market === 'AU' && normalized.endsWith('.AX')) {
+        normalized = normalized.slice(0, -3);
+    } else if (market !== 'AU' && normalized.endsWith('.AX')) {
+        return null;
+    }
+    if (normalized === 'CASH' || !COMPARE_INVESTMENTS_TICKER_PATTERN.test(normalized)) {
+        return null;
+    }
+    return normalized;
+}
+
+function parseTickerInput(value, market) {
+    if (typeof value !== 'string' || value.length > 256
+            || !COMPARE_INVESTMENTS_MARKET_CODES.includes(market)) {
+        return null;
+    }
+    const tokens = value.trim().split(/[\s,;]+/).filter(Boolean);
+    if (tokens.length < 2 || tokens.length > 5) {
+        return null;
+    }
+    const tickers = tokens.map(function(token) {
+        return canonicalTicker(token, market);
+    });
+    if (tickers.some(function(ticker) { return ticker === null; })
+            || new Set(tickers).size !== tickers.length) {
+        return null;
+    }
+    return tickers;
+}
+
+function isValidStoredCompareInvestments(value) {
+    if (!hasExactKeys(value, COMPARE_INVESTMENTS_INPUT_FIELDS)
+            || !COMPARE_INVESTMENTS_INPUT_FIELDS.every(function(field) {
+                return typeof value[field] === 'string';
+            })
+            || !COMPARE_INVESTMENTS_MARKET_CODES.includes(value.target_market)
+            || value.scenario !== value.scenario.trim()
+            || value.scenario.length > 1000) {
+        return false;
+    }
+    const tickers = parseTickerInput(value.tickers, value.target_market);
+    return tickers !== null && value.tickers === tickers.join(', ');
+}
+
+function isNumberBetween(value, minimum, maximum) {
+    return typeof value === 'number'
+        && Number.isFinite(value)
+        && value >= minimum
+        && value <= maximum;
+}
+
+function hasUniqueRequiredKeys(items, requiredKeys, keyName) {
+    return Array.isArray(items)
+        && items.length === requiredKeys.length
+        && items.every(isRecord)
+        && new Set(items.map(function(item) { return item[keyName]; })).size === items.length
+        && requiredKeys.every(function(key) {
+            return items.some(function(item) { return item[keyName] === key; });
+        });
+}
+
+function isStringArray(value, minimumLength) {
+    return Array.isArray(value)
+        && value.length >= minimumLength
+        && value.every(function(item) {
+            return typeof item === 'string' && item.trim().length > 0;
+        });
+}
+
+function isValidComparisonResult(value, expectedTickers, expectedMarket) {
+    if (!isRecord(value)
+            || !isIsoTimestamp(value.generated_at)
+            || !isIsoTimestamp(value.research_as_of)
+            || !isIsoTimestamp(value.market_data_at)
+            || !isNonEmptyString(value.market, 32)
+            || !COMPARE_INVESTMENTS_MARKET_CODES.includes(value.market)
+            || (expectedMarket && value.market !== expectedMarket)
+            || !isNonEmptyString(value.market_name, 120)
+            || typeof value.currency !== 'string'
+            || !/^[A-Z]{3}$/.test(value.currency)
+            || typeof value.scenario !== 'string'
+            || value.scenario !== value.scenario.trim()
+            || value.scenario.length > 1000
+            || !isNonEmptyString(value.methodology_summary, 1200)
+            || !Array.isArray(value.rankings)
+            || value.rankings.length < 2
+            || value.rankings.length > 5
+            || !Array.isArray(value.snapshots)
+            || !Array.isArray(value.candidates)
+            || value.snapshots.length !== value.rankings.length
+            || value.candidates.length !== value.rankings.length
+            || !hasUniqueRequiredKeys(
+                value.category_weights, COMPARE_INVESTMENTS_CATEGORY_KEYS, 'category'
+            )
+            || !hasUniqueRequiredKeys(
+                value.category_winners, COMPARE_INVESTMENTS_CATEGORY_KEYS, 'category'
+            )
+            || !Array.isArray(value.sources)
+            || value.sources.length < 2
+            || !Array.isArray(value.caveats)
+            || value.caveats.length < 1) {
+        return false;
+    }
+    if (!value.category_weights.every(function(weight) {
+        return Number.isInteger(weight.weight_pct) && weight.weight_pct > 0 && weight.weight_pct <= 100;
+    }) || !value.category_winners.every(function(winner) {
+        return Number.isInteger(winner.score)
+            && winner.score >= 0
+            && winner.score <= 100
+            && isStringArray(winner.tickers, 1);
+    }) || !value.sources.every(function(source) {
+        return isRecord(source)
+            && isNonEmptyString(source.title, 300)
+            && isNonEmptyString(source.publisher, 120)
+            && isNonEmptyString(source.url, 2000)
+            && (source.published_at === null || typeof source.published_at === 'string');
+    }) || !isStringArray(value.caveats, 1)) {
+        return false;
+    }
+
+    const rankingTickers = [];
+    for (const ranking of value.rankings) {
+        if (!isRecord(ranking)
+                || canonicalTicker(ranking.ticker, value.market) !== ranking.ticker
+                || !Number.isInteger(ranking.rank)
+                || ranking.rank < 1
+                || ranking.rank > 5
+                || !isNumberBetween(ranking.weighted_score, 0, 100)
+                || !COMPARE_INVESTMENTS_CONFIDENCE_VALUES.includes(ranking.confidence)) {
+            return false;
+        }
+        rankingTickers.push(ranking.ticker);
+    }
+    if (new Set(rankingTickers).size !== rankingTickers.length
+            || value.rankings[0].rank !== 1
+            || value.rankings.some(function(ranking, index) {
+                return index > 0 && ranking.rank < value.rankings[index - 1].rank;
+            })
+            || (expectedTickers && (
+                rankingTickers.length !== expectedTickers.length
+                || !rankingTickers.every(function(ticker) { return expectedTickers.includes(ticker); })
+            ))) {
+        return false;
+    }
+
+    for (let index = 0; index < rankingTickers.length; index += 1) {
+        const snapshot = value.snapshots[index];
+        const candidate = value.candidates[index];
+        if (!isRecord(snapshot)
+                || snapshot.ticker !== rankingTickers[index]
+                || !isNonEmptyString(snapshot.name, 200)
+                || !['stock', 'etf'].includes(snapshot.asset_type)
+                || !isNumberBetween(snapshot.current_price, Number.MIN_VALUE, Number.MAX_VALUE)
+                || snapshot.currency !== value.currency
+                || !isIsoTimestamp(snapshot.quote_as_of)
+                || !isRecord(candidate)
+                || candidate.ticker !== rankingTickers[index]
+                || !isNonEmptyString(candidate.name, 200)
+                || !['stock', 'etf'].includes(candidate.asset_type)
+                || !hasUniqueRequiredKeys(
+                    candidate.categories, COMPARE_INVESTMENTS_CATEGORY_KEYS, 'category'
+                )
+                || !hasUniqueRequiredKeys(
+                    candidate.metrics, COMPARE_INVESTMENTS_METRIC_KEYS, 'key'
+                )
+                || !hasUniqueRequiredKeys(
+                    candidate.profile_suitability, COMPARE_INVESTMENTS_PROFILE_KEYS, 'profile'
+                )
+                || !isRecord(candidate.scenario)
+                || !isStringArray(candidate.strengths, 1)
+                || !isStringArray(candidate.risks, 1)
+                || !isStringArray(candidate.catalysts, 1)
+                || !candidate.categories.every(function(assessment) {
+                    return Number.isInteger(assessment.score)
+                        && assessment.score >= 0
+                        && assessment.score <= 100
+                        && COMPARE_INVESTMENTS_CONFIDENCE_VALUES.includes(assessment.confidence)
+                        && isNonEmptyString(assessment.summary, 600)
+                        && isStringArray(assessment.evidence, 1)
+                        && isStringArray(assessment.source_ids, 1);
+                })
+                || !candidate.metrics.every(function(metric) {
+                    return isNonEmptyString(metric.label, 80)
+                        && isNonEmptyString(metric.display_value, 120)
+                        && ['applicable', 'not_applicable', 'unavailable'].includes(metric.applicability)
+                        && typeof metric.note === 'string'
+                        && (metric.as_of === null || typeof metric.as_of === 'string')
+                        && Array.isArray(metric.source_ids)
+                        && metric.source_ids.every(function(sourceId) {
+                            return typeof sourceId === 'string' && sourceId.length > 0;
+                        });
+                })
+                || !candidate.profile_suitability.every(function(profile) {
+                    return ['strong_fit', 'fit', 'mixed', 'poor_fit'].includes(profile.rating)
+                        && isNonEmptyString(profile.summary, 400);
+                })
+                || !['positive', 'neutral', 'mixed', 'negative', 'not_assessed'].includes(
+                    candidate.scenario.impact
+                )
+                || (candidate.scenario.resilience_score !== null
+                    && !isNumberBetween(candidate.scenario.resilience_score, 0, 100))
+                || !isNonEmptyString(candidate.scenario.summary, 600)
+                || !Array.isArray(candidate.scenario.key_drivers)
+                || !candidate.scenario.key_drivers.every(function(driver) {
+                    return typeof driver === 'string' && driver.trim().length > 0;
+                })
+                || !Array.isArray(candidate.scenario.source_ids)
+                || !candidate.scenario.source_ids.every(function(sourceId) {
+                    return typeof sourceId === 'string' && sourceId.length > 0;
+                })) {
+            return false;
+        }
+    }
+    if (value.category_winners.some(function(winner) {
+        return winner.tickers.some(function(ticker) {
+            return !rankingTickers.includes(ticker);
+        });
+    }) || value.candidates.some(function(candidate) {
+        const assessed = candidate.scenario.impact !== 'not_assessed';
+        return assessed !== Boolean(value.scenario)
+            || (assessed && (
+                candidate.scenario.resilience_score === null
+                || candidate.scenario.source_ids.length === 0
+            ))
+            || (!assessed && (
+                candidate.scenario.resilience_score !== null
+                || candidate.scenario.source_ids.length !== 0
+            ));
+    })) {
+        return false;
+    }
+    return true;
+}
+
+function isValidCachedComparison(value) {
+    const fields = [...COMPARE_INVESTMENTS_INPUT_FIELDS, 'payload', 'generated_at'];
+    if (!hasExactKeys(value, fields)
+            || !COMPARE_INVESTMENTS_INPUT_FIELDS.every(function(field) {
+                return typeof value[field] === 'string';
+            })
+            || !isIsoTimestamp(value.generated_at)
+            || !hasExactKeys(value.payload, ['result'])
+            || !isValidStoredCompareInvestments({
+                tickers: value.tickers,
+                target_market: value.target_market,
+                scenario: value.scenario
+            })) {
+        return false;
+    }
+    const expectedTickers = parseTickerInput(value.tickers, value.target_market);
+    return value.tickers === expectedTickers.join(', ')
+        && isValidComparisonResult(value.payload.result, expectedTickers, value.target_market)
+        && value.payload.result.scenario === value.scenario;
+}
+
+function createElement(tagName, className, text) {
+    const element = document.createElement(tagName);
+    if (className) {
+        element.className = className;
+    }
+    if (text !== undefined && text !== null) {
+        element.textContent = String(text);
+    }
+    return element;
+}
+
+function appendCell(row, value, options) {
+    const settings = options || {};
+    const cell = createElement(settings.header ? 'th' : 'td', settings.className, value);
+    if (settings.scope) {
+        cell.scope = settings.scope;
+    }
+    row.appendChild(cell);
+    return cell;
+}
+
+function resultSection(id, title, kicker) {
+    const section = createElement('section', 'mb-4');
+    const headingId = `${id}-heading`;
+    section.setAttribute('aria-labelledby', headingId);
+    if (kicker) {
+        section.appendChild(createElement('div', 'section-kicker mb-1', kicker));
+    }
+    const heading = createElement('h3', 'h5 fw-semibold mb-3', title);
+    heading.id = headingId;
+    section.appendChild(heading);
+    return section;
+}
+
+function makeList(items, className) {
+    const list = createElement('ul', className || 'result-list mb-0');
+    items.forEach(function(item) {
+        list.appendChild(createElement('li', '', item));
+    });
+    return list;
+}
+
+function titleCase(value) {
+    return String(value).replace(/_/g, ' ').replace(/\b\w/g, function(character) {
+        return character.toUpperCase();
+    });
+}
+
+function formatDateTime(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 'Unavailable' : date.toLocaleString();
+}
+
+function formatScore(value) {
+    return Number(value).toFixed(2);
+}
+
+function formatPrice(value, currency) {
+    try {
+        return new Intl.NumberFormat(undefined, {
+            style: 'currency',
+            currency: currency,
+            maximumFractionDigits: 4
+        }).format(value);
+    } catch (error) {
+        return `${value} ${currency}`;
+    }
+}
+
+function keyedItem(items, keyName, key) {
+    return items.find(function(item) {
+        return item[keyName] === key;
+    });
+}
+
+function renderContext(result, container) {
+    const freshnessWarning = createElement('div', 'alert alert-warning mb-4');
+    freshnessWarning.setAttribute('role', 'alert');
+    const warningTitle = createElement('strong', '', 'Current-data and seven-day-cache warning: ');
+    freshnessWarning.appendChild(warningTitle);
+    freshnessWarning.append(
+        'Comparison results may be cached for up to seven days. Market data is as of '
+    );
+    const marketDataTime = createElement('time', '', formatDateTime(result.market_data_at));
+    marketDataTime.dateTime = result.market_data_at;
+    freshnessWarning.appendChild(marketDataTime);
+    freshnessWarning.append(` and is shown in ${result.currency}. Verify current prices before acting.`);
+    container.appendChild(freshnessWarning);
+
+    const panel = createElement('div', 'comparison-panel rounded-3 p-3 mb-4');
+    const badges = createElement('div', 'd-flex flex-wrap gap-2 mb-2', null);
+    badges.setAttribute('aria-label', 'Comparison context');
+    badges.appendChild(createElement('span', 'badge text-bg-primary', result.market_name));
+    badges.appendChild(createElement('span', 'badge text-bg-secondary', result.currency));
+    if (result.scenario) {
+        badges.appendChild(createElement('span', 'badge text-bg-warning', `Scenario: ${result.scenario}`));
+    }
+    panel.appendChild(badges);
+
+    const timestamps = createElement('div', 'small text-muted');
+    const generated = createElement('time', '', formatDateTime(result.generated_at));
+    generated.dateTime = result.generated_at;
+    const marketData = createElement('time', '', formatDateTime(result.market_data_at));
+    marketData.dateTime = result.market_data_at;
+    const research = createElement('time', '', formatDateTime(result.research_as_of));
+    research.dateTime = result.research_as_of;
+    timestamps.append('Generated ');
+    timestamps.appendChild(generated);
+    timestamps.append(' | Market data ');
+    timestamps.appendChild(marketData);
+    timestamps.append(' | Research as of ');
+    timestamps.appendChild(research);
+    panel.appendChild(timestamps);
+    container.appendChild(panel);
+}
+
+function renderRankings(result, container) {
+    const section = resultSection('ranking-summary', 'Ranking summary', 'Overall comparison');
+    const row = createElement('div', 'row g-3');
+    const snapshots = new Map(result.snapshots.map(function(snapshot) {
+        return [snapshot.ticker, snapshot];
+    }));
+    result.rankings.forEach(function(ranking) {
+        const snapshot = snapshots.get(ranking.ticker);
+        const column = createElement('div', 'col-12 col-md-6 col-xl');
+        const card = createElement('article', 'card h-100 border');
+        const body = createElement('div', 'card-body');
+        const heading = createElement('h4', 'h6 fw-semibold d-flex align-items-center gap-2');
+        heading.id = `ranking-${ranking.ticker}-heading`;
+        card.setAttribute('aria-labelledby', heading.id);
+        heading.appendChild(createElement('span', 'badge text-bg-primary', `#${ranking.rank}`));
+        heading.appendChild(createElement('span', '', ranking.ticker));
+        body.appendChild(heading);
+        body.appendChild(createElement('div', 'small text-muted mb-2', snapshot.name));
+        body.appendChild(createElement(
+            'span',
+            `badge ${snapshot.asset_type === 'etf' ? 'text-bg-info' : 'text-bg-secondary'} mb-2`,
+            snapshot.asset_type === 'etf' ? 'ETF' : 'Stock'
+        ));
+        body.appendChild(createElement(
+            'div',
+            'fw-semibold mb-2',
+            `${formatPrice(snapshot.current_price, snapshot.currency)} | ${snapshot.currency}`
+        ));
+        body.appendChild(createElement(
+            'div', 'display-6 fw-semibold score-value', formatScore(ranking.weighted_score)
+        ));
+        body.appendChild(createElement('div', 'small text-muted', 'Weighted score out of 100'));
+        const confidence = createElement('div', 'small mt-2');
+        confidence.append('Confidence: ');
+        confidence.appendChild(createElement(
+            'span', 'badge text-bg-light border text-dark', titleCase(ranking.confidence)
+        ));
+        body.appendChild(confidence);
+        card.appendChild(body);
+        column.appendChild(card);
+        row.appendChild(column);
+    });
+    section.appendChild(row);
+    container.appendChild(section);
+}
+
+function renderMethodology(result, container) {
+    const section = resultSection(
+        'comparison-methodology', 'Methodology and fixed category weights', 'How scores are built'
+    );
+    section.appendChild(createElement('p', 'mb-3', result.methodology_summary));
+    const weights = createElement('div', 'row g-2');
+    COMPARE_INVESTMENTS_CATEGORY_KEYS.forEach(function(category) {
+        const weight = keyedItem(result.category_weights, 'category', category);
+        const column = createElement('div', 'col-6 col-md-4 col-xl-2');
+        const panel = createElement('div', 'border rounded-3 p-2 h-100 text-center');
+        panel.appendChild(createElement('div', 'small text-muted', CATEGORY_LABELS[category]));
+        panel.appendChild(createElement('div', 'fw-semibold score-value', `${weight.weight_pct}%`));
+        column.appendChild(panel);
+        weights.appendChild(column);
+    });
+    section.appendChild(weights);
+    container.appendChild(section);
+}
+
+function renderScorecard(result, container) {
+    const section = resultSection(
+        'category-scorecard', 'Side-by-side scorecard', 'Category comparison'
+    );
+    const responsive = createElement('div', 'table-responsive');
+    const table = createElement('table', 'table table-striped table-bordered align-middle mb-0');
+    const caption = createElement(
+        'caption', 'visually-hidden', 'Category scores for each investment candidate'
+    );
+    table.appendChild(caption);
+    const head = createElement('thead', 'table-light');
+    const headerRow = createElement('tr');
+    appendCell(headerRow, 'Category', {header: true, scope: 'col'});
+    result.rankings.forEach(function(ranking) {
+        appendCell(headerRow, ranking.ticker, {
+            header: true,
+            scope: 'col',
+            className: 'text-nowrap'
+        });
+    });
+    head.appendChild(headerRow);
+    table.appendChild(head);
+
+    const body = createElement('tbody');
+    const candidates = new Map(result.candidates.map(function(candidate) {
+        return [candidate.ticker, candidate];
+    }));
+    COMPARE_INVESTMENTS_CATEGORY_KEYS.forEach(function(category) {
+        const row = createElement('tr');
+        appendCell(row, CATEGORY_LABELS[category], {header: true, scope: 'row'});
+        const winner = keyedItem(result.category_winners, 'category', category);
+        result.rankings.forEach(function(ranking) {
+            const assessment = keyedItem(
+                candidates.get(ranking.ticker).categories, 'category', category
+            );
+            const cell = appendCell(row, '', {className: 'score-value'});
+            cell.appendChild(createElement('span', 'fw-semibold', `${assessment.score}/100`));
+            if (winner.tickers.includes(ranking.ticker)) {
+                cell.append(' ');
+                cell.appendChild(createElement(
+                    'span', 'badge text-bg-success', 'Category winner'
+                ));
+            }
+        });
+        body.appendChild(row);
+    });
+    table.appendChild(body);
+    responsive.appendChild(table);
+    section.appendChild(responsive);
+    container.appendChild(section);
+}
+
+function renderMetrics(result, container) {
+    const section = resultSection('comparable-metrics', 'Comparable metrics', 'Evidence snapshots');
+    const responsive = createElement('div', 'table-responsive');
+    const table = createElement('table', 'table table-bordered align-middle mb-0');
+    table.appendChild(createElement('caption', 'visually-hidden', 'Comparable investment metrics'));
+    const head = createElement('thead', 'table-light');
+    const headerRow = createElement('tr');
+    appendCell(headerRow, 'Metric', {header: true, scope: 'col'});
+    result.candidates.forEach(function(candidate) {
+        appendCell(headerRow, candidate.ticker, {header: true, scope: 'col'});
+    });
+    head.appendChild(headerRow);
+    table.appendChild(head);
+    const body = createElement('tbody');
+    result.candidates[0].metrics.forEach(function(metricDefinition) {
+        const row = createElement('tr');
+        appendCell(row, metricDefinition.label, {header: true, scope: 'row'});
+        result.candidates.forEach(function(candidate) {
+            const metric = keyedItem(candidate.metrics, 'key', metricDefinition.key);
+            let displayValue = metric.display_value;
+            if (metric.applicability === 'not_applicable') {
+                displayValue = 'N/A';
+            } else if (metric.applicability === 'unavailable') {
+                displayValue = 'Unavailable';
+            }
+            const cell = appendCell(row, displayValue);
+            if (metric.note) {
+                cell.appendChild(createElement('div', 'small text-muted mt-1', metric.note));
+            }
+            if (metric.as_of) {
+                const asOf = createElement('div', 'small text-muted');
+                asOf.append('As of ');
+                const time = createElement('time', '', metric.as_of);
+                time.dateTime = metric.as_of;
+                asOf.appendChild(time);
+                cell.appendChild(asOf);
+            }
+        });
+        body.appendChild(row);
+    });
+    table.appendChild(body);
+    responsive.appendChild(table);
+    section.appendChild(responsive);
+    container.appendChild(section);
+}
+
+function ratingBadge(rating) {
+    const settings = {
+        strong_fit: ['Strong fit', 'text-bg-success'],
+        fit: ['Fit', 'text-bg-primary'],
+        mixed: ['Mixed', 'text-bg-warning'],
+        poor_fit: ['Poor fit', 'text-bg-danger']
+    }[rating];
+    return createElement('span', `badge ${settings[1]}`, settings[0]);
+}
+
+function renderProfileSuitability(result, container) {
+    const section = resultSection(
+        'profile-suitability', 'Profile suitability', 'Investor profile matrix'
+    );
+    const responsive = createElement('div', 'table-responsive');
+    const table = createElement('table', 'table table-bordered align-middle mb-0');
+    table.appendChild(createElement(
+        'caption', 'visually-hidden', 'Suitability of each candidate by investor profile'
+    ));
+    const head = createElement('thead', 'table-light');
+    const headerRow = createElement('tr');
+    appendCell(headerRow, 'Profile', {header: true, scope: 'col'});
+    result.candidates.forEach(function(candidate) {
+        appendCell(headerRow, candidate.ticker, {header: true, scope: 'col'});
+    });
+    head.appendChild(headerRow);
+    table.appendChild(head);
+    const body = createElement('tbody');
+    COMPARE_INVESTMENTS_PROFILE_KEYS.forEach(function(profileKey) {
+        const row = createElement('tr');
+        appendCell(row, PROFILE_LABELS[profileKey], {header: true, scope: 'row'});
+        result.candidates.forEach(function(candidate) {
+            const profile = keyedItem(candidate.profile_suitability, 'profile', profileKey);
+            const cell = appendCell(row, '');
+            cell.appendChild(ratingBadge(profile.rating));
+            cell.appendChild(createElement('div', 'small mt-2', profile.summary));
+        });
+        body.appendChild(row);
+    });
+    table.appendChild(body);
+    responsive.appendChild(table);
+    section.appendChild(responsive);
+    container.appendChild(section);
+}
+
+function renderScenarioSensitivity(result, container) {
+    const section = resultSection(
+        'scenario-sensitivity', 'Scenario sensitivity', 'Stress-test assessment'
+    );
+    const assessedCandidates = result.candidates.filter(function(candidate) {
+        return candidate.scenario.impact !== 'not_assessed';
+    });
+    if (!result.scenario || assessedCandidates.length === 0) {
+        section.appendChild(createElement(
+            'div', 'alert alert-light border mb-0', 'No scenario assessed'
+        ));
+        container.appendChild(section);
+        return;
+    }
+
+    section.appendChild(createElement('p', 'mb-3', result.scenario));
+    const row = createElement('div', 'row g-3');
+    assessedCandidates.forEach(function(candidate) {
+        const column = createElement('div', 'col-12 col-lg-6');
+        const card = createElement('article', 'card border h-100');
+        const body = createElement('div', 'card-body');
+        const heading = createElement('h4', 'h6 fw-semibold', candidate.ticker);
+        heading.id = `scenario-${candidate.ticker}-heading`;
+        card.setAttribute('aria-labelledby', heading.id);
+        body.appendChild(heading);
+        body.appendChild(createElement(
+            'div',
+            'mb-2',
+            `${titleCase(candidate.scenario.impact)} impact | Resilience `
+                + `${candidate.scenario.resilience_score}/100`
+        ));
+        body.appendChild(createElement('p', 'small mb-2', candidate.scenario.summary));
+        if (candidate.scenario.key_drivers.length) {
+            body.appendChild(makeList(candidate.scenario.key_drivers, 'result-list small mb-0'));
+        }
+        card.appendChild(body);
+        column.appendChild(card);
+        row.appendChild(column);
+    });
+    section.appendChild(row);
+    container.appendChild(section);
+}
+
+function renderCandidateDetails(result, container) {
+    const section = resultSection('candidate-details', 'Candidate details', 'Research');
+    const accordion = createElement('div', 'd-grid gap-3');
+    result.candidates.forEach(function(candidate) {
+        const article = createElement('article', 'candidate-detail card border');
+        const body = createElement('div', 'card-body');
+        const heading = createElement('h4', 'h5 fw-semibold mb-1', candidate.ticker);
+        heading.id = `candidate-${candidate.ticker}-heading`;
+        article.setAttribute('aria-labelledby', heading.id);
+        body.appendChild(heading);
+        body.appendChild(createElement(
+            'div', 'text-muted mb-3', `${candidate.name} | ${titleCase(candidate.asset_type)}`
+        ));
+
+        const categoryHeading = createElement('h5', 'h6 fw-semibold mt-3', 'Category assessments');
+        body.appendChild(categoryHeading);
+        const categories = createElement('div', 'row g-2');
+        COMPARE_INVESTMENTS_CATEGORY_KEYS.forEach(function(categoryKey) {
+            const assessment = keyedItem(candidate.categories, 'category', categoryKey);
+            const column = createElement('div', 'col-12 col-lg-6');
+            const panel = createElement('div', 'rounded-3 bg-light p-3 h-100');
+            const heading = createElement('div', 'd-flex justify-content-between gap-2 mb-1');
+            heading.appendChild(createElement('strong', '', CATEGORY_LABELS[categoryKey]));
+            heading.appendChild(createElement('span', 'score-value', `${assessment.score}/100`));
+            panel.appendChild(heading);
+            panel.appendChild(createElement('div', 'small mb-2', assessment.summary));
+            panel.appendChild(makeList(assessment.evidence, 'result-list small mb-1'));
+            panel.appendChild(createElement(
+                'div', 'small text-muted', `Confidence: ${titleCase(assessment.confidence)}`
+            ));
+            column.appendChild(panel);
+            categories.appendChild(column);
+        });
+        body.appendChild(categories);
+
+        const lists = createElement('div', 'row g-3 mt-1');
+        [
+            ['Strengths', candidate.strengths],
+            ['Risks', candidate.risks],
+            ['Catalysts', candidate.catalysts]
+        ].forEach(function(group) {
+            const column = createElement('div', 'col-12 col-lg-4');
+            column.appendChild(createElement('h5', 'h6 fw-semibold', group[0]));
+            column.appendChild(makeList(group[1], 'result-list small mb-0'));
+            lists.appendChild(column);
+        });
+        body.appendChild(lists);
+
+        article.appendChild(body);
+        accordion.appendChild(article);
+    });
+    section.appendChild(accordion);
+    container.appendChild(section);
+}
+
+function safeHttpUrl(value) {
+    try {
+        const url = new URL(value);
+        return ['http:', 'https:'].includes(url.protocol) ? url.href : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function renderCaveatsAndSources(result, container) {
+    const caveats = resultSection('comparison-caveats', 'Caveats', 'Important limitations');
+    caveats.appendChild(makeList(result.caveats));
+    container.appendChild(caveats);
+
+    const sources = resultSection('comparison-sources', 'Sources', 'Evidence');
+    const list = createElement('ol', 'result-list mb-0');
+    result.sources.forEach(function(source) {
+        const item = createElement('li');
+        const safeUrl = safeHttpUrl(source.url);
+        if (safeUrl) {
+            const link = createElement('a', '', source.title);
+            link.href = safeUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            item.appendChild(link);
+        } else {
+            item.appendChild(createElement('span', '', source.title));
+        }
+        item.append(` - ${source.publisher}`);
+        if (source.published_at) {
+            item.append(` (${source.published_at})`);
+        }
+        list.appendChild(item);
+    });
+    sources.appendChild(list);
+    container.appendChild(sources);
+}
+
+function renderComparisonResult(result, cachedAt) {
+    const container = document.getElementById('comparison-result');
+    container.replaceChildren();
+    renderContext(result, container);
+    renderRankings(result, container);
+    renderMethodology(result, container);
+    renderScorecard(result, container);
+    renderMetrics(result, container);
+    renderProfileSuitability(result, container);
+    renderScenarioSensitivity(result, container);
+    renderCandidateDetails(result, container);
+    renderCaveatsAndSources(result, container);
+
+    currentComparisonResult = result;
+    document.getElementById('export-comparison-btn').disabled = false;
+    document.getElementById('print-comparison-btn').disabled = false;
+    const notice = document.getElementById('cached-result-notice');
+    if (cachedAt) {
+        const time = document.getElementById('cached-result-time');
+        time.dateTime = cachedAt.toISOString();
+        time.textContent = cachedAt.toLocaleString();
+        notice.classList.remove('d-none');
+    } else {
+        notice.classList.add('d-none');
+    }
+    document.getElementById('result-section').classList.remove('d-none');
+}
+
+function showStorageWarning(message) {
+    const warning = document.getElementById('storage-warning');
+    const warningMessage = document.getElementById('storage-warning-message');
+    if (!warning || !warningMessage) {
+        return;
+    }
+    warningMessage.textContent = message;
+    warning.classList.remove('d-none');
+}
+
+function showComparisonError(message) {
+    document.getElementById('error-message').textContent = message;
+    const section = document.getElementById('error-section');
+    section.classList.remove('d-none');
+    section.focus();
+}
+
+function setButtonBusy() {
+    const button = document.getElementById('compare-btn');
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.querySelector('i').className = 'spinner-border spinner-border-sm me-1';
+    document.getElementById('compare-btn-label').textContent = 'Comparing...';
+}
+
+function resetButton() {
+    const button = document.getElementById('compare-btn');
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+    button.querySelector('i').className = 'bi bi-bar-chart-steps me-1';
+    document.getElementById('compare-btn-label').textContent = 'Compare Investments';
+}
+
+function safeCsvCell(value) {
+    let text = String(value ?? '');
+    if (/^[\t\r\n ]*[=+\-@]/.test(text)) {
+        text = `'${text}`;
+    }
+    return `"${text.replace(/"/g, '""')}"`;
+}
+
+function exportComparisonCsv() {
+    if (!currentComparisonResult || !isValidComparisonResult(currentComparisonResult)) {
+        showComparisonError('There is no valid comparison available to export.');
+        return;
+    }
+    const result = currentComparisonResult;
+    const snapshots = new Map(result.snapshots.map(function(snapshot) {
+        return [snapshot.ticker, snapshot];
+    }));
+    const candidates = new Map(result.candidates.map(function(candidate) {
+        return [candidate.ticker, candidate];
+    }));
+    const headers = [
+        'Rank', 'Ticker', 'Name', 'Asset Type', 'Current Price', 'Currency',
+        'Weighted Score', 'Confidence',
+        ...COMPARE_INVESTMENTS_CATEGORY_KEYS.map(function(key) {
+            return `${CATEGORY_LABELS[key]} Score`;
+        }),
+        'Conservative Suitability', 'Moderate Suitability', 'Aggressive Suitability',
+        'Scenario Impact', 'Scenario Resilience', 'Market Data At'
+    ];
+    const rows = result.rankings.map(function(ranking) {
+        const snapshot = snapshots.get(ranking.ticker);
+        const candidate = candidates.get(ranking.ticker);
+        return [
+            ranking.rank,
+            ranking.ticker,
+            snapshot.name,
+            snapshot.asset_type,
+            snapshot.current_price,
+            snapshot.currency,
+            ranking.weighted_score,
+            ranking.confidence,
+            ...COMPARE_INVESTMENTS_CATEGORY_KEYS.map(function(key) {
+                return keyedItem(candidate.categories, 'category', key).score;
+            }),
+            ...COMPARE_INVESTMENTS_PROFILE_KEYS.map(function(profileKey) {
+                return keyedItem(candidate.profile_suitability, 'profile', profileKey).rating;
+            }),
+            candidate.scenario.impact,
+            candidate.scenario.resilience_score ?? '',
+            result.market_data_at
+        ];
+    });
+    const csv = [headers, ...rows].map(function(row) {
+        return row.map(safeCsvCell).join(',');
+    }).join('\r\n');
+    const blob = new Blob(['\ufeff', csv], {type: 'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `investment-comparison-${new Date(result.generated_at).toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(function() {
+        URL.revokeObjectURL(url);
+    }, 0);
+}
+
+function createPrintDocument() {
+    const printDocument = document.implementation.createHTMLDocument(COMPARE_INVESTMENTS_PRINT_TITLE);
+    printDocument.documentElement.lang = 'en';
+    const viewport = printDocument.createElement('meta');
+    viewport.name = 'viewport';
+    viewport.content = 'width=device-width, initial-scale=1';
+    printDocument.head.appendChild(viewport);
+    const stylesheet = printDocument.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css';
+    printDocument.head.appendChild(stylesheet);
+    const style = printDocument.createElement('style');
+    style.textContent =
+        'body{padding:2rem}.no-print{display:none!important}.table-responsive{overflow:visible!important}'
+        + '.candidate-detail{break-inside:avoid}@media print{body{padding:0}.card{border:0!important}}';
+    printDocument.head.appendChild(style);
+    const main = printDocument.createElement('main');
+    main.className = 'container';
+    const source = document.getElementById('comparison-print-area');
+    const clone = source.cloneNode(true);
+    clone.querySelectorAll('.no-print').forEach(function(element) {
+        element.remove();
+    });
+    main.appendChild(clone);
+    printDocument.body.appendChild(main);
+    return '<!doctype html>' + printDocument.documentElement.outerHTML;
+}
+
+function printComparison() {
+    if (!currentComparisonResult || !isValidComparisonResult(currentComparisonResult)) {
+        showComparisonError('There is no valid comparison available to print.');
+        return;
+    }
+    const blob = new Blob([createPrintDocument()], {type: 'text/html'});
+    const url = URL.createObjectURL(blob);
+    const printWindow = window.open(url, '_blank');
+    if (!printWindow) {
+        URL.revokeObjectURL(url);
+        showComparisonError('The print window was blocked. Allow pop-ups for this site and try again.');
+        return;
+    }
+    printWindow.opener = null;
+    printWindow.addEventListener('load', function() {
+        printWindow.print();
+        window.setTimeout(function() {
+            URL.revokeObjectURL(url);
+        }, 1000);
+    }, {once: true});
+}
+
+window.addEventListener('alphalab:storage-warning', function(event) {
+    const detail = event.detail;
+    if (!detail || (detail.feature !== COMPARE_INVESTMENTS_STORAGE_FEATURE && detail.feature !== null)) {
+        return;
+    }
+    const resetCodes = [
+        'corrupt-value',
+        'validation-failed',
+        'migration-failed',
+        'schema-mismatch',
+        'newer-schema'
+    ];
+    if (resetCodes.includes(detail.code)) {
+        showStorageWarning('Saved comparison inputs could not be read and were reset.');
+        return;
+    }
+    showStorageWarning(
+        'Local storage could not be used. You can continue, but your comparison inputs may not persist.'
+    );
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('export-comparison-btn').addEventListener('click', exportComparisonCsv);
+    document.getElementById('print-comparison-btn').addEventListener('click', printComparison);
+
+    try {
+        const storedData = window.AlphaLabStorage.load(COMPARE_INVESTMENTS_STORAGE_FEATURE, {
+            schemaVersion: COMPARE_INVESTMENTS_STORAGE_SCHEMA_VERSION,
+            defaultValue: {
+                tickers: '',
+                target_market: COMPARE_INVESTMENTS_DEFAULT_MARKET,
+                scenario: ''
+            },
+            validate: isValidStoredCompareInvestments
+        });
+        if (isValidStoredCompareInvestments(storedData)) {
+            document.getElementById('tickers').value = storedData.tickers;
+            document.getElementById('target-market').value = storedData.target_market;
+            document.getElementById('scenario').value = storedData.scenario;
+        }
+    } catch (error) {
+        showStorageWarning(
+            'Saved comparison inputs could not be restored. You can continue with the comparison.'
+        );
+    }
+
+    const cachedDataNode = document.getElementById('cached-result-data');
+    if (!cachedDataNode) {
+        return;
+    }
+    try {
+        const cachedData = JSON.parse(cachedDataNode.textContent);
+        if (isValidCachedComparison(cachedData)) {
+            renderComparisonResult(cachedData.payload.result, new Date(cachedData.generated_at));
+        }
+    } catch (error) {
+        // Invalid cached data is ignored so the comparison form remains usable.
+    }
+});
+
+document.getElementById('comparison-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const targetMarket = document.getElementById('target-market').value;
+    const parsedTickers = parseTickerInput(document.getElementById('tickers').value, targetMarket);
+    const scenario = document.getElementById('scenario').value.trim();
+    if (!parsedTickers) {
+        showComparisonError(
+            'Enter between 2 and 5 unique, valid ticker symbols for the selected market.'
+        );
+        return;
+    }
+    if (scenario.length > 1000) {
+        showComparisonError('The stress scenario must be 1,000 characters or fewer.');
+        return;
+    }
+
+    const values = {
+        tickers: parsedTickers.join(', '),
+        target_market: targetMarket,
+        scenario: scenario
+    };
+    document.getElementById('tickers').value = values.tickers;
+    document.getElementById('scenario').value = values.scenario;
+    try {
+        const persisted = window.AlphaLabStorage.save(
+            COMPARE_INVESTMENTS_STORAGE_FEATURE,
+            values,
+            {
+                schemaVersion: COMPARE_INVESTMENTS_STORAGE_SCHEMA_VERSION,
+                validate: isValidStoredCompareInvestments
+            }
+        );
+        if (persisted === false) {
+            showStorageWarning(
+                'Your comparison inputs are available only for this page and could not be persisted.'
+            );
+        }
+    } catch (error) {
+        showStorageWarning(
+            'Your comparison inputs are available only for this page and could not be persisted.'
+        );
+    }
+
+    const progressSection = document.getElementById('progress-section');
+    const progressBar = document.getElementById('progress-bar');
+    const errorSection = document.getElementById('error-section');
+    const resultSectionElement = document.getElementById('result-section');
+    setButtonBusy();
+    progressSection.classList.remove('d-none');
+    errorSection.classList.add('d-none');
+    resultSectionElement.classList.add('d-none');
+    document.getElementById('cached-result-notice').classList.add('d-none');
+    progressBar.style.width = '0%';
+    progressBar.setAttribute('aria-valuenow', '0');
+    currentComparisonResult = null;
+    document.getElementById('export-comparison-btn').disabled = true;
+    document.getElementById('print-comparison-btn').disabled = true;
+
+    const waitTimer = new WaitTimer('wait-timer');
+    waitTimer.start();
+    const params = new URLSearchParams(values);
+    const eventSource = new EventSource(`/compare-investments/stream?${params.toString()}`);
+    let terminal = false;
+
+    function finishStream() {
+        if (terminal) {
+            return;
+        }
+        terminal = true;
+        eventSource.close();
+        waitTimer.stop();
+        progressSection.classList.add('d-none');
+        resetButton();
+    }
+
+    function failStream(message) {
+        finishStream();
+        showComparisonError(message);
+    }
+
+    eventSource.onmessage = function(messageEvent) {
+        if (terminal) {
+            return;
+        }
+        let data;
+        try {
+            data = JSON.parse(messageEvent.data);
+        } catch (error) {
+            failStream('The server returned an unreadable response. Please try again.');
+            return;
+        }
+        if (!isRecord(data) || typeof data.type !== 'string') {
+            failStream('The server returned an invalid response. Please try again.');
+            return;
+        }
+
+        if (data.type === 'progress') {
+            if (!Number.isFinite(data.step)
+                    || !Number.isFinite(data.total)
+                    || data.total <= 0
+                    || typeof data.message !== 'string') {
+                failStream('The server returned invalid progress information. Please try again.');
+                return;
+            }
+            const percent = Math.max(0, Math.min(100, Math.round((data.step / data.total) * 100)));
+            document.getElementById('progress-message').textContent = data.message;
+            progressBar.style.width = `${percent}%`;
+            progressBar.setAttribute('aria-valuenow', String(percent));
+            document.getElementById('progress-step').textContent =
+                `Step ${data.step} of ${data.total}`;
+            return;
+        }
+
+        if (data.type === 'error') {
+            failStream(
+                typeof data.message === 'string' && data.message.trim()
+                    ? data.message
+                    : 'The investment comparison failed.'
+            );
+            return;
+        }
+
+        if (data.type === 'result') {
+            if (!isValidComparisonResult(data.result, parsedTickers, targetMarket)
+                    || data.result.scenario !== scenario) {
+                failStream('The server returned an incomplete or invalid comparison. Please try again.');
+                return;
+            }
+            renderComparisonResult(data.result, null);
+            finishStream();
+            resultSectionElement.focus();
+            return;
+        }
+
+        failStream('The server returned an unknown response. Please try again.');
+    };
+
+    eventSource.onerror = function() {
+        if (!terminal) {
+            failStream('Connection lost before the comparison completed. Please try again.');
+        }
+    };
+});
+</script>
+{% if cached_result %}
+<script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
+{% endif %}
+{% endblock %}

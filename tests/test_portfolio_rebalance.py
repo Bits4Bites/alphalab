@@ -51,7 +51,7 @@ def test_configured_markets_are_canonical_and_ordered(caplog: pytest.LogCaptureF
 
 
 def test_configured_markets_requires_at_least_one_supported_market() -> None:
-    with pytest.raises(portfolio_market_data.MarketConfigurationError, match="at least one supported"):
+    with pytest.raises(portfolio_market_data.MarketConfigurationError, match="At least one supported"):
         portfolio_market_data.configured_markets({"LSE"})
 
 

@@ -352,6 +352,31 @@ class TestExecutePromptStructuredOutput:
         }
 
     @pytest.mark.asyncio
+    async def test_openai_combines_web_search_with_strict_json_schema(self) -> None:
+        from openai import AsyncOpenAI
+
+        client = MagicMock(spec=AsyncOpenAI)
+        client.base_url = "https://api.openai.com/v1"
+        client.responses.create = AsyncMock(
+            return_value=FakeResponsesResponse(output_text='{"answer":"ok"}', usage=None)
+        )
+
+        result = await execute_prompt(
+            client,
+            "gpt-4o",
+            "Research and return JSON",
+            response_json_schema=self.schema,
+            schema_name="test_response",
+            enable_web_search=True,
+        )
+
+        assert result.success is True
+        request = client.responses.create.call_args.kwargs
+        assert request["tools"] == [{"type": "web_search_preview"}]
+        assert request["text"]["format"]["type"] == "json_schema"
+        assert request["text"]["format"]["strict"] is True
+
+    @pytest.mark.asyncio
     async def test_openrouter_receives_strict_json_schema(self) -> None:
         from openai import AsyncOpenAI
 
