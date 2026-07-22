@@ -325,9 +325,7 @@ async def review_portfolio_stream(
         investor_context = "\n".join(context_parts)
         scenario_context = "- Scenario: (none provided)" if not cleaned_scenario else f"- Scenario: {cleaned_scenario}"
 
-        review_prompt_template = (
-            _REBALANCE_REVIEW_PROMPT_TEMPLATE if include_rebalance else _PROMPT_TEMPLATE
-        )
+        review_prompt_template = _REBALANCE_REVIEW_PROMPT_TEMPLATE if include_rebalance else _PROMPT_TEMPLATE
         prompt_request = review_prompt_template.format(
             investor_context=investor_context,
             scenario_context=scenario_context,
@@ -399,18 +397,10 @@ async def review_portfolio_stream(
 
         # Step 5: Generate the premium allocation prompt
         yield {"data": progress(5, total_steps, "Generating rebalance allocation prompt...")}
-        rebalance_prompt_client = config.ai_task_settings.get_ai_client(
-            "REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT"
-        )
-        rebalance_prompt_task = config.ai_task_settings.tasks.get(
-            "REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT"
-        )
+        rebalance_prompt_client = config.ai_task_settings.get_ai_client("REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT")
+        rebalance_prompt_task = config.ai_task_settings.tasks.get("REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT")
         if not rebalance_prompt_client or not rebalance_prompt_task:
-            yield {
-                "data": rebalance_error(
-                    "AI task 'REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT' is not configured."
-                )
-            }
+            yield {"data": rebalance_error("AI task 'REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT' is not configured.")}
             yield {"data": complete("rebalance_failed")}
             return
 
@@ -436,11 +426,7 @@ async def review_portfolio_stream(
             temperature=rebalance_prompt_task.temperature,
         )
         if not rebalance_prompt_result.success:
-            yield {
-                "data": rebalance_error(
-                    f"Failed to generate rebalance prompt: {rebalance_prompt_result.error}"
-                )
-            }
+            yield {"data": rebalance_error(f"Failed to generate rebalance prompt: {rebalance_prompt_result.error}")}
             yield {"data": complete("rebalance_failed")}
             return
 
@@ -449,11 +435,7 @@ async def review_portfolio_stream(
         rebalance_client = config.ai_task_settings.get_ai_client("REVIEW_PORTFOLIO_REBALANCE_ANALYZE")
         rebalance_task = config.ai_task_settings.tasks.get("REVIEW_PORTFOLIO_REBALANCE_ANALYZE")
         if not rebalance_client or not rebalance_task:
-            yield {
-                "data": rebalance_error(
-                    "AI task 'REVIEW_PORTFOLIO_REBALANCE_ANALYZE' is not configured."
-                )
-            }
+            yield {"data": rebalance_error("AI task 'REVIEW_PORTFOLIO_REBALANCE_ANALYZE' is not configured.")}
             yield {"data": complete("rebalance_failed")}
             return
 

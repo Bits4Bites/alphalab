@@ -249,10 +249,7 @@ def test_generated_plans_never_worsen_total_tracking_error(fractional_shares: bo
             f"AAA, {quantities['AAA']}\nBBB, {quantities['BBB']}",
             market,
         )
-        quotes = {
-            ticker: _quote(ticker, str(price))
-            for ticker, price in prices.items()
-        }
+        quotes = {ticker: _quote(ticker, str(price)) for ticker, price in prices.items()}
         settings = portfolio_rebalance.parse_settings(
             available_cash=str(available_cash),
             fractional_shares=fractional_shares,
@@ -279,21 +276,17 @@ def test_generated_plans_never_worsen_total_tracking_error(fractional_shares: bo
         )
 
         target_values = {
-            ticker: snapshot.total_value * Decimal(weight) / Decimal(100)
-            for ticker, weight in target_weights.items()
+            ticker: snapshot.total_value * Decimal(weight) / Decimal(100) for ticker, weight in target_weights.items()
         }
         baseline_error = sum(
-            abs(Decimal(quantities[ticker] * prices[ticker]) - target_values[ticker])
-            for ticker in quantities
+            abs(Decimal(quantities[ticker] * prices[ticker]) - target_values[ticker]) for ticker in quantities
         ) + abs(Decimal(available_cash) - target_values["CASH"])
         resulting_values = {
-            position.ticker: Decimal(str(position.resulting_value))
-            for position in plan.proposed_positions
+            position.ticker: Decimal(str(position.resulting_value)) for position in plan.proposed_positions
         }
-        resulting_error = sum(
-            abs(resulting_values[ticker] - target_values[ticker])
-            for ticker in quantities
-        ) + abs(resulting_values["CASH"] - target_values["CASH"])
+        resulting_error = sum(abs(resulting_values[ticker] - target_values[ticker]) for ticker in quantities) + abs(
+            resulting_values["CASH"] - target_values["CASH"]
+        )
 
         assert resulting_error <= baseline_error + Decimal("0.000001")
         assert plan.cash_after >= 0

@@ -281,9 +281,7 @@ def normalize_recommendation(
                 ) from exc
 
         if normalized_ticker in seen:
-            raise RebalanceRecommendationError(
-                f"The AI returned duplicate target allocations for {normalized_ticker}."
-            )
+            raise RebalanceRecommendationError(f"The AI returned duplicate target allocations for {normalized_ticker}.")
         seen.add(normalized_ticker)
         allocations.append(allocation.model_copy(update={"ticker": normalized_ticker}))
 
@@ -397,8 +395,7 @@ def _select_whole_trades(
 
     def total_buy_cost() -> Decimal:
         return sum(
-            selected_buys[ticker_value].quantity
-            * next(state.price for state in states if state.ticker == ticker_value)
+            selected_buys[ticker_value].quantity * next(state.price for state in states if state.ticker == ticker_value)
             for ticker_value in selected_buys
         )
 
@@ -510,15 +507,9 @@ def _select_fractional_trades(
                 )
 
             selected_cost = selected_quantity * state.price
-            resulting_error = abs(
-                (state.current_quantity + selected_quantity) * state.price - state.target_value
-            )
+            resulting_error = abs((state.current_quantity + selected_quantity) * state.price - state.target_value)
             base_error = abs(state.current_value - state.target_value)
-            if (
-                selected_quantity
-                and selected_cost >= settings.minimum_trade_amount
-                and resulting_error < base_error
-            ):
+            if selected_quantity and selected_cost >= settings.minimum_trade_amount and resulting_error < base_error:
                 buys[state.ticker] = selected_quantity
                 remaining_budget -= selected_cost
             else:
@@ -533,9 +524,7 @@ def _select_fractional_trades(
 
     if skipped:
         warnings.append(
-            "Minimum-trade constraints skipped or reduced trades for: "
-            + ", ".join(sorted(set(skipped)))
-            + "."
+            "Minimum-trade constraints skipped or reduced trades for: " + ", ".join(sorted(set(skipped))) + "."
         )
     warnings.append("Fractional-share quantities were rounded down to 6 decimal places where needed.")
     return sells, buys, warnings
@@ -640,9 +629,7 @@ def calculate_plan(
     settings: RebalanceSettings,
 ) -> rebalance_schemas.RebalancePlan:
     allocations = {allocation.ticker: allocation for allocation in recommendation.allocations}
-    target_cash_weight = (
-        Decimal(str(allocations["CASH"].target_weight_pct)) if "CASH" in allocations else Decimal(0)
-    )
+    target_cash_weight = Decimal(str(allocations["CASH"].target_weight_pct)) if "CASH" in allocations else Decimal(0)
     target_cash = snapshot.total_value * target_cash_weight / Decimal(100)
 
     current_by_ticker = {position.holding.ticker: position for position in snapshot.positions}
@@ -688,14 +675,8 @@ def calculate_plan(
     )
     warnings.extend(tracking_warnings)
 
-    sell_proceeds = sum(
-        sells.get(state.ticker, Decimal(0)) * state.price
-        for state in states
-    )
-    buy_cost = sum(
-        buys.get(state.ticker, Decimal(0)) * state.price
-        for state in states
-    )
+    sell_proceeds = sum(sells.get(state.ticker, Decimal(0)) * state.price for state in states)
+    buy_cost = sum(buys.get(state.ticker, Decimal(0)) * state.price for state in states)
     cash_after = settings.available_cash + sell_proceeds - buy_cost
     if cash_after < 0:
         raise RebalanceCalculationError("Calculated trades would overspend available cash.")
@@ -855,14 +836,8 @@ def render_plan_markdown(plan: rebalance_schemas.RebalancePlan) -> str:
         "",
         "| Measure | Before | Proposed result |",
         "|---|---:|---:|",
-        (
-            f"| Cash | {_money(plan.cash_before, plan.currency)} | "
-            f"{_money(plan.cash_after, plan.currency)} |"
-        ),
-        (
-            f"| Largest position | {plan.largest_position_before_pct:.2f}% | "
-            f"{plan.largest_position_after_pct:.2f}% |"
-        ),
+        (f"| Cash | {_money(plan.cash_before, plan.currency)} | {_money(plan.cash_after, plan.currency)} |"),
+        (f"| Largest position | {plan.largest_position_before_pct:.2f}% | {plan.largest_position_after_pct:.2f}% |"),
         f"| Total portfolio value | {_money(plan.total_portfolio_value, plan.currency)} | "
         f"{_money(plan.total_portfolio_value, plan.currency)} |",
         "",

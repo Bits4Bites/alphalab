@@ -139,7 +139,7 @@ def test_page_embeds_cached_result_and_browser_storage(client: TestClient, monke
     ):
         assert f"{field}:" in save_call
     assert 'id="target-market" name="target_market"' in response.text
-    assert "required aria-required=\"true\"" in response.text
+    assert 'required aria-required="true"' in response.text
     assert 'id="include-rebalance"' in response.text
     assert "REVIEW_PORTFOLIO_STORAGE_SCHEMA_VERSION = 2" in response.text
     assert "migrate: migrateReviewPortfolioStorage" in response.text
@@ -350,6 +350,4 @@ def test_page_returns_service_error_without_supported_market(
     response = client.get("/review-portfolio")
 
     assert response.status_code == 503
-    assert response.text == (
-        "Portfolio Rebalance Planner requires at least one supported primary market (US or AU)."
-    )
+    assert response.text == ("Portfolio Rebalance Planner requires at least one supported primary market (US or AU).")

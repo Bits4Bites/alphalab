@@ -176,6 +176,4 @@ async def test_get_cached_payload_removes_invalid_structured_result(monkeypatch:
     )
 
     assert result is None
-    redis_client.delete.assert_awaited_once_with(
-        analysis_cache.result_cache_key(_user(), "review-portfolio-rebalance")
-    )
+    redis_client.delete.assert_awaited_once_with(analysis_cache.result_cache_key(_user(), "review-portfolio-rebalance"))
