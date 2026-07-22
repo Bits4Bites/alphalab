@@ -7,11 +7,14 @@ from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
+from app.services import analysis_cache
 from app.utils import ai
 from app.utils import ticker as ticker_utils
 
 router = APIRouter(tags=["analyze_ticker"])
 TEMPLATE = "analyze_ticker.html"
+_CACHE_FEATURE = "analyze-ticker"
+_CACHE_INPUT_FIELDS = ("ticker", "quick_mode", "intent", "scenario")
 
 _BASE_PROMPT_TEMPLATE = (
     "You are an expert financial analyst and prompt engineer.\n"
@@ -221,7 +224,16 @@ def _build_analysis_prompt(*, ticker: str, info: dict, quick_mode: bool, intent:
 
 @router.get("/analyze-ticker", response_class=HTMLResponse)
 async def analyze_ticker_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
-    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
+    cached_result = await analysis_cache.get_cached_result(
+        user,
+        feature=_CACHE_FEATURE,
+        input_fields=_CACHE_INPUT_FIELDS,
+    )
+    return templating.templates.TemplateResponse(
+        request,
+        TEMPLATE,
+        {"user": user, "cached_result": cached_result},
+    )
 
 
 @router.get("/analyze-ticker/stream")
@@ -247,16 +259,17 @@ async def analyze_ticker_stream(
 
         # Step 1: Validate ticker format
         yield {"data": progress(1, total_steps, "Validating ticker format...")}
-        yf_ticker = ticker_utils.to_yfinance_format(ticker)
+        cleaned_ticker = ticker.strip()
+        yf_ticker = ticker_utils.to_yfinance_format(cleaned_ticker)
         if yf_ticker is None:
-            yield {"data": error(f"Unsupported exchange in ticker '{ticker}'.")}
+            yield {"data": error(f"Unsupported exchange in ticker '{cleaned_ticker}'.")}
             return
 
         # Step 2: Fetch ticker info
         yield {"data": progress(2, total_steps, "Fetching ticker information...")}
         info = yf.Ticker(yf_ticker).info
         if not info or info.get("quoteType") not in ("EQUITY", "ETF"):
-            yield {"data": error(f"Ticker '{ticker}' not found or invalid or not tradeable.")}
+            yield {"data": error(f"Ticker '{cleaned_ticker}' not found or invalid or not tradeable.")}
             return
 
         # Step 3: Generate analysis prompt
@@ -268,7 +281,7 @@ async def analyze_ticker_stream(
 
         build_prompt_task = config.ai_task_settings.tasks.get("ANALYZE_TICKER_BUILD_PROMPT")
         prompt_request = _build_analysis_prompt(
-            ticker=ticker,
+            ticker=cleaned_ticker,
             info=info,
             quick_mode=quick_mode,
             intent=intent,
@@ -307,6 +320,17 @@ async def analyze_ticker_stream(
 
         # Step 5: Done
         yield {"data": progress(5, total_steps, "Analysis complete!")}
+        await analysis_cache.set_cached_result(
+            user,
+            feature=_CACHE_FEATURE,
+            inputs={
+                "ticker": cleaned_ticker,
+                "quick_mode": str(quick_mode).lower(),
+                "intent": intent.strip(),
+                "scenario": scenario.strip(),
+            },
+            content=analysis_result.completion,
+        )
         yield {"data": result(analysis_result.completion)}
 
     return EventSourceResponse(event_generator())
