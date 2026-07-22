@@ -15,7 +15,7 @@ technical item is required to deliver a business feature safely or reliably.
 
 #### Compare Investments
 
-Help investors choose between two to five stocks or ETFs using a consistent scorecard.
+Help investors choose two to five stocks or ETFs using a consistent scorecard.
 
 **MVP**
 
