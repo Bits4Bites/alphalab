@@ -5,10 +5,13 @@ from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
+from app.services import analysis_cache
 from app.utils import ai
 
 router = APIRouter(tags=["earnings_catalyst_tracker"])
 TEMPLATE = "earnings_catalyst_tracker.html"
+_CACHE_FEATURE = "earnings-catalyst-tracker"
+_CACHE_INPUT_FIELDS = ("tickers", "target_market", "event_focus")
 
 _PROMPT_TEMPLATE = (
     "You are an expert earnings catalyst analyst and prompt engineer.\n"
@@ -93,7 +96,16 @@ async def earnings_catalyst_tracker_page(
     request: Request,
     user: dict = Depends(dependencies.get_current_user),
 ) -> HTMLResponse:
-    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
+    cached_result = await analysis_cache.get_cached_result(
+        user,
+        feature=_CACHE_FEATURE,
+        input_fields=_CACHE_INPUT_FIELDS,
+    )
+    return templating.templates.TemplateResponse(
+        request,
+        TEMPLATE,
+        {"user": user, "cached_result": cached_result},
+    )
 
 
 @router.get("/earnings-catalyst-tracker/stream")
@@ -104,6 +116,10 @@ async def earnings_catalyst_tracker_stream(
     event_focus: str = Query(default=""),
     user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
+    cleaned_tickers = (tickers or "").strip()
+    cleaned_target_market = (target_market or "").strip()
+    cleaned_event_focus = (event_focus or "").strip()
+
     async def event_generator():
         def progress(step: int, total: int, message: str):
             return json.dumps({"type": "progress", "step": step, "total": total, "message": message})
@@ -118,7 +134,6 @@ async def earnings_catalyst_tracker_stream(
 
         yield {"data": progress(1, total_steps, "Preparing earnings catalyst request...")}
 
-        cleaned_tickers = (tickers or "").strip()
         if not cleaned_tickers:
             yield {"data": error("Tickers are required.")}
             return
@@ -132,8 +147,8 @@ async def earnings_catalyst_tracker_stream(
         build_prompt_task = config.ai_task_settings.tasks.get("EARNINGS_CATALYST_TRACKER_BUILD_PROMPT")
         prompt_request = _build_prompt_request(
             tickers=cleaned_tickers,
-            target_market=target_market,
-            event_focus=event_focus,
+            target_market=cleaned_target_market,
+            event_focus=cleaned_event_focus,
         )
         prompt_result = await ai.execute_prompt(
             build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
@@ -159,6 +174,16 @@ async def earnings_catalyst_tracker_stream(
             return
 
         yield {"data": progress(4, total_steps, "Analysis complete!")}
+        await analysis_cache.set_cached_result(
+            user,
+            feature=_CACHE_FEATURE,
+            inputs={
+                "tickers": cleaned_tickers,
+                "target_market": cleaned_target_market,
+                "event_focus": cleaned_event_focus,
+            },
+            content=analysis_result.completion,
+        )
         yield {"data": result(analysis_result.completion)}
 
     return EventSourceResponse(event_generator())

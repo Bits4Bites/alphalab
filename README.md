@@ -2,29 +2,41 @@
 [![Actions Status](https://github.com/Bits4Bites/alphalab/workflows/CI/badge.svg)](https://github.com/Bits4Bites/alphalab/actions)
 [![Release](https://img.shields.io/github/release/Bits4Bites/alphalab.svg?style=flat-square)](RELEASE-NOTES.md)
 
-AI-powered market research lab.
+AlphaLab helps investors turn current market information into focused research, clearer decisions, and actionable
+investment insights.
 
 ## ✨Features
 
-- **Dashboard (Freestyle Mode)** Ask anything about the stock market in natural language and get AI-powered insights, plus a market news feed and AI-generated ideas.
+- **Dashboard (Freestyle Mode)** Explore market questions in natural language, follow important news, and uncover
+  timely research ideas.
 
 **Market Research**
-- **Market Outlook** Get an AI-generated outlook across one or more markets, covering index movements, sector rotations, and macro drivers.
-- **Sector Rotation Radar** Identify which sectors are gaining or losing momentum across multiple time horizons for a target market.
-- **IPO Scanner** Scan a target market for upcoming IPO events (up to 20), verified against official sources, with public offer details, conditions, key dates, and source links - pure factual information, no analysis. Results are cached so you can revisit them without re-scanning.
+- **Market Outlook** Understand near-term market direction, major macro themes, upcoming catalysts, and risks across
+  one or more regions.
+- **Sector Rotation Radar** Spot shifts in market leadership and identify sectors gaining or losing momentum across
+  multiple investment horizons.
+- **IPO Scanner** Discover upcoming offerings and review their key dates, terms, conditions, and official sources
+  before deciding which opportunities deserve deeper analysis.
 
 **Stock Analysis**
-- **Analyze Ticker** Perform AI-driven analysis for individual stocks or ETFs using market data, technical signals, macro context, and sentiment insights.
-- **IPO / Listing Event** Analyze an upcoming or recent IPO / listing event, including valuation, risks, and outlook.
-- **Dividend Event** Evaluate a dividend event with yield, sustainability, ex-dividend timing, and tax considerations.
+- **Analyze Ticker** Build an evidence-based investment view for a stock or ETF using fundamentals, technical
+  signals, macro context, sentiment, and scenario analysis.
+- **IPO / Listing Event** Evaluate an upcoming or recent listing through valuation, market demand, catalysts, risks,
+  and optional prospectus insights.
+- **Dividend Event** Assess the income opportunity, sustainability, timing, risks, and tax considerations around a
+  dividend event.
 
 **Portfolio**
-- **Build Portfolio** Generate a portfolio from scratch based on investor goals, risk tolerance, time horizon, market preference, and investment themes.
-- **Review Portfolio** Review an existing portfolio and identify strengths, weaknesses, concentration risks, and optimization opportunities, with optional scenario stress-testing.
+- **Build Portfolio** Turn investment goals, risk tolerance, time horizon, and preferred themes into a practical
+  portfolio allocation.
+- **Review Portfolio** Identify portfolio strengths, concentration risks, weak positions, and opportunities to
+  improve diversification and resilience.
 
 **Signals**
-- **Watchlist Monitor** Review a watchlist and flag which names deserve attention, with news, technicals, valuation, and risk/reward framing.
-- **Earnings Catalyst Tracker** Track upcoming earnings and event catalysts that can move stocks quickly, including surprise potential and what to watch.
+- **Watchlist Monitor** Prioritize the names that deserve attention by combining news, technical signals, valuation,
+  and risk/reward.
+- **Earnings Catalyst Tracker** Prepare for upcoming earnings and market-moving events by understanding surprise
+  potential, key expectations, and what to watch.
 
 ### Screenshots
 
@@ -120,22 +132,26 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 
 **Pricing tiers (`<TIER>`):** `FREE`, `LOWCOST`, `PREMIUM` (or any custom tier name)
 
+> **Uploaded-document model recommendation:** Configure tasks that analyze uploaded files, currently
+> `IPO_ANALYZER_ANALYZE`, with a model that supports at least 250k input tokens. Converted PDF content can be
+> very long, and models with smaller context windows may reject or truncate the analysis request.
+
 **Optional configurations:**
 
-| Variable                           | Default                    | Description                                                                                                                                                               |
-|------------------------------------|----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `AL_DEBUG`                         | `false`                    | Enable debug mode                                                                                                                                                         |
-| `AL_BASE_URL`                      | `http://localhost:8000`    | Base URL for OAuth callbacks                                                                                                                                              |
-| `AL_PRIMARY_MARKETS`               | _(empty)_                  | Comma-separated list of primary markets (e.g. `US,ASX,LSE`)                                                                                                               |
-| `AL_SECRET_KEY`                    | `change-me-in-production`  | JWT signing secret                                                                                                                                                        |
-| `AL_JWT_ALGORITHM`                 | `HS256`                    | JWT algorithm                                                                                                                                                             |
-| `AL_JWT_EXPIRE_MINUTES`            | `10080` (7 days)           | JWT token expiry                                                                                                                                                          |
-| `AL_LLM__<VENDOR>__<TIER>__MODELS` | _(empty)_                  | Comma-separated list of available models                                                                                                                                  |
-| `AL_TASK__<TASK>__VENDOR`          | _(empty)_                  | AI vendor for a specific task                                                                                                                                             |
-| `AL_TASK__<TASK>__TIER`            | _(empty)_                  | AI tier for a specific task                                                                                                                                               |
-| `AL_TASK__<TASK>__MODEL`           | _(empty)_                  | Model for a specific task                                                                                                                                                 |
-| `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Redis connection URL (optional; enables persistent caching for dashboard market news, AI ideas, and IPO scanner results - falls back to in-memory cache when unavailable) |
-| `AL_DATASTORE_REDIS_KEY_PREFIX`    | `alphalab:`                | Key namespace prefix for all Redis keys                                                                                                                                   |
+| Variable                           | Default                    | Description                                                  |
+|------------------------------------|----------------------------|--------------------------------------------------------------|
+| `AL_DEBUG`                         | `false`                    | Enable debug mode                                            |
+| `AL_BASE_URL`                      | `http://localhost:8000`    | Base URL for OAuth callbacks                                 |
+| `AL_PRIMARY_MARKETS`               | _(empty)_                  | Comma-separated list of primary markets (e.g. `US,ASX,LSE`)  |
+| `AL_SECRET_KEY`                    | `change-me-in-production`  | JWT signing secret                                           |
+| `AL_JWT_ALGORITHM`                 | `HS256`                    | JWT algorithm                                                |
+| `AL_JWT_EXPIRE_MINUTES`            | `10080` (7 days)           | JWT token expiry                                             |
+| `AL_LLM__<VENDOR>__<TIER>__MODELS` | _(empty)_                  | Comma-separated list of available models                     |
+| `AL_TASK__<TASK>__VENDOR`          | _(empty)_                  | AI vendor for a specific task                                |
+| `AL_TASK__<TASK>__TIER`            | _(empty)_                  | AI tier for a specific task                                  |
+| `AL_TASK__<TASK>__MODEL`           | _(empty)_                  | Model for a specific task                                    |
+| `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Optional Redis connection for temporary application data     |
+| `AL_DATASTORE_REDIS_KEY_PREFIX`    | `al:`                      | Key namespace prefix for all Redis keys                      |
 
 **Examples:**
 

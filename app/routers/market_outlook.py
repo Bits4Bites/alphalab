@@ -5,10 +5,14 @@ from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
+from app.services import analysis_cache
 from app.utils import ai
 
 router = APIRouter(tags=["market_outlook"])
 TEMPLATE = "market_outlook.html"
+_CACHE_FEATURE = "market-outlook"
+_CACHE_INPUT_FIELDS = ("markets",)
+
 
 _PROMPT_TEMPLATE = (
     "You are an expert macroeconomic analyst and prompt engineer.\n"
@@ -86,7 +90,16 @@ _PROMPT_TEMPLATE = (
 
 @router.get("/market-outlook", response_class=HTMLResponse)
 async def market_outlook_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
-    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
+    cached_result = await analysis_cache.get_cached_result(
+        user,
+        feature=_CACHE_FEATURE,
+        input_fields=_CACHE_INPUT_FIELDS,
+    )
+    return templating.templates.TemplateResponse(
+        request,
+        TEMPLATE,
+        {"user": user, "cached_result": cached_result},
+    )
 
 
 @router.get("/market-outlook/stream")
@@ -146,6 +159,12 @@ async def market_outlook_stream(
 
         # Step 4: Done
         yield {"data": progress(4, total_steps, "Analysis complete!")}
+        await analysis_cache.set_cached_result(
+            user,
+            feature=_CACHE_FEATURE,
+            inputs={"markets": resolved_markets},
+            content=analyze_result.completion,
+        )
         yield {"data": result(analyze_result.completion)}
 
     return EventSourceResponse(event_generator())

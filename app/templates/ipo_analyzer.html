@@ -9,6 +9,10 @@
     <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
+                <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
+                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                    <span id="storage-warning-message"></span>
+                </div>
                 <form id="ipo-form">
                     <div class="row g-3">
                         <div class="col-12">
@@ -27,6 +31,17 @@
                             </label>
                             <textarea class="form-control" id="additional-notes" name="additional_notes" rows="3"
                                       placeholder="e.g. Recent news, expected market sentiment, investor interest"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label for="prospectus-document" class="form-label fw-semibold">
+                                Prospectus Document
+                                <span class="text-muted ms-2">(Optional)</span>
+                            </label>
+                            <input type="file" class="form-control" id="prospectus-document" name="prospectus"
+                                   accept=".pdf,application/pdf" aria-describedby="prospectus-help">
+                            <div class="form-text" id="prospectus-help">
+                                PDF only, up to 20 MB. The file is not saved and must be selected again for each analysis.
+                            </div>
                         </div>
                     </div>
                     <div class="mt-3">
@@ -63,6 +78,13 @@
             </div>
         </div>
 
+        <div id="warning-section" class="d-none">
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span id="warning-message"></span>
+            </div>
+        </div>
+
         <div id="error-section" class="d-none">
             <div class="alert alert-danger d-flex align-items-center" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -81,13 +103,18 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex align-items-center justify-content-between">
                     <h4 class="fw-semibold mb-0">
-                        <i class="bi bi-graph-up-arrow me-1"></i>IPO Analysis
+                        <i class="bi bi-graph-up-arrow me-1"></i>IPO Analysis:
+                        <span id="result-company-name"></span>
                     </h4>
                     <button class="btn btn-outline-secondary btn-sm" onclick="printIPO()" title="Print">
                         <i class="bi bi-printer"></i>
                     </button>
                 </div>
                 <div class="card-body">
+                    <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none" role="status">
+                        <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                        <span>This is a cached analysis completed on <span id="cached-result-time"></span>. Running it again will refresh it.</span>
+                    </div>
                     <div class="alert alert-warning small mb-3" role="alert">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
@@ -101,80 +128,332 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
-// Pre-fill the form from query params (e.g. when arriving from the IPO Scanner)
-(function prefillFromQuery() {
+const IPO_ANALYZER_STORAGE_FEATURE = 'ipo-analyzer';
+const IPO_ANALYZER_STORAGE_SCHEMA_VERSION = 1;
+const IPO_ANALYZER_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+
+function isValidStoredIPOAnalyzer(value) {
+    const fields = ['company_name', 'additional_notes'];
+
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && Object.keys(value).length === fields.length
+        && fields.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field)
+                && typeof value[field] === 'string';
+        })
+        && value.company_name.trim().length > 0;
+}
+
+function isValidCachedIPOAnalyzer(value) {
+    const fields = ['company_name', 'additional_notes', 'content', 'generated_at'];
+
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && Object.keys(value).length === fields.length
+        && fields.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field)
+                && typeof value[field] === 'string';
+        })
+        && value.company_name.trim().length > 0
+        && value.content.trim().length > 0
+        && IPO_ANALYZER_ISO_TIMESTAMP_PATTERN.test(value.generated_at)
+        && !Number.isNaN(new Date(value.generated_at).getTime());
+}
+
+function showStorageWarning(message) {
+    const warning = document.getElementById('storage-warning');
+    const warningMessage = document.getElementById('storage-warning-message');
+    if (!warning || !warningMessage) {
+        return;
+    }
+
+    warningMessage.textContent = message;
+    warning.classList.remove('d-none');
+}
+
+window.addEventListener('alphalab:storage-warning', function(event) {
+    const detail = event.detail;
+    if (!detail || (detail.feature !== IPO_ANALYZER_STORAGE_FEATURE && detail.feature !== null)) {
+        return;
+    }
+
+    const resetCodes = ['corrupt-value', 'validation-failed', 'migration-failed', 'schema-mismatch'];
+    if (resetCodes.includes(detail.code)) {
+        showStorageWarning('Saved IPO inputs could not be read and were reset.');
+        return;
+    }
+
+    showStorageWarning('Local storage could not be used. You can continue, but your IPO inputs may not persist.');
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+    const companyNameInput = document.getElementById('company-name');
+    const additionalNotesInput = document.getElementById('additional-notes');
+
+    try {
+        const storedData = window.AlphaLabStorage.load(IPO_ANALYZER_STORAGE_FEATURE, {
+            schemaVersion: IPO_ANALYZER_STORAGE_SCHEMA_VERSION,
+            defaultValue: {
+                company_name: '',
+                additional_notes: ''
+            },
+            validate: isValidStoredIPOAnalyzer
+        });
+
+        if (isValidStoredIPOAnalyzer(storedData)) {
+            companyNameInput.value = storedData.company_name;
+            additionalNotesInput.value = storedData.additional_notes;
+        }
+    } catch (error) {
+        showStorageWarning('Saved IPO inputs could not be restored. You can continue with the analysis.');
+    }
+
+    // IPO Scanner links take precedence over previously saved inputs.
     const params = new URLSearchParams(window.location.search);
     const companyName = params.get('company_name');
     const additionalNotes = params.get('additional_notes');
     if (companyName) {
-        document.getElementById('company-name').value = companyName;
+        companyNameInput.value = companyName;
     }
     if (additionalNotes) {
-        document.getElementById('additional-notes').value = additionalNotes;
+        additionalNotesInput.value = additionalNotes;
     }
-})();
 
-document.getElementById('ipo-form').addEventListener('submit', function(e) {
+    const cachedDataNode = document.getElementById('cached-result-data');
+    if (!cachedDataNode) {
+        return;
+    }
+
+    try {
+        const cachedData = JSON.parse(cachedDataNode.textContent);
+        if (!isValidCachedIPOAnalyzer(cachedData)) {
+            return;
+        }
+
+        const generatedAt = new Date(cachedData.generated_at);
+        if (Number.isNaN(generatedAt.getTime())) {
+            return;
+        }
+
+        renderMarkdown(cachedData.content, document.getElementById('ipo-result'));
+        document.getElementById('result-company-name').textContent = cachedData.company_name;
+        document.getElementById('cached-result-time').textContent = generatedAt.toLocaleString();
+        document.getElementById('cached-result-notice').classList.remove('d-none');
+        document.getElementById('result-section').classList.remove('d-none');
+    } catch (error) {
+        // Ignore malformed cached data so the form remains usable.
+    }
+});
+
+document.getElementById('ipo-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
+    const maxProspectusSize = 20 * 1024 * 1024;
     const companyName = document.getElementById('company-name').value.trim();
-    if (!companyName) return;
-
+    const additionalNotes = document.getElementById('additional-notes').value.trim();
+    const prospectus = document.getElementById('prospectus-document').files[0];
     const btn = document.getElementById('ipo-btn');
     const progressSection = document.getElementById('progress-section');
     const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
+    const warningSection = document.getElementById('warning-section');
+    const warningMessage = document.getElementById('warning-message');
+    const errorMessage = document.getElementById('error-message');
+    const progressMessage = document.getElementById('progress-message');
+    const progressBar = document.getElementById('progress-bar');
+    const progressStep = document.getElementById('progress-step');
+
+    warningSection.classList.add('d-none');
+    warningMessage.textContent = '';
+    errorSection.classList.add('d-none');
+
+    if (!companyName) return;
+
+    let validationMessage = '';
+    if (prospectus && !prospectus.name.toLowerCase().endsWith('.pdf')) {
+        validationMessage = 'Please select a PDF prospectus document.';
+    } else if (prospectus && prospectus.type
+            && !['application/pdf', 'application/x-pdf'].includes(prospectus.type.toLowerCase())) {
+        validationMessage = 'The selected prospectus must be a PDF document.';
+    } else if (prospectus && prospectus.size > maxProspectusSize) {
+        validationMessage = 'The prospectus document must be 20 MB or smaller.';
+    }
+
+    if (validationMessage) {
+        progressSection.classList.add('d-none');
+        resultSection.classList.add('d-none');
+        errorMessage.textContent = validationMessage;
+        errorSection.classList.remove('d-none');
+        return;
+    }
+
+    try {
+        const persisted = window.AlphaLabStorage.save(
+            IPO_ANALYZER_STORAGE_FEATURE,
+            {
+                company_name: companyName,
+                additional_notes: additionalNotes
+            },
+            {
+                schemaVersion: IPO_ANALYZER_STORAGE_SCHEMA_VERSION,
+                validate: isValidStoredIPOAnalyzer
+            }
+        );
+
+        if (persisted === false) {
+            showStorageWarning('Your IPO inputs are available only for the current page and could not be persisted.');
+        }
+    } catch (error) {
+        showStorageWarning('Your IPO inputs are available only for the current page and could not be persisted.');
+    }
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing...';
     progressSection.classList.remove('d-none');
-    errorSection.classList.add('d-none');
     resultSection.classList.add('d-none');
+    document.getElementById('cached-result-notice').classList.add('d-none');
+    const totalSteps = prospectus ? 5 : 4;
+    progressMessage.textContent = prospectus ? 'Uploading prospectus document...' : 'Starting...';
+    progressBar.style.width = '0%';
+    progressStep.textContent = `Step 0 of ${totalSteps}`;
     const waitTimer = new WaitTimer('wait-timer');
     waitTimer.start();
 
     const params = new URLSearchParams({
         company_name: companyName,
-        additional_notes: document.getElementById('additional-notes').value.trim(),
+        additional_notes: additionalNotes,
     });
+
+    function restoreButton() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
+    }
+
+    function showTerminalError(message) {
+        waitTimer.stop();
+        progressSection.classList.add('d-none');
+        errorMessage.textContent = message;
+        errorSection.classList.remove('d-none');
+        restoreButton();
+    }
+
+    function showWarning(message) {
+        warningMessage.textContent = message || 'The analysis completed with a warning.';
+        warningSection.classList.remove('d-none');
+    }
+
+    function getUploadErrorDetail(data) {
+        const detail = data && data.detail;
+        if (typeof detail === 'string') return detail;
+        if (detail && typeof detail.message === 'string') return detail.message;
+        if (Array.isArray(detail)) {
+            return detail
+                .map(item => typeof item === 'string' ? item : item && item.msg)
+                .filter(message => typeof message === 'string' && message)
+                .join(' ');
+        }
+        return '';
+    }
+
+    if (prospectus) {
+        const formData = new FormData();
+        formData.append('prospectus', prospectus);
+
+        let response;
+        try {
+            response = await fetch('/analyze-ipo/prospectus', {
+                method: 'POST',
+                body: formData,
+            });
+        } catch (error) {
+            showTerminalError('Unable to upload the prospectus document. Check your connection and try again.');
+            return;
+        }
+
+        let uploadData;
+        try {
+            uploadData = await response.json();
+        } catch (error) {
+            const message = response.ok
+                ? 'The prospectus upload returned an invalid response. Please try again.'
+                : `Prospectus upload failed (HTTP ${response.status}). Please try again.`;
+            showTerminalError(message);
+            return;
+        }
+
+        if (!response.ok) {
+            const detail = getUploadErrorDetail(uploadData);
+            showTerminalError(detail || `Prospectus upload failed (HTTP ${response.status}). Please try again.`);
+            return;
+        }
+
+        if (!uploadData || typeof uploadData.document_id !== 'string'
+                || !/^[0-9a-f]{32}$/i.test(uploadData.document_id)) {
+            showTerminalError('The prospectus upload returned an invalid document identifier. Please try again.');
+            return;
+        }
+
+        params.set('prospectus_id', uploadData.document_id);
+        progressMessage.textContent = 'Prospectus uploaded. Starting analysis...';
+    }
 
     const eventSource = new EventSource(`/analyze-ipo/stream?${params.toString()}`);
 
+    function handleWarningEvent(event) {
+        try {
+            const data = JSON.parse(event.data);
+            showWarning(typeof data === 'string' ? data : data.message);
+        } catch (error) {
+            showWarning(event.data);
+        }
+    }
+
+    eventSource.addEventListener('warning', handleWarningEvent);
+
     eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
+        let data;
+        try {
+            data = JSON.parse(event.data);
+        } catch (error) {
+            eventSource.close();
+            showTerminalError('Received an invalid response from the analysis service. Please try again.');
+            return;
+        }
 
         if (data.type === 'progress') {
-            const pct = Math.round((data.step / data.total) * 100);
-            document.getElementById('progress-message').textContent = data.message;
-            document.getElementById('progress-bar').style.width = pct + '%';
-            document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
+            const sourceStep = Number(data.step);
+            const sourceTotal = Number(data.total);
+            const displayTotal = Number.isFinite(sourceTotal) && sourceTotal > 0 ? sourceTotal : totalSteps;
+            const displayStep = Number.isFinite(sourceStep)
+                ? Math.min(displayTotal, Math.max(0, sourceStep))
+                : 0;
+            const pct = Math.round((displayStep / displayTotal) * 100);
+            progressMessage.textContent = data.message || 'Analysis in progress...';
+            progressBar.style.width = pct + '%';
+            progressStep.textContent = `Step ${displayStep} of ${displayTotal}`;
+        } else if (data.type === 'warning') {
+            showWarning(data.message);
         } else if (data.type === 'error') {
-            waitTimer.stop();
-            progressSection.classList.add('d-none');
-            errorSection.classList.remove('d-none');
-            document.getElementById('error-message').textContent = data.message;
             eventSource.close();
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
+            showTerminalError(data.message || 'The analysis could not be completed. Please try again.');
         } else if (data.type === 'result') {
             waitTimer.stop();
             progressSection.classList.add('d-none');
+            document.getElementById('cached-result-notice').classList.add('d-none');
             resultSection.classList.remove('d-none');
+            document.getElementById('result-company-name').textContent = companyName;
             renderMarkdown(data.content, document.getElementById('ipo-result'));
             eventSource.close();
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
+            restoreButton();
         }
     };
 
     eventSource.onerror = function() {
-        waitTimer.stop();
-        progressSection.classList.add('d-none');
-        errorSection.classList.remove('d-none');
-        document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
         eventSource.close();
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Analyze IPO / Listing Event';
+        showTerminalError('Connection lost. Please try again.');
     };
 });
 
@@ -194,4 +473,7 @@ function printIPO() {
     };
 }
 </script>
+{% if cached_result %}
+<script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
+{% endif %}
 {% endblock %}
