@@ -3,3 +3,4 @@
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
 #!VERSION=0.9.0
 - feat(review portfolio): Add optional market-specific rebalance planner.
+- patch(UI): Sync Review Portfolio form across other features.
