@@ -7,11 +7,13 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
-from app.services import prospectus
+from app.services import analysis_cache, prospectus
 from app.utils import ai
 
 router = APIRouter(tags=["ipo_analyzer"])
 TEMPLATE = "ipo_analyzer.html"
+_CACHE_FEATURE = "ipo-analyzer"
+_CACHE_INPUT_FIELDS = ("company_name", "additional_notes")
 logger = logging.getLogger(__name__)
 
 _PROMPT_TEMPLATE = (
@@ -95,7 +97,16 @@ def _append_prospectus(generated_prompt: str, prospectus_markdown: str) -> str:
 
 @router.get("/analyze-ipo", response_class=HTMLResponse)
 async def ipo_analyzer_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
-    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
+    cached_result = await analysis_cache.get_cached_result(
+        user,
+        feature=_CACHE_FEATURE,
+        input_fields=_CACHE_INPUT_FIELDS,
+    )
+    return templating.templates.TemplateResponse(
+        request,
+        TEMPLATE,
+        {"user": user, "cached_result": cached_result},
+    )
 
 
 @router.post("/analyze-ipo/prospectus")
@@ -125,6 +136,8 @@ async def ipo_analyzer_stream(
     user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
     document_id = (prospectus_id or "").strip()
+    cleaned_company_name = company_name.strip()
+    cleaned_additional_notes = additional_notes.strip()
 
     async def analysis_events() -> collections.abc.AsyncGenerator[dict[str, str], None]:
         def progress(step: int, total: int, message: str) -> str:
@@ -143,7 +156,7 @@ async def ipo_analyzer_stream(
         total_steps = 5 if has_uploaded_prospectus else 4
 
         yield {"data": progress(1, total_steps, "Validating inputs...")}
-        if not company_name.strip():
+        if not cleaned_company_name:
             yield {"data": error("Company name is required.")}
             return
 
@@ -173,8 +186,8 @@ async def ipo_analyzer_stream(
 
         build_prompt_task = config.ai_task_settings.tasks.get("IPO_ANALYZER_BUILD_PROMPT")
         prompt_request = _build_prompt_request(
-            company_name,
-            additional_notes,
+            cleaned_company_name,
+            cleaned_additional_notes,
             has_prospectus=bool(prospectus_markdown),
         )
         prompt_result = await ai.execute_prompt(
@@ -205,6 +218,15 @@ async def ipo_analyzer_stream(
             return
 
         yield {"data": progress(total_steps, total_steps, "IPO analysis complete!")}
+        await analysis_cache.set_cached_result(
+            user,
+            feature=_CACHE_FEATURE,
+            inputs={
+                "company_name": cleaned_company_name,
+                "additional_notes": cleaned_additional_notes,
+            },
+            content=analyze_result.completion,
+        )
         yield {"data": result(analyze_result.completion)}
 
     async def event_generator() -> collections.abc.AsyncGenerator[dict[str, str], None]:

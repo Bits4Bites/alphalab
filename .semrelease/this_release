@@ -7,3 +7,4 @@
 - feat: Cache Market Outlook inputs and results in user-scope storage.
 - feat: Cache Sector Rotation inputs and results in user-scope storage.
 - feat: Cache Analyze Ticker inputs and results in user-scope storage.
+- feat: Cache IPO event inputs and results in user-scope storage.
