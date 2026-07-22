@@ -1,5 +1,20 @@
 # AlphaLab release notes
 
+## 2026-07-22 - v0.8.0
+
+### Added/Refactoring/Deprecation
+
+- Feat: Add optional prospectus PDF uploads to IPO event analysis.
+- Feat: Add user-scoped local storage infrastructure.
+- Feat: Cache Market Outlook inputs and results in user-scope storage.
+- Feat: Cache Sector Rotation inputs and results in user-scope storage.
+- Feat: Cache Analyze Ticker inputs and results in user-scope storage.
+- Feat: Cache IPO event inputs and results in user-scope storage.
+- Feat: Cache Dividend Event inputs and results in user-scope storage.
+- Feat: Cache Build and Review Portfolio inputs and results in user-scope storage.
+- Feat: Cache Watchlist Monitor inputs and results in user-scope storage.
+- Feat: Cache Earnings Catalyst Tracker inputs and results in user-scope storage.
+
 ## 2026-06-29 - v0.7.1
 
 ### Fixed/Improvements
