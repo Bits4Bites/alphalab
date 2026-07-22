@@ -12,7 +12,9 @@ AI-powered market research lab.
 - **Market Outlook** Get an AI-generated outlook across one or more markets, covering index movements, sector
   rotations, and macro drivers. Market inputs are remembered in the browser, and the latest successful analysis
   is cached per user for seven days.
-- **Sector Rotation Radar** Identify which sectors are gaining or losing momentum across multiple time horizons for a target market.
+- **Sector Rotation Radar** Identify which sectors are gaining or losing momentum across multiple time horizons
+  for a target market. Inputs are remembered in the browser, and the latest successful analysis is cached per
+  user for seven days.
 - **IPO Scanner** Scan a target market for upcoming IPO events (up to 20), verified against official sources, with public offer details, conditions, key dates, and source links - pure factual information, no analysis. Results are cached so you can revisit them without re-scanning.
 
 **Stock Analysis**
@@ -142,7 +144,7 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 | `AL_TASK__<TASK>__VENDOR`          | _(empty)_                  | AI vendor for a specific task                                                                                                                                             |
 | `AL_TASK__<TASK>__TIER`            | _(empty)_                  | AI tier for a specific task                                                                                                                                               |
 | `AL_TASK__<TASK>__MODEL`           | _(empty)_                  | Model for a specific task                                                                                                                                                 |
-| `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Redis connection URL (optional; enables persistent caching for dashboard market news, AI ideas, Market Outlook, and IPO scanner results - falls back to in-memory cache where supported) |
+| `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Redis connection URL (optional; enables persistent caching for dashboard market news, AI ideas, Market Outlook, Sector Rotation Radar, and IPO scanner results - falls back to in-memory cache where supported) |
 | `AL_DATASTORE_REDIS_KEY_PREFIX`    | `al:`                      | Key namespace prefix for all Redis keys                                                                                                                                   |
 
 **Examples:**

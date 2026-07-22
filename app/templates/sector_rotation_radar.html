@@ -9,6 +9,10 @@
     <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
+                <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
+                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                    <span id="storage-warning-message"></span>
+                </div>
                 <form id="rotation-form">
                     <div class="row g-3">
                         <div class="col-12 col-lg-6">
@@ -106,6 +110,10 @@
                     </button>
                 </div>
                 <div class="card-body">
+                    <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none" role="status">
+                        <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                        <span>This is a cached analysis completed on <span id="cached-result-time"></span>. Running it again will refresh it.</span>
+                    </div>
                     <div class="alert alert-warning small mb-3" role="alert">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
@@ -119,6 +127,117 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
+const SECTOR_ROTATION_STORAGE_FEATURE = 'sector-rotation-radar';
+const SECTOR_ROTATION_STORAGE_SCHEMA_VERSION = 1;
+const SECTOR_ROTATION_BIASES = ['', 'growth', 'defensive', 'cyclical', 'value'];
+
+function isValidStoredSectorRotation(value) {
+    const fields = ['target_market', 'sectors', 'timeframe', 'bias'];
+
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && Object.keys(value).length === fields.length
+        && fields.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field)
+                && typeof value[field] === 'string';
+        })
+        && SECTOR_ROTATION_BIASES.includes(value.bias);
+}
+
+function isValidCachedSectorRotation(value) {
+    const fields = ['target_market', 'sectors', 'timeframe', 'bias', 'content', 'generated_at'];
+
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && Object.keys(value).length === fields.length
+        && fields.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field)
+                && typeof value[field] === 'string';
+        })
+        && SECTOR_ROTATION_BIASES.includes(value.bias);
+}
+
+function showStorageWarning(message) {
+    const warning = document.getElementById('storage-warning');
+    const warningMessage = document.getElementById('storage-warning-message');
+    if (!warning || !warningMessage) {
+        return;
+    }
+
+    warningMessage.textContent = message;
+    warning.classList.remove('d-none');
+}
+
+window.addEventListener('alphalab:storage-warning', function(event) {
+    const detail = event.detail;
+    if (!detail || (detail.feature !== SECTOR_ROTATION_STORAGE_FEATURE && detail.feature !== null)) {
+        return;
+    }
+
+    const resetCodes = ['corrupt-value', 'validation-failed', 'migration-failed', 'schema-mismatch'];
+    if (resetCodes.includes(detail.code)) {
+        showStorageWarning('Saved inputs could not be read and were reset.');
+        return;
+    }
+
+    showStorageWarning('Local storage could not be used. You can continue, but your inputs may not persist.');
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+    const targetMarketInput = document.getElementById('target-market');
+    const sectorsInput = document.getElementById('sectors');
+    const timeframeInput = document.getElementById('timeframe');
+    const biasInput = document.getElementById('bias');
+
+    try {
+        const storedData = window.AlphaLabStorage.load(SECTOR_ROTATION_STORAGE_FEATURE, {
+            schemaVersion: SECTOR_ROTATION_STORAGE_SCHEMA_VERSION,
+            defaultValue: {
+                target_market: '',
+                sectors: '',
+                timeframe: '',
+                bias: ''
+            },
+            validate: isValidStoredSectorRotation
+        });
+
+        if (isValidStoredSectorRotation(storedData)) {
+            targetMarketInput.value = storedData.target_market;
+            sectorsInput.value = storedData.sectors;
+            timeframeInput.value = storedData.timeframe;
+            biasInput.value = storedData.bias;
+        }
+    } catch (error) {
+        showStorageWarning('Saved inputs could not be restored. You can continue with the analysis.');
+    }
+
+    const cachedDataNode = document.getElementById('cached-result-data');
+    if (!cachedDataNode) {
+        return;
+    }
+
+    try {
+        const cachedData = JSON.parse(cachedDataNode.textContent);
+        if (!isValidCachedSectorRotation(cachedData)) {
+            return;
+        }
+
+        const generatedAt = new Date(cachedData.generated_at);
+        if (Number.isNaN(generatedAt.getTime())) {
+            return;
+        }
+
+        renderMarkdown(cachedData.content, document.getElementById('rotation-result'));
+        document.getElementById('cached-result-time').textContent = generatedAt.toLocaleString();
+        document.getElementById('cached-result-notice').classList.remove('d-none');
+        document.getElementById('result-section').classList.remove('d-none');
+    } catch (error) {
+        // Ignore malformed cached data so the form remains usable.
+    }
+});
+
 document.getElementById('rotation-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
@@ -127,16 +246,40 @@ document.getElementById('rotation-form').addEventListener('submit', function(e) 
     const timeframe = document.getElementById('timeframe').value.trim();
     const bias = document.getElementById('bias').value.trim();
 
+    try {
+        const persisted = window.AlphaLabStorage.save(
+            SECTOR_ROTATION_STORAGE_FEATURE,
+            {
+                target_market: targetMarket,
+                sectors: sectors,
+                timeframe: timeframe,
+                bias: bias
+            },
+            {
+                schemaVersion: SECTOR_ROTATION_STORAGE_SCHEMA_VERSION,
+                validate: isValidStoredSectorRotation
+            }
+        );
+
+        if (persisted === false) {
+            showStorageWarning('Your inputs are available only for the current page and could not be persisted.');
+        }
+    } catch (error) {
+        showStorageWarning('Your inputs are available only for the current page and could not be persisted.');
+    }
+
     const btn = document.getElementById('rotation-btn');
     const progressSection = document.getElementById('progress-section');
     const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
+    const cachedResultNotice = document.getElementById('cached-result-notice');
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing...';
     progressSection.classList.remove('d-none');
     errorSection.classList.add('d-none');
     resultSection.classList.add('d-none');
+    cachedResultNotice.classList.add('d-none');
     const waitTimer = new WaitTimer('wait-timer');
     waitTimer.start();
 
@@ -168,6 +311,7 @@ document.getElementById('rotation-form').addEventListener('submit', function(e) 
         } else if (data.type === 'result') {
             waitTimer.stop();
             progressSection.classList.add('d-none');
+            cachedResultNotice.classList.add('d-none');
             resultSection.classList.remove('d-none');
             renderMarkdown(data.content, document.getElementById('rotation-result'));
             eventSource.close();
@@ -203,4 +347,7 @@ function printRotationResult() {
     };
 }
 </script>
+{% if cached_result %}
+<script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
+{% endif %}
 {% endblock %}

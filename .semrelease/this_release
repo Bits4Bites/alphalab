@@ -5,3 +5,4 @@
 - feat: Add optional prospectus PDF uploads to IPO event analysis.
 - feat: Add user-scoped local storage infrastructure.
 - feat: Cache Market Outlook inputs and results in user-scope storage.
+- feat: Cache Sector Rotation inputs and results in user-scope storage.

@@ -5,10 +5,13 @@ from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
+from app.services import analysis_cache
 from app.utils import ai
 
 router = APIRouter(tags=["sector_rotation_radar"])
 TEMPLATE = "sector_rotation_radar.html"
+_CACHE_FEATURE = "sector-rotation-radar"
+_CACHE_INPUT_FIELDS = ("target_market", "sectors", "timeframe", "bias")
 
 _PROMPT_TEMPLATE = (
     "You are an expert sector rotation analyst and prompt engineer.\n"
@@ -93,7 +96,16 @@ async def sector_rotation_radar_page(
     request: Request,
     user: dict = Depends(dependencies.get_current_user),
 ) -> HTMLResponse:
-    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
+    cached_result = await analysis_cache.get_cached_result(
+        user,
+        feature=_CACHE_FEATURE,
+        input_fields=_CACHE_INPUT_FIELDS,
+    )
+    return templating.templates.TemplateResponse(
+        request,
+        TEMPLATE,
+        {"user": user, "cached_result": cached_result},
+    )
 
 
 @router.get("/sector-rotation-radar/stream")
@@ -161,6 +173,17 @@ async def sector_rotation_radar_stream(
             return
 
         yield {"data": progress(4, total_steps, "Analysis complete!")}
+        await analysis_cache.set_cached_result(
+            user,
+            feature=_CACHE_FEATURE,
+            inputs={
+                "target_market": cleaned_target_market,
+                "sectors": (sectors or "").strip(),
+                "timeframe": (timeframe or "").strip(),
+                "bias": (bias or "").strip(),
+            },
+            content=analysis_result.completion,
+        )
         yield {"data": result(analysis_result.completion)}
 
     return EventSourceResponse(event_generator())
