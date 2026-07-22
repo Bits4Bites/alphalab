@@ -1,14 +1,107 @@
+import datetime
 import json
+import logging
 
+import redis.exceptions
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
-from app.utils import ai
+from app.utils import ai, local_storage
 
 router = APIRouter(tags=["market_outlook"])
 TEMPLATE = "market_outlook.html"
+logger = logging.getLogger(__name__)
+
+_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
+_CACHE_FEATURE = "market-outlook"
+
+
+def _cache_key(user: dict[str, object]) -> str:
+    user_key = local_storage.derive_user_key(user)
+    return f"{config.datastore_settings.key_prefix}{user_key}:{_CACHE_FEATURE}:result"
+
+
+def _parse_cached_result(value: str | bytes) -> dict[str, str] | None:
+    try:
+        data = json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+    if not isinstance(data, dict):
+        return None
+
+    markets = data.get("markets")
+    content = data.get("content")
+    generated_at = data.get("generated_at")
+    if not isinstance(markets, str) or not isinstance(content, str) or not content.strip():
+        return None
+    if not isinstance(generated_at, str):
+        return None
+    try:
+        datetime.datetime.fromisoformat(generated_at)
+    except ValueError:
+        return None
+
+    return {
+        "markets": markets,
+        "content": content,
+        "generated_at": generated_at,
+    }
+
+
+async def _get_cached_result(user: dict[str, object]) -> dict[str, str] | None:
+    settings = config.datastore_settings
+    if not settings.redis_enabled or not settings.redis_client:
+        return None
+
+    key = _cache_key(user)
+    try:
+        value = await settings.redis_client.get(key)
+    except redis.exceptions.RedisError as exc:
+        logger.warning("Failed to read Market Outlook cache from Redis: %s", exc)
+        return None
+
+    if value is None:
+        return None
+
+    cached_result = _parse_cached_result(value)
+    if cached_result is not None:
+        return cached_result
+
+    logger.warning("Removing invalid Market Outlook cache entry: %s", key)
+    try:
+        await settings.redis_client.delete(key)
+    except redis.exceptions.RedisError as exc:
+        logger.warning("Failed to remove invalid Market Outlook cache entry: %s", exc)
+    return None
+
+
+async def _set_cached_result(
+    user: dict[str, object],
+    *,
+    markets: str,
+    content: str,
+) -> None:
+    settings = config.datastore_settings
+    if not settings.redis_enabled or not settings.redis_client:
+        return
+
+    data = {
+        "markets": markets,
+        "content": content,
+        "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
+    }
+    try:
+        await settings.redis_client.set(
+            _cache_key(user),
+            json.dumps(data),
+            ex=_CACHE_TTL_SECONDS,
+        )
+    except redis.exceptions.RedisError as exc:
+        logger.warning("Failed to write Market Outlook cache to Redis: %s", exc)
+
 
 _PROMPT_TEMPLATE = (
     "You are an expert macroeconomic analyst and prompt engineer.\n"
@@ -86,7 +179,12 @@ _PROMPT_TEMPLATE = (
 
 @router.get("/market-outlook", response_class=HTMLResponse)
 async def market_outlook_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
-    return templating.templates.TemplateResponse(request, TEMPLATE, {"user": user})
+    cached_result = await _get_cached_result(user)
+    return templating.templates.TemplateResponse(
+        request,
+        TEMPLATE,
+        {"user": user, "cached_result": cached_result},
+    )
 
 
 @router.get("/market-outlook/stream")
@@ -146,6 +244,7 @@ async def market_outlook_stream(
 
         # Step 4: Done
         yield {"data": progress(4, total_steps, "Analysis complete!")}
+        await _set_cached_result(user, markets=resolved_markets, content=analyze_result.completion)
         yield {"data": result(analyze_result.completion)}
 
     return EventSourceResponse(event_generator())
