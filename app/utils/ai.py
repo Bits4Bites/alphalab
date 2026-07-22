@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,16 @@ class AIResponse:
     token_usage_total: int = 0
 
 
-async def execute_prompt(client, model: str, prompt: str, temperature: float | None = None) -> AIResponse:
+async def execute_prompt(
+    client,
+    model: str,
+    prompt: str,
+    temperature: float | None = None,
+    *,
+    response_json_schema: Mapping[str, object] | None = None,
+    schema_name: str = "structured_response",
+    enable_web_search: bool = True,
+) -> AIResponse:
     """Execute a prompt against an AI client and return the result.
 
     Supports:
@@ -50,9 +60,24 @@ async def execute_prompt(client, model: str, prompt: str, temperature: float | N
 
     try:
         if isinstance(client, genai.Client):
-            result = await _execute_gemini(client, model, prompt, resolved_temperature)
+            result = await _execute_gemini(
+                client,
+                model,
+                prompt,
+                resolved_temperature,
+                response_json_schema=response_json_schema,
+                enable_web_search=enable_web_search,
+            )
         elif isinstance(client, AsyncOpenAI):
-            result = await _execute_openai(client, model, prompt, resolved_temperature)
+            result = await _execute_openai(
+                client,
+                model,
+                prompt,
+                resolved_temperature,
+                response_json_schema=response_json_schema,
+                schema_name=schema_name,
+                enable_web_search=enable_web_search,
+            )
         else:
             result = AIResponse(success=False, error=f"Unsupported client type: {vendor}")
     except Exception as e:
@@ -85,14 +110,25 @@ async def execute_prompt(client, model: str, prompt: str, temperature: float | N
     return result
 
 
-async def _execute_gemini(client, model: str, prompt: str, temperature: float) -> AIResponse:
+async def _execute_gemini(
+    client,
+    model: str,
+    prompt: str,
+    temperature: float,
+    *,
+    response_json_schema: Mapping[str, object] | None,
+    enable_web_search: bool,
+) -> AIResponse:
     """Execute prompt using Google Gemini client with grounding (web search)."""
     from google.genai.types import GenerateContentConfig, GoogleSearch, Tool
 
-    config = GenerateContentConfig(
-        tools=[Tool(google_search=GoogleSearch())],
-        temperature=temperature,
-    )
+    config_kwargs: dict[str, object] = {"temperature": temperature}
+    if enable_web_search:
+        config_kwargs["tools"] = [Tool(google_search=GoogleSearch())]
+    if response_json_schema is not None:
+        config_kwargs["response_mime_type"] = "application/json"
+        config_kwargs["response_json_schema"] = dict(response_json_schema)
+    config = GenerateContentConfig(**config_kwargs)
 
     response = await client.aio.models.generate_content(
         model=model,
@@ -117,25 +153,56 @@ async def _execute_gemini(client, model: str, prompt: str, temperature: float) -
     )
 
 
-async def _execute_openai(client, model: str, prompt: str, temperature: float) -> AIResponse:
+async def _execute_openai(
+    client,
+    model: str,
+    prompt: str,
+    temperature: float,
+    *,
+    response_json_schema: Mapping[str, object] | None,
+    schema_name: str,
+    enable_web_search: bool,
+) -> AIResponse:
     """Execute prompt using OpenAI-compatible client with web search."""
     base_url = str(client.base_url) if client.base_url else ""
     is_openrouter = "openrouter" in base_url.lower()
 
     if is_openrouter:
-        response = await client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            extra_body={"plugins": [{"id": "web"}]},
-            temperature=temperature,
-        )
+        request_kwargs: dict[str, object] = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temperature,
+        }
+        if enable_web_search:
+            request_kwargs["extra_body"] = {"plugins": [{"id": "web"}]}
+        if response_json_schema is not None:
+            request_kwargs["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": schema_name,
+                    "strict": True,
+                    "schema": dict(response_json_schema),
+                },
+            }
+        response = await client.chat.completions.create(**request_kwargs)
     else:
-        response = await client.responses.create(
-            model=model,
-            input=prompt,
-            tools=[{"type": "web_search_preview"}],
-            temperature=temperature,
-        )
+        request_kwargs = {
+            "model": model,
+            "input": prompt,
+            "temperature": temperature,
+        }
+        if enable_web_search:
+            request_kwargs["tools"] = [{"type": "web_search_preview"}]
+        if response_json_schema is not None:
+            request_kwargs["text"] = {
+                "format": {
+                    "type": "json_schema",
+                    "name": schema_name,
+                    "strict": True,
+                    "schema": dict(response_json_schema),
+                }
+            }
+        response = await client.responses.create(**request_kwargs)
 
     completion = ""
     token_usage_input = 0

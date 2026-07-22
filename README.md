@@ -30,7 +30,8 @@ investment insights.
 - **Build Portfolio** Turn investment goals, risk tolerance, time horizon, and preferred themes into a practical
   portfolio allocation.
 - **Review Portfolio** Identify portfolio strengths, concentration risks, weak positions, and opportunities to
-  improve diversification and resilience.
+  improve diversification and resilience, with an optional market-specific plan showing estimated trades, cash impact,
+  and before-and-after allocations.
 
 **Signals**
 - **Watchlist Monitor** Prioritize the names that deserve attention by combining news, technical signals, valuation,

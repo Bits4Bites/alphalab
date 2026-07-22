@@ -35,16 +35,20 @@ Extend source-based document research beyond IPO prospectuses.
 - Cite the relevant page or document section for material findings.
 - Reuse the existing temporary upload and cleanup lifecycle.
 
-#### Portfolio Rebalance Planner
+#### Review Portfolio: Rebalance Planner
 
-Turn portfolio analysis into an executable adjustment plan.
+Turn portfolio analysis into an actionable adjustment plan within the investor's selected market.
+
+**Status: Implemented**
 
 **MVP**
 
-- Compare current and proposed allocations.
-- Produce specific buy, sell, trim, and cash-deployment actions.
-- Estimate trade amounts and show concentration changes before and after rebalancing.
-- Include tax and execution considerations without presenting the output as financial advice.
+- Accept line-oriented holdings and derive currency from the required target market.
+- Make rebalancing optional within Review Portfolio, without adding a confirmation step.
+- Compare current, target, and estimated resulting allocations.
+- Produce deterministic buy, sell, trim, hold, and cash-deployment actions.
+- Show trade quantities, residual cash, concentration changes, quote timestamps, warnings, and CSV export.
+- Keep tax and execution considerations qualitative and clearly separate the plan from financial advice.
 
 ### Medium Priority
 
@@ -117,12 +121,13 @@ and additional privacy and operational controls.
 
 ## Recommended Sequence
 
+Review Portfolio: Rebalance Planner has been delivered.
+
 1. Compare Investments, including the minimum structured result contract needed for reliable comparisons.
 2. Filing and Earnings Report Analyzer.
-3. Portfolio Rebalance Planner.
-4. Investment Thesis Tracker.
-5. Unified Catalyst Calendar after selecting a trustworthy event-data source.
-6. Real-time alerts and multi-device sync only after approving persistent storage and background processing.
+3. Investment Thesis Tracker.
+4. Unified Catalyst Calendar after selecting a trustworthy event-data source.
+5. Real-time alerts and multi-device sync only after approving persistent storage and background processing.
 
 Technical improvements should be delivered incrementally with the business feature that first needs them rather than as
 large standalone rewrites.
@@ -133,7 +138,7 @@ large standalone rewrites.
 |---|---|---|---|
 | Business | High | Compare Investments | Faster, evidence-based selection between competing investments |
 | Business | High | Filing and Earnings Report Analyzer | Deeper source-backed company research |
-| Business | High | Portfolio Rebalance Planner | Concrete portfolio adjustment and execution plan |
+| Business | High | Review Portfolio: Rebalance Planner (delivered) | Concrete, market-specific adjustment plan |
 | Business | Medium | Investment Thesis Tracker | Research continuity and repeat engagement |
 | Business | Medium | Unified Catalyst Calendar | One prioritized view of upcoming market events |
 | Business | Low | Real-Time Alerts and Multi-Device Sync | Automated engagement after durable infrastructure exists |

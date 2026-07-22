@@ -5,154 +5,387 @@
 {% block page_title %}Review Portfolio{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body">
-                <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
-                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
-                    <span id="storage-warning-message"></span>
+<style>
+    .portfolio-workspace {
+        --portfolio-accent: #5b5bd6;
+        --portfolio-soft: rgba(91, 91, 214, 0.08);
+    }
+    .portfolio-workspace .section-kicker {
+        color: var(--portfolio-accent);
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+    .portfolio-workspace .rebalance-settings {
+        background: linear-gradient(135deg, var(--portfolio-soft), rgba(13, 202, 240, .05));
+        border: 1px solid rgba(91, 91, 214, .16);
+    }
+    .portfolio-workspace .markdown-content {
+        overflow-wrap: anywhere;
+    }
+    .portfolio-workspace .markdown-content h1 { font-size: 1.5rem !important; }
+    .portfolio-workspace .markdown-content h2 { font-size: 1.4rem !important; }
+    .portfolio-workspace .markdown-content h3 { font-size: 1.3rem !important; }
+    .portfolio-workspace .markdown-content h4 { font-size: 1.2rem !important; }
+    .portfolio-workspace .markdown-content h5 { font-size: 1.1rem !important; }
+    .portfolio-workspace .markdown-content table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+    .portfolio-workspace :focus-visible {
+        outline: 3px solid rgba(13, 110, 253, .35);
+        outline-offset: 2px;
+    }
+    @media print {
+        .portfolio-workspace .no-print,
+        .portfolio-workspace form,
+        .portfolio-workspace #progress-section,
+        .portfolio-workspace #error-section {
+            display: none !important;
+        }
+        .portfolio-workspace .card {
+            box-shadow: none !important;
+        }
+    }
+</style>
+
+<div class="portfolio-workspace">
+    <div class="row">
+        <div class="col-12">
+            <section class="card border-0 shadow-sm mb-4" aria-labelledby="review-form-heading">
+                <div class="card-body p-3 p-md-4">
+                    <div class="mb-3">
+                        <div class="section-kicker mb-1">Portfolio workspace</div>
+                        <h2 id="review-form-heading" class="h4 mb-1">Review your current portfolio</h2>
+                        <p class="text-muted mb-0">
+                            Get an AI-assisted review, with an optional market-validated rebalance plan.
+                        </p>
+                    </div>
+
+                    <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none"
+                         role="status" aria-live="polite">
+                        <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                        <span id="storage-warning-message"></span>
+                    </div>
+
+                    <form id="review-form">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="holdings" class="form-label fw-semibold">
+                                    Current Holdings <span class="text-danger" aria-hidden="true">*</span>
+                                </label>
+                                <textarea class="form-control font-monospace" id="holdings" name="holdings"
+                                          rows="6" maxlength="6000" required aria-required="true"
+                                          aria-describedby="holdings-help"
+                                          placeholder="CBA, 100, 92.10&#10;BHP, 50"></textarea>
+                                <div id="holdings-help" class="form-text">
+                                    Enter one holding per line as
+                                    <code>TICKER, QUANTITY, AVERAGE_COST(optional)</code>; for example
+                                    <code>CBA, 100, 92.10</code>. Blank lines are ignored. Average cost uses the
+                                    selected market currency. This strict format is required only when Include
+                                    Rebalance Plan is on; review-only holdings may remain free form.
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="risk-tolerance" class="form-label fw-semibold">
+                                    Risk Tolerance <span class="text-muted fw-normal">(Optional)</span>
+                                </label>
+                                <select class="form-select" id="risk-tolerance" name="risk_tolerance">
+                                    <option value="">Select...</option>
+                                    <option value="Conservative">Conservative</option>
+                                    <option value="Moderate">Moderate</option>
+                                    <option value="Aggressive">Aggressive</option>
+                                    <option value="Very Aggressive">Very Aggressive</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="target-market" class="form-label fw-semibold">
+                                    Target Market <span class="text-danger" aria-hidden="true">*</span>
+                                </label>
+                                <select class="form-select" id="target-market" name="target_market"
+                                        required aria-required="true" aria-describedby="target-market-help">
+                                    {% for market in market_options %}
+                                    <option value="{{ market.code }}" data-currency="{{ market.currency }}"
+                                            {% if market.code == default_market %}selected{% endif %}>
+                                        {{ market.label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div id="target-market-help" class="form-text">
+                                    All reviewed and proposed securities must be listed in this market.
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="investment-horizon" class="form-label fw-semibold">
+                                    Investment Horizon <span class="text-muted fw-normal">(Optional)</span>
+                                </label>
+                                <select class="form-select" id="investment-horizon" name="investment_horizon">
+                                    <option value="">Select...</option>
+                                    <option value="Short-term (< 1 year)">Short-term (&lt; 1 year)</option>
+                                    <option value="Medium-term (1-3 years)">Medium-term (1-3 years)</option>
+                                    <option value="Long-term (3-5 years)">Long-term (3-5 years)</option>
+                                    <option value="Very long-term (5+ years)">Very long-term (5+ years)</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="investment-goals" class="form-label fw-semibold">
+                                    Investment Goals <span class="text-muted fw-normal">(Optional)</span>
+                                </label>
+                                <input type="text" class="form-control" id="investment-goals"
+                                       name="investment_goals" maxlength="1000"
+                                       placeholder="e.g. Retirement savings, capital growth, passive income">
+                            </div>
+
+                            <div class="col-12">
+                                <label for="scenario" class="form-label fw-semibold">
+                                    Scenario <span class="text-muted fw-normal">(Optional)</span>
+                                </label>
+                                <input type="text" class="form-control" id="scenario" name="scenario"
+                                       maxlength="1000"
+                                       placeholder="e.g. 2008 crash, rate hike shock, AI spending collapse"
+                                       aria-describedby="scenario-help">
+                                <div id="scenario-help" class="form-text">
+                                    If provided, the review will include a stress test under this scenario.
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <fieldset class="rebalance-settings rounded-3 p-3 p-md-4">
+                                    <legend class="h6 mb-2">Rebalance plan</legend>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                               id="include-rebalance" name="include_rebalance"
+                                               aria-controls="rebalance-options" aria-expanded="false">
+                                        <label class="form-check-label fw-semibold" for="include-rebalance">
+                                            Include Rebalance Plan
+                                        </label>
+                                    </div>
+                                    <p class="small text-muted mb-3">
+                                        All money values use the selected market currency. The plan uses delayed quote
+                                        snapshots, not live prices, and does not estimate tax, fees, spreads or slippage.
+                                    </p>
+
+                                    <div id="rebalance-options" class="row g-3 d-none">
+                                        <div class="col-sm-6 col-lg-3">
+                                            <label for="available-cash" class="form-label fw-semibold">
+                                                Available Cash
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text" id="available-cash-currency">USD</span>
+                                                <input type="number" class="form-control" id="available-cash"
+                                                       name="available_cash" min="0" max="1000000000000"
+                                                       step="0.01" value="0" inputmode="decimal"
+                                                       aria-describedby="available-cash-help">
+                                            </div>
+                                            <div id="available-cash-help" class="form-text">
+                                                In the selected market's currency.
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6 col-lg-3">
+                                            <label for="minimum-trade-amount" class="form-label fw-semibold">
+                                                Minimum Trade
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text" id="minimum-trade-currency">USD</span>
+                                                <input type="number" class="form-control" id="minimum-trade-amount"
+                                                       name="minimum_trade_amount" min="0" max="1000000000000"
+                                                       step="0.01" value="0" inputmode="decimal"
+                                                       aria-describedby="minimum-trade-help">
+                                            </div>
+                                            <div id="minimum-trade-help" class="form-text">
+                                                Ignore smaller estimated trades.
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6 col-lg-3">
+                                            <label for="tax-context" class="form-label fw-semibold">Tax Context</label>
+                                            <select class="form-select" id="tax-context" name="tax_context">
+                                                <option value="unknown">Unknown / not specified</option>
+                                                <option value="taxable">Taxable account</option>
+                                                <option value="tax-advantaged">Tax-advantaged account</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-sm-6 col-lg-3 d-flex align-items-center">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox"
+                                                       id="allow-fractional-shares"
+                                                       name="allow_fractional_shares">
+                                                <label class="form-check-label fw-semibold"
+                                                       for="allow-fractional-shares">
+                                                    Allow fractional shares
+                                                </label>
+                                                <div class="form-text">
+                                                    Otherwise, quantities are calculated as whole shares.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </fieldset>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary" id="review-btn">
+                                <i class="bi bi-clipboard-data me-1" aria-hidden="true"></i>
+                                <span id="review-btn-label">Review Portfolio</span>
+                            </button>
+                            <span class="small text-muted">Required fields are marked with an asterisk.</span>
+                        </div>
+                    </form>
                 </div>
-                <form id="review-form">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label for="holdings" class="form-label fw-semibold">
-                                Current Holdings
-                                <span class="text-danger ms-2">*</span>
-                            </label>
-                            <textarea class="form-control" id="holdings" name="holdings" rows="4" required
-                                      placeholder="e.g. AAPL 50 shares, MSFT 30 shares, VGS.AX 200 units, GOOGL 10 shares"></textarea>
-                            <div class="form-text">List your tickers and quantities for the AI to review.</div>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="risk-tolerance" class="form-label fw-semibold">
-                                Risk Tolerance
-                                <span class="text-muted ms-2">(Optional)</span>
-                            </label>
-                            <select class="form-select" id="risk-tolerance" name="risk_tolerance">
-                                <option value="">Select...</option>
-                                <option value="Conservative">Conservative</option>
-                                <option value="Moderate">Moderate</option>
-                                <option value="Aggressive">Aggressive</option>
-                                <option value="Very Aggressive">Very Aggressive</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="target-market" class="form-label fw-semibold">
-                                Target Market
-                                <span class="text-muted ms-2">(Optional)</span>
-                            </label>
-                            <input type="text" class="form-control" id="target-market" name="target_market"
-                                   placeholder="e.g. US, Australia, Global">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="investment-horizon" class="form-label fw-semibold">
-                                Investment Horizon
-                                <span class="text-muted ms-2">(Optional)</span>
-                            </label>
-                            <select class="form-select" id="investment-horizon" name="investment_horizon">
-                                <option value="">Select...</option>
-                                <option value="Short-term (< 1 year)">Short-term (&lt; 1 year)</option>
-                                <option value="Medium-term (1-3 years)">Medium-term (1-3 years)</option>
-                                <option value="Long-term (3-5 years)">Long-term (3-5 years)</option>
-                                <option value="Very long-term (5+ years)">Very long-term (5+ years)</option>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label for="investment-goals" class="form-label fw-semibold">
-                                Investment Goals
-                                <span class="text-muted ms-2">(Optional)</span>
-                            </label>
-                            <input type="text" class="form-control" id="investment-goals" name="investment_goals"
-                                   placeholder="e.g. Retirement savings, Capital growth, Passive income, Beat inflation">
-                        </div>
-                        <div class="col-12">
-                            <label for="scenario" class="form-label fw-semibold">
-                                Scenario
-                                <span class="text-muted ms-2">(Optional)</span>
-                            </label>
-                            <input type="text" class="form-control" id="scenario" name="scenario"
-                                   placeholder="e.g. 2008 crash, rate hike shock, AI spending collapse">
-                            <div class="form-text">If provided, the review will include a stress-test under this scenario.</div>
+            </section>
+
+            <section id="progress-section" class="d-none mb-4" aria-labelledby="progress-message">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-3" role="status" aria-live="polite">
+                            <div class="spinner-border spinner-border-sm text-primary" aria-hidden="true"></div>
+                            <div class="flex-grow-1">
+                                <div class="fw-semibold" id="progress-message">Starting...</div>
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar" id="progress-bar" role="progressbar"
+                                         style="width: 0%" aria-valuemin="0" aria-valuemax="100"
+                                         aria-valuenow="0" aria-label="Review progress"></div>
+                                </div>
+                                <small class="text-muted" id="progress-step">Step 0</small>
+                                <small class="text-muted d-none ms-2" id="wait-timer"></small>
+                            </div>
                         </div>
                     </div>
-                    <div class="mt-3">
-                        <button type="submit" class="btn btn-primary" id="review-btn">
-                            <i class="bi bi-clipboard-data me-1"></i>Review Portfolio
+                </div>
+            </section>
+
+            <section id="error-section" class="d-none mb-4" tabindex="-1" aria-labelledby="error-heading">
+                <div class="alert alert-danger mb-0" role="alert">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-exclamation-triangle-fill mt-1" aria-hidden="true"></i>
+                        <div>
+                            <h2 id="error-heading" class="h6 mb-1">Portfolio review could not be completed</h2>
+                            <div id="error-message" class="markdown-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="result-section" class="d-none mb-4" tabindex="-1" aria-labelledby="review-result-heading">
+                <div class="card border-0 shadow-sm" id="review-print-area">
+                    <div class="card-header bg-white border-bottom-0 pt-3 px-3 px-md-4 pb-0
+                                d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <div class="section-kicker mb-1">Analysis</div>
+                            <h2 id="review-result-heading" class="h4 fw-semibold mb-0">
+                                <i class="bi bi-clipboard-data me-1" aria-hidden="true"></i>Portfolio Review
+                            </h2>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm no-print"
+                                id="print-review-btn"
+                                aria-label="Print visible portfolio review and rebalance plan sections">
+                            <i class="bi bi-printer me-1" aria-hidden="true"></i>Print
                         </button>
                     </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Progress indicator -->
-        <div id="progress-section" class="d-none mb-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="spinner-border spinner-border-sm text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
+                    <div class="card-body px-3 px-md-4">
+                        <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none"
+                             role="status">
+                            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                            This is a cached analysis completed on
+                            <time id="cached-result-time"></time>. Running it again will refresh it.
                         </div>
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold" id="progress-message">Starting...</div>
-                            <div class="progress mt-2" style="height: 6px;">
-                                <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
+                        <div class="alert alert-warning small mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                            <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or
+                            accurate. It is provided for advisory purposes only and should not be considered financial
+                            advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for
+                            losses incurred based on this information.
+                        </div>
+                        <div id="review-result" class="markdown-content"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="rebalance-section" class="d-none mb-4" tabindex="-1"
+                     aria-labelledby="rebalance-result-heading">
+                <div class="card border-0 shadow-sm" id="rebalance-print-area">
+                    <div class="card-header bg-white border-bottom-0 pt-3 px-3 px-md-4 pb-0
+                                d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <div class="section-kicker mb-1">Action plan</div>
+                            <h2 id="rebalance-result-heading" class="h4 fw-semibold mb-0">
+                                <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>Rebalance Plan
+                            </h2>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 no-print">
+                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                    id="export-rebalance-btn" disabled>
+                                <i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>Export CSV
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    id="print-rebalance-btn"
+                                    aria-label="Print visible portfolio review and rebalance plan sections" disabled>
+                                <i class="bi bi-printer me-1" aria-hidden="true"></i>Print
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body px-3 px-md-4">
+                        <div id="cached-rebalance-notice" class="alert alert-info small py-2 mb-3 d-none"
+                             role="status">
+                            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                            This is a cached rebalance plan generated on
+                            <time id="cached-rebalance-time"></time>.
+                        </div>
+                        <div id="market-data-warning" class="alert alert-warning small py-2 mb-3 d-none"
+                             role="alert">
+                            <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
+                            <span id="market-data-warning-message"></span>
+                        </div>
+                        <div class="alert alert-secondary small py-2 mb-3" role="note">
+                            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                            This plan is decision support only. Prices are delayed snapshots, not live prices;
+                            verify current prices before trading.
+                        </div>
+                        <div id="rebalance-error" class="alert alert-danger d-none" role="alert"
+                             aria-live="assertive">
+                            <h3 class="h6">The portfolio review succeeded, but no rebalance plan was produced</h3>
+                            <div id="rebalance-error-message"></div>
+                        </div>
+
+                        <div id="rebalance-content" class="d-none">
+                            <div class="d-flex flex-wrap gap-2 mb-3" aria-label="Plan context">
+                                <span id="rebalance-market-badge" class="badge text-bg-primary"></span>
+                                <span id="rebalance-currency-badge" class="badge text-bg-secondary"></span>
                             </div>
-                            <small class="text-muted" id="progress-step">Step 0 of 4</small>
-                            <small class="text-muted d-none ms-2" id="wait-timer"></small>
+                            <p class="small text-muted mb-3">
+                                <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
+                                Market data snapshot at
+                                <time id="rebalance-market-data-time"></time>.
+                            </p>
+                            <div id="rebalance-result" class="markdown-content"></div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Error display -->
-        <div id="error-section" class="d-none">
-            <div class="alert alert-danger d-flex align-items-center" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                <span id="error-message"></span>
-            </div>
-        </div>
-
-        <!-- Result display -->
-        <style>
-        #review-result h1 {font-size: 1.5rem !important;}
-        #review-result h2 {font-size: 1.4rem !important;}
-        #review-result h3 {font-size: 1.3rem !important;}
-        #review-result h4 {font-size: 1.2rem !important;}
-        #review-result h5 {font-size: 1.1rem !important;}
-        </style>
-        <div id="result-section" class="d-none">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex align-items-center justify-content-between">
-                    <h4 class="fw-semibold mb-0">
-                        <i class="bi bi-clipboard-data me-1"></i>Portfolio Review
-                    </h4>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="printReview()" title="Print">
-                        <i class="bi bi-printer"></i>
-                    </button>
-                </div>
-                <div class="card-body">
-                    <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none" role="status">
-                        <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
-                        <span>This is a cached analysis completed on <span id="cached-result-time"></span>. Running it again will refresh it.</span>
-                    </div>
-                    <div class="alert alert-warning small mb-3" role="alert">
-                        <i class="bi bi-exclamation-triangle me-1"></i>
-                        <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
-                    </div>
-                    <div id="review-result"></div>
-                </div>
-            </div>
+            </section>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
+'use strict';
+
 const REVIEW_PORTFOLIO_STORAGE_FEATURE = 'review-portfolio';
-const REVIEW_PORTFOLIO_STORAGE_SCHEMA_VERSION = 1;
-const REVIEW_PORTFOLIO_INPUT_FIELDS = [
+const REVIEW_PORTFOLIO_STORAGE_SCHEMA_VERSION = 2;
+const REVIEW_PORTFOLIO_MARKET_CODES = {{ market_codes | tojson }};
+const REVIEW_PORTFOLIO_MARKET_CURRENCIES = {{ market_currencies | tojson }};
+const REVIEW_PORTFOLIO_DEFAULT_MARKET = {{ default_market | tojson }};
+const REVIEW_PORTFOLIO_V1_FIELDS = [
     'holdings',
     'risk_tolerance',
     'investment_goals',
@@ -160,7 +393,28 @@ const REVIEW_PORTFOLIO_INPUT_FIELDS = [
     'investment_horizon',
     'scenario'
 ];
-const REVIEW_PORTFOLIO_RISK_TOLERANCES = ['', 'Conservative', 'Moderate', 'Aggressive', 'Very Aggressive'];
+const REVIEW_PORTFOLIO_INPUT_FIELDS = [
+    ...REVIEW_PORTFOLIO_V1_FIELDS,
+    'include_rebalance',
+    'available_cash',
+    'allow_fractional_shares',
+    'minimum_trade_amount',
+    'tax_context'
+];
+const REVIEW_PORTFOLIO_REBALANCE_CACHE_INPUT_FIELDS = [
+    ...REVIEW_PORTFOLIO_V1_FIELDS,
+    'available_cash',
+    'allow_fractional_shares',
+    'minimum_trade_amount',
+    'tax_context'
+];
+const REVIEW_PORTFOLIO_RISK_TOLERANCES = [
+    '',
+    'Conservative',
+    'Moderate',
+    'Aggressive',
+    'Very Aggressive'
+];
 const REVIEW_PORTFOLIO_HORIZONS = [
     '',
     'Short-term (< 1 year)',
@@ -168,38 +422,171 @@ const REVIEW_PORTFOLIO_HORIZONS = [
     'Long-term (3-5 years)',
     'Very long-term (5+ years)'
 ];
-const REVIEW_PORTFOLIO_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+const REVIEW_PORTFOLIO_TAX_CONTEXTS = ['unknown', 'taxable', 'tax-advantaged'];
+const REVIEW_PORTFOLIO_MONEY_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/;
+const REVIEW_PORTFOLIO_ISO_TIMESTAMP_PATTERN =
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+const REVIEW_PORTFOLIO_PRINT_TITLE = {{ ('Portfolio Review - ' ~ app_name) | tojson }};
+const REBALANCE_STALE_AFTER_MS = 15 * 60 * 1000;
+let currentRebalancePlan = null;
 
-function hasExactReviewPortfolioStringFields(value, fields) {
+function hasExactKeys(value, fields) {
     return value !== null
         && typeof value === 'object'
         && !Array.isArray(value)
         && Object.keys(value).length === fields.length
         && fields.every(function(field) {
-            return Object.prototype.hasOwnProperty.call(value, field)
-                && typeof value[field] === 'string';
+            return Object.prototype.hasOwnProperty.call(value, field);
         });
 }
 
-function hasValidReviewPortfolioInputs(value) {
-    return value.holdings.trim().length > 0
+function isNonEmptyString(value, maxLength) {
+    return typeof value === 'string'
+        && value.trim().length > 0
+        && value.length <= maxLength;
+}
+
+function isNonEmptyText(value) {
+    return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isIsoTimestamp(value) {
+    return typeof value === 'string'
+        && REVIEW_PORTFOLIO_ISO_TIMESTAMP_PATTERN.test(value)
+        && !Number.isNaN(new Date(value).getTime());
+}
+
+function isMoneyInput(value) {
+    return typeof value === 'string'
+        && REVIEW_PORTFOLIO_MONEY_PATTERN.test(value)
+        && Number.isFinite(Number(value))
+        && Number(value) <= 1000000000000;
+}
+
+function hasValidV1Inputs(value) {
+    return isNonEmptyString(value.holdings, 6000)
         && REVIEW_PORTFOLIO_RISK_TOLERANCES.includes(value.risk_tolerance)
-        && REVIEW_PORTFOLIO_HORIZONS.includes(value.investment_horizon);
+        && typeof value.investment_goals === 'string'
+        && value.investment_goals.length <= 1000
+        && REVIEW_PORTFOLIO_MARKET_CODES.includes(value.target_market)
+        && REVIEW_PORTFOLIO_HORIZONS.includes(value.investment_horizon)
+        && typeof value.scenario === 'string'
+        && value.scenario.length <= 1000;
+}
+
+function isValidStoredReviewPortfolioV1(value) {
+    return hasExactKeys(value, REVIEW_PORTFOLIO_V1_FIELDS)
+        && REVIEW_PORTFOLIO_V1_FIELDS.every(function(field) {
+            return typeof value[field] === 'string';
+        })
+        && isNonEmptyString(value.holdings, 6000);
+}
+
+function canonicalizeLegacyMarket(value) {
+    const normalized = value.trim().toUpperCase();
+    if (['US', 'USA', 'UNITED STATES'].includes(normalized)) {
+        return REVIEW_PORTFOLIO_MARKET_CODES.includes('US') ? 'US' : REVIEW_PORTFOLIO_DEFAULT_MARKET;
+    }
+    if (['AU', 'AUS', 'AUSTRALIA', 'ASX'].includes(normalized)) {
+        return REVIEW_PORTFOLIO_MARKET_CODES.includes('AU') ? 'AU' : REVIEW_PORTFOLIO_DEFAULT_MARKET;
+    }
+    return REVIEW_PORTFOLIO_MARKET_CODES.includes(normalized)
+        ? normalized
+        : REVIEW_PORTFOLIO_DEFAULT_MARKET;
 }
 
 function isValidStoredReviewPortfolio(value) {
-    return hasExactReviewPortfolioStringFields(value, REVIEW_PORTFOLIO_INPUT_FIELDS)
-        && hasValidReviewPortfolioInputs(value);
+    return hasExactKeys(value, REVIEW_PORTFOLIO_INPUT_FIELDS)
+        && REVIEW_PORTFOLIO_V1_FIELDS.every(function(field) {
+            return typeof value[field] === 'string';
+        })
+        && hasValidV1Inputs(value)
+        && typeof value.include_rebalance === 'boolean'
+        && isMoneyInput(value.available_cash)
+        && typeof value.allow_fractional_shares === 'boolean'
+        && isMoneyInput(value.minimum_trade_amount)
+        && REVIEW_PORTFOLIO_TAX_CONTEXTS.includes(value.tax_context);
+}
+
+function migrateReviewPortfolioStorage(value, fromVersion, toVersion) {
+    if (fromVersion !== 1 || toVersion !== REVIEW_PORTFOLIO_STORAGE_SCHEMA_VERSION) {
+        throw new Error(`Unsupported portfolio storage migration from ${fromVersion} to ${toVersion}.`);
+    }
+    if (!isValidStoredReviewPortfolioV1(value)) {
+        throw new Error('Saved portfolio data does not match schema version 1.');
+    }
+    return {
+        ...value,
+        target_market: canonicalizeLegacyMarket(value.target_market),
+        include_rebalance: false,
+        available_cash: '0',
+        allow_fractional_shares: false,
+        minimum_trade_amount: '0',
+        tax_context: 'unknown'
+    };
 }
 
 function isValidCachedReviewPortfolio(value) {
-    const fields = [...REVIEW_PORTFOLIO_INPUT_FIELDS, 'content', 'generated_at'];
+    const fields = [...REVIEW_PORTFOLIO_V1_FIELDS, 'content', 'generated_at'];
+    return hasExactKeys(value, fields)
+        && REVIEW_PORTFOLIO_V1_FIELDS.every(function(field) {
+            return typeof value[field] === 'string';
+        })
+        && hasValidV1Inputs(value)
+        && isNonEmptyString(value.content, 500000)
+        && isIsoTimestamp(value.generated_at);
+}
 
-    return hasExactReviewPortfolioStringFields(value, fields)
-        && hasValidReviewPortfolioInputs(value)
-        && value.content.trim().length > 0
-        && REVIEW_PORTFOLIO_ISO_TIMESTAMP_PATTERN.test(value.generated_at)
-        && !Number.isNaN(new Date(value.generated_at).getTime());
+function isValidRebalanceTrade(value) {
+    const csvFields = [
+        'ticker', 'action', 'current_quantity', 'trade_quantity', 'resulting_quantity',
+        'current_price', 'estimated_trade_value', 'current_weight_pct',
+        'target_weight_pct', 'resulting_weight_pct'
+    ];
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && csvFields.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field);
+        })
+        && isNonEmptyText(value.ticker)
+        && isNonEmptyText(value.action)
+        && csvFields.slice(2).every(function(field) {
+            return typeof value[field] === 'number' && Number.isFinite(value[field]);
+        });
+}
+
+function isValidRebalancePlan(value) {
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && isIsoTimestamp(value.generated_at)
+        && isIsoTimestamp(value.market_data_at)
+        && isNonEmptyText(value.market)
+        && isNonEmptyText(value.currency)
+        && Array.isArray(value.trades)
+        && value.trades.every(isValidRebalanceTrade);
+}
+
+function isValidRebalancePayload(value) {
+    return hasExactKeys(value, ['content', 'plan'])
+        && isNonEmptyText(value.content)
+        && isValidRebalancePlan(value.plan);
+}
+
+function isValidCachedRebalance(value) {
+    const fields = [...REVIEW_PORTFOLIO_REBALANCE_CACHE_INPUT_FIELDS, 'payload', 'generated_at'];
+    return hasExactKeys(value, fields)
+        && REVIEW_PORTFOLIO_REBALANCE_CACHE_INPUT_FIELDS.every(function(field) {
+            return typeof value[field] === 'string';
+        })
+        && hasValidV1Inputs(value)
+        && isMoneyInput(value.available_cash)
+        && ['true', 'false'].includes(value.allow_fractional_shares)
+        && isMoneyInput(value.minimum_trade_amount)
+        && REVIEW_PORTFOLIO_TAX_CONTEXTS.includes(value.tax_context)
+        && isIsoTimestamp(value.generated_at)
+        && isValidRebalancePayload(value.payload);
 }
 
 function showStorageWarning(message) {
@@ -208,9 +595,304 @@ function showStorageWarning(message) {
     if (!warning || !warningMessage) {
         return;
     }
-
     warningMessage.textContent = message;
     warning.classList.remove('d-none');
+}
+
+function sanitizeMarkdownFragment(fragment) {
+    const blockedElements = [
+        'script', 'iframe', 'object', 'embed', 'style', 'link', 'meta', 'base',
+        'form', 'input', 'button', 'textarea', 'select', 'option', 'template',
+        'svg', 'math', 'img', 'audio', 'video', 'source', 'track'
+    ];
+    fragment.querySelectorAll(blockedElements.join(',')).forEach(function(element) {
+        element.remove();
+    });
+
+    fragment.querySelectorAll('*').forEach(function(element) {
+        Array.from(element.attributes).forEach(function(attribute) {
+            const name = attribute.name.toLowerCase();
+            if (name.startsWith('on') || ['style', 'srcdoc', 'id', 'name'].includes(name)) {
+                element.removeAttribute(attribute.name);
+                return;
+            }
+            if (name === 'href') {
+                try {
+                    const url = new URL(attribute.value, document.baseURI);
+                    if (!['http:', 'https:', 'mailto:'].includes(url.protocol)) {
+                        element.removeAttribute(attribute.name);
+                    }
+                } catch (error) {
+                    element.removeAttribute(attribute.name);
+                }
+            }
+        });
+        if (element.tagName === 'A' && element.getAttribute('target') === '_blank') {
+            element.setAttribute('rel', 'noopener noreferrer');
+        }
+    });
+}
+
+function renderSafeMarkdown(content, element) {
+    if (!element) {
+        return;
+    }
+    const prepared = prepareMath(typeof content === 'string' ? content : '');
+    const template = document.createElement('template');
+    template.innerHTML = marked.parse(prepared);
+    sanitizeMarkdownFragment(template.content);
+    element.replaceChildren(template.content.cloneNode(true));
+    renderMath(element);
+}
+
+function setRebalanceOptionsVisible(visible) {
+    const options = document.getElementById('rebalance-options');
+    const toggle = document.getElementById('include-rebalance');
+    options.classList.toggle('d-none', !visible);
+    toggle.setAttribute('aria-expanded', String(visible));
+}
+
+function updateMarketCurrency() {
+    const marketCode = document.getElementById('target-market').value;
+    const currency = REVIEW_PORTFOLIO_MARKET_CURRENCIES[marketCode] || '';
+    document.getElementById('available-cash-currency').textContent = currency;
+    document.getElementById('minimum-trade-currency').textContent = currency;
+}
+
+function storedFormData() {
+    return {
+        holdings: document.getElementById('holdings').value.trim(),
+        risk_tolerance: document.getElementById('risk-tolerance').value,
+        investment_goals: document.getElementById('investment-goals').value.trim(),
+        target_market: document.getElementById('target-market').value,
+        investment_horizon: document.getElementById('investment-horizon').value,
+        scenario: document.getElementById('scenario').value.trim(),
+        include_rebalance: document.getElementById('include-rebalance').checked,
+        available_cash: document.getElementById('available-cash').value.trim() || '0',
+        allow_fractional_shares: document.getElementById('allow-fractional-shares').checked,
+        minimum_trade_amount: document.getElementById('minimum-trade-amount').value.trim() || '0',
+        tax_context: document.getElementById('tax-context').value
+    };
+}
+
+function restoreFormData(value) {
+    document.getElementById('holdings').value = value.holdings;
+    document.getElementById('risk-tolerance').value = value.risk_tolerance;
+    document.getElementById('investment-goals').value = value.investment_goals;
+    document.getElementById('target-market').value = value.target_market;
+    document.getElementById('investment-horizon').value = value.investment_horizon;
+    document.getElementById('scenario').value = value.scenario;
+    document.getElementById('include-rebalance').checked = value.include_rebalance;
+    document.getElementById('available-cash').value = value.available_cash;
+    document.getElementById('allow-fractional-shares').checked = value.allow_fractional_shares;
+    document.getElementById('minimum-trade-amount').value = value.minimum_trade_amount;
+    document.getElementById('tax-context').value = value.tax_context;
+    setRebalanceOptionsVisible(value.include_rebalance);
+    updateMarketCurrency();
+}
+
+function showReviewResult(content, cachedAt) {
+    renderSafeMarkdown(content, document.getElementById('review-result'));
+    const notice = document.getElementById('cached-result-notice');
+    if (cachedAt) {
+        const time = document.getElementById('cached-result-time');
+        time.dateTime = cachedAt.toISOString();
+        time.textContent = cachedAt.toLocaleString();
+        notice.classList.remove('d-none');
+    } else {
+        notice.classList.add('d-none');
+    }
+    document.getElementById('result-section').classList.remove('d-none');
+}
+
+function updateMarketDataWarning(plan, isCached) {
+    const warning = document.getElementById('market-data-warning');
+    const message = document.getElementById('market-data-warning-message');
+    const marketDataAt = new Date(plan.market_data_at);
+    const age = Date.now() - marketDataAt.getTime();
+    const snapshot = `Quote snapshot: ${marketDataAt.toLocaleString()} (${plan.currency}). `;
+    if (age > REBALANCE_STALE_AFTER_MS) {
+        message.textContent = snapshot
+            + 'These delayed prices may be stale. Refresh the plan and verify live prices before trading.';
+        warning.classList.remove('d-none');
+    } else if (age < -5 * 60 * 1000) {
+        message.textContent = snapshot
+            + 'The market-data timestamp is in the future. Verify prices before trading.';
+        warning.classList.remove('d-none');
+    } else if (isCached) {
+        message.textContent = snapshot
+            + 'This is cached decision support, not live-price execution guidance.';
+        warning.classList.remove('d-none');
+    } else {
+        message.textContent = snapshot
+            + 'Prices are delayed and this plan is decision support only. Verify live prices before trading.';
+        warning.classList.remove('d-none');
+    }
+}
+
+function renderRebalancePlan(content, plan, options) {
+    const settings = options || {};
+    if (!isValidRebalancePayload({content: content, plan: plan})) {
+        showRebalanceError('The rebalance response was incomplete or invalid. Please run the review again.');
+        return false;
+    }
+
+    currentRebalancePlan = plan;
+    document.getElementById('rebalance-error').classList.add('d-none');
+    document.getElementById('rebalance-content').classList.remove('d-none');
+    document.getElementById('rebalance-section').classList.remove('d-none');
+    document.getElementById('export-rebalance-btn').disabled = false;
+    document.getElementById('print-rebalance-btn').disabled = false;
+
+    document.getElementById('rebalance-market-badge').textContent = plan.market;
+    document.getElementById('rebalance-currency-badge').textContent = plan.currency;
+    const marketDataTime = document.getElementById('rebalance-market-data-time');
+    const marketDataAt = new Date(plan.market_data_at);
+    marketDataTime.dateTime = marketDataAt.toISOString();
+    marketDataTime.textContent = marketDataAt.toLocaleString();
+    renderSafeMarkdown(content, document.getElementById('rebalance-result'));
+
+    const cachedNotice = document.getElementById('cached-rebalance-notice');
+    if (settings.cachedAt instanceof Date) {
+        const cachedTime = document.getElementById('cached-rebalance-time');
+        cachedTime.dateTime = settings.cachedAt.toISOString();
+        cachedTime.textContent = settings.cachedAt.toLocaleString();
+        cachedNotice.classList.remove('d-none');
+    } else {
+        cachedNotice.classList.add('d-none');
+    }
+    updateMarketDataWarning(plan, settings.cachedAt instanceof Date);
+    return true;
+}
+
+function showRebalanceError(message) {
+    currentRebalancePlan = null;
+    document.getElementById('rebalance-content').classList.add('d-none');
+    document.getElementById('cached-rebalance-notice').classList.add('d-none');
+    document.getElementById('market-data-warning').classList.add('d-none');
+    document.getElementById('rebalance-section').classList.remove('d-none');
+    document.getElementById('rebalance-error').classList.remove('d-none');
+    document.getElementById('export-rebalance-btn').disabled = true;
+    document.getElementById('print-rebalance-btn').disabled = true;
+    document.getElementById('rebalance-error-message').textContent = message;
+}
+
+function showReviewError(message) {
+    document.getElementById('error-message').textContent = message;
+    const section = document.getElementById('error-section');
+    section.classList.remove('d-none');
+    section.focus();
+}
+
+function resetButton() {
+    const button = document.getElementById('review-btn');
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+    button.querySelector('i').className = 'bi bi-clipboard-data me-1';
+    document.getElementById('review-btn-label').textContent = 'Review Portfolio';
+}
+
+function setButtonBusy() {
+    const button = document.getElementById('review-btn');
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.querySelector('i').className = 'spinner-border spinner-border-sm me-1';
+    document.getElementById('review-btn-label').textContent = 'Reviewing...';
+}
+
+function createPrintDocument(title, content) {
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8">`
+        + `<meta name="viewport" content="width=device-width, initial-scale=1">`
+        + `<title>${title.replace(/[&<>"']/g, '')}</title>`
+        + '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">'
+        + '<style>body{padding:2rem}.no-print{display:none!important}'
+        + '@media print{body{padding:0}.card{border:0!important}}</style>'
+        + `</head><body><main class="container">${content}</main></body></html>`;
+}
+
+function printVisibleResults() {
+    const printAreas = [
+        ['result-section', 'review-print-area'],
+        ['rebalance-section', 'rebalance-print-area']
+    ].flatMap(function(ids) {
+        const section = document.getElementById(ids[0]);
+        const printArea = document.getElementById(ids[1]);
+        return section && printArea && !section.classList.contains('d-none') ? [printArea] : [];
+    });
+    if (printAreas.length === 0) {
+        showReviewError('There is no result available to print.');
+        return;
+    }
+    const content = printAreas.map(function(element) {
+        return element.outerHTML;
+    }).join('');
+    const html = createPrintDocument(REVIEW_PORTFOLIO_PRINT_TITLE, content);
+    const blob = new Blob([html], {type: 'text/html'});
+    const url = URL.createObjectURL(blob);
+    const printWindow = window.open(url, '_blank');
+    if (!printWindow) {
+        URL.revokeObjectURL(url);
+        showReviewError('The print window was blocked. Allow pop-ups for this site and try again.');
+        return;
+    }
+    printWindow.addEventListener('load', function() {
+        printWindow.print();
+        window.setTimeout(function() {
+            URL.revokeObjectURL(url);
+        }, 1000);
+    }, {once: true});
+}
+
+function safeCsvCell(value) {
+    let text = String(value ?? '');
+    if (/^[=+\-@]/.test(text)) {
+        text = `'${text}`;
+    }
+    return `"${text.replace(/"/g, '""')}"`;
+}
+
+function exportRebalanceCsv() {
+    if (!currentRebalancePlan || !isValidRebalancePlan(currentRebalancePlan)) {
+        showRebalanceError('There is no valid rebalance plan available to export.');
+        return;
+    }
+    const plan = currentRebalancePlan;
+    const headers = [
+        'Action', 'Ticker', 'Current Quantity', 'Trade Quantity', 'Resulting Quantity',
+        'Current Price', 'Estimated Trade Value', 'Current Weight %',
+        'Target Weight %', 'Resulting Weight %', 'Currency', 'Market Data At'
+    ];
+    const rows = plan.trades.map(function(trade) {
+        return [
+            trade.action,
+            trade.ticker,
+            trade.current_quantity,
+            trade.trade_quantity,
+            trade.resulting_quantity,
+            trade.current_price,
+            trade.estimated_trade_value,
+            trade.current_weight_pct,
+            trade.target_weight_pct,
+            trade.resulting_weight_pct,
+            plan.currency,
+            plan.market_data_at
+        ];
+    });
+    const csv = [headers, ...rows].map(function(row) {
+        return row.map(safeCsvCell).join(',');
+    }).join('\r\n');
+    const blob = new Blob(['\ufeff', csv], {type: 'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download =
+        `portfolio-rebalance-${new Date(plan.generated_at).toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(function() {
+        URL.revokeObjectURL(url);
+    }, 0);
 }
 
 window.addEventListener('alphalab:storage-warning', function(event) {
@@ -218,23 +900,30 @@ window.addEventListener('alphalab:storage-warning', function(event) {
     if (!detail || (detail.feature !== REVIEW_PORTFOLIO_STORAGE_FEATURE && detail.feature !== null)) {
         return;
     }
-
-    const resetCodes = ['corrupt-value', 'validation-failed', 'migration-failed', 'schema-mismatch'];
+    const resetCodes = [
+        'corrupt-value',
+        'validation-failed',
+        'migration-failed',
+        'schema-mismatch',
+        'newer-schema'
+    ];
     if (resetCodes.includes(detail.code)) {
         showStorageWarning('Saved portfolio inputs could not be read and were reset.');
         return;
     }
-
-    showStorageWarning('Local storage could not be used. You can continue, but your portfolio inputs may not persist.');
+    showStorageWarning(
+        'Local storage could not be used. You can continue, but your portfolio inputs may not persist.'
+    );
 });
 
 window.addEventListener('DOMContentLoaded', function() {
-    const holdingsInput = document.getElementById('holdings');
-    const riskToleranceInput = document.getElementById('risk-tolerance');
-    const investmentGoalsInput = document.getElementById('investment-goals');
-    const targetMarketInput = document.getElementById('target-market');
-    const investmentHorizonInput = document.getElementById('investment-horizon');
-    const scenarioInput = document.getElementById('scenario');
+    document.getElementById('include-rebalance').addEventListener('change', function(event) {
+        setRebalanceOptionsVisible(event.target.checked);
+    });
+    document.getElementById('target-market').addEventListener('change', updateMarketCurrency);
+    document.getElementById('print-review-btn').addEventListener('click', printVisibleResults);
+    document.getElementById('print-rebalance-btn').addEventListener('click', printVisibleResults);
+    document.getElementById('export-rebalance-btn').addEventListener('click', exportRebalanceCsv);
 
     try {
         const storedData = window.AlphaLabStorage.load(REVIEW_PORTFOLIO_STORAGE_FEATURE, {
@@ -243,169 +932,274 @@ window.addEventListener('DOMContentLoaded', function() {
                 holdings: '',
                 risk_tolerance: '',
                 investment_goals: '',
-                target_market: '',
+                target_market: REVIEW_PORTFOLIO_DEFAULT_MARKET,
                 investment_horizon: '',
-                scenario: ''
+                scenario: '',
+                include_rebalance: false,
+                available_cash: '0',
+                allow_fractional_shares: false,
+                minimum_trade_amount: '0',
+                tax_context: 'unknown'
             },
-            validate: isValidStoredReviewPortfolio
+            validate: isValidStoredReviewPortfolio,
+            migrate: migrateReviewPortfolioStorage
         });
-
         if (isValidStoredReviewPortfolio(storedData)) {
-            holdingsInput.value = storedData.holdings;
-            riskToleranceInput.value = storedData.risk_tolerance;
-            investmentGoalsInput.value = storedData.investment_goals;
-            targetMarketInput.value = storedData.target_market;
-            investmentHorizonInput.value = storedData.investment_horizon;
-            scenarioInput.value = storedData.scenario;
+            restoreFormData(storedData);
         }
     } catch (error) {
         showStorageWarning('Saved portfolio inputs could not be restored. You can continue with the review.');
     }
+    updateMarketCurrency();
 
-    const cachedDataNode = document.getElementById('cached-result-data');
-    if (!cachedDataNode) {
-        return;
+    const cachedReviewNode = document.getElementById('cached-result-data');
+    if (cachedReviewNode) {
+        try {
+            const cachedReview = JSON.parse(cachedReviewNode.textContent);
+            if (isValidCachedReviewPortfolio(cachedReview)) {
+                showReviewResult(cachedReview.content, new Date(cachedReview.generated_at));
+            }
+        } catch (error) {
+            // Invalid cached data is ignored so the form remains usable.
+        }
     }
 
-    try {
-        const cachedData = JSON.parse(cachedDataNode.textContent);
-        if (!isValidCachedReviewPortfolio(cachedData)) {
-            return;
+    const cachedRebalanceNode = document.getElementById('cached-rebalance-data');
+    if (cachedRebalanceNode) {
+        try {
+            const cachedRebalance = JSON.parse(cachedRebalanceNode.textContent);
+            if (isValidCachedRebalance(cachedRebalance)) {
+                renderRebalancePlan(cachedRebalance.payload.content, cachedRebalance.payload.plan, {
+                    cachedAt: new Date(cachedRebalance.generated_at)
+                });
+            }
+        } catch (error) {
+            // Invalid cached data is ignored so the form remains usable.
         }
-
-        const generatedAt = new Date(cachedData.generated_at);
-        if (Number.isNaN(generatedAt.getTime())) {
-            return;
-        }
-
-        renderMarkdown(cachedData.content, document.getElementById('review-result'));
-        document.getElementById('cached-result-time').textContent = generatedAt.toLocaleString();
-        document.getElementById('cached-result-notice').classList.remove('d-none');
-        document.getElementById('result-section').classList.remove('d-none');
-    } catch (error) {
-        // Ignore malformed cached data so the form remains usable.
     }
 });
 
-document.getElementById('review-form').addEventListener('submit', function(e) {
-    e.preventDefault();
+document.getElementById('review-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
 
-    const holdings = document.getElementById('holdings').value.trim();
-    const riskTolerance = document.getElementById('risk-tolerance').value;
-    const investmentGoals = document.getElementById('investment-goals').value.trim();
-    const targetMarket = document.getElementById('target-market').value.trim();
-    const investmentHorizon = document.getElementById('investment-horizon').value;
-    const scenario = document.getElementById('scenario').value.trim();
-
-    if (!holdings) return;
+    const values = storedFormData();
+    if (!isValidStoredReviewPortfolio(values)) {
+        showReviewError(
+            'Check the holdings format and rebalance settings. Amounts must be non-negative decimal values.'
+        );
+        return;
+    }
 
     try {
         const persisted = window.AlphaLabStorage.save(
             REVIEW_PORTFOLIO_STORAGE_FEATURE,
             {
-                holdings: holdings,
-                risk_tolerance: riskTolerance,
-                investment_goals: investmentGoals,
-                target_market: targetMarket,
-                investment_horizon: investmentHorizon,
-                scenario: scenario
+                holdings: values.holdings,
+                risk_tolerance: values.risk_tolerance,
+                investment_goals: values.investment_goals,
+                target_market: values.target_market,
+                investment_horizon: values.investment_horizon,
+                scenario: values.scenario,
+                include_rebalance: values.include_rebalance,
+                available_cash: values.available_cash,
+                allow_fractional_shares: values.allow_fractional_shares,
+                minimum_trade_amount: values.minimum_trade_amount,
+                tax_context: values.tax_context
             },
             {
                 schemaVersion: REVIEW_PORTFOLIO_STORAGE_SCHEMA_VERSION,
                 validate: isValidStoredReviewPortfolio
             }
         );
-
         if (persisted === false) {
-            showStorageWarning('Your portfolio inputs are available only for this page and could not be persisted.');
+            showStorageWarning(
+                'Your portfolio inputs are available only for this page and could not be persisted.'
+            );
         }
     } catch (error) {
-        showStorageWarning('Your portfolio inputs are available only for this page and could not be persisted.');
+        showStorageWarning(
+            'Your portfolio inputs are available only for this page and could not be persisted.'
+        );
     }
 
-    const btn = document.getElementById('review-btn');
     const progressSection = document.getElementById('progress-section');
+    const progressBar = document.getElementById('progress-bar');
     const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
-    const cachedResultNotice = document.getElementById('cached-result-notice');
+    const rebalanceSection = document.getElementById('rebalance-section');
 
-    // Reset UI
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Reviewing...';
+    setButtonBusy();
     progressSection.classList.remove('d-none');
     errorSection.classList.add('d-none');
     resultSection.classList.add('d-none');
-    cachedResultNotice.classList.add('d-none');
+    rebalanceSection.classList.add('d-none');
+    document.getElementById('cached-result-notice').classList.add('d-none');
+    document.getElementById('cached-rebalance-notice').classList.add('d-none');
+    progressBar.style.width = '0%';
+    progressBar.setAttribute('aria-valuenow', '0');
+    currentRebalancePlan = null;
+
     const waitTimer = new WaitTimer('wait-timer');
     waitTimer.start();
 
     const params = new URLSearchParams({
-        holdings: holdings,
-        risk_tolerance: riskTolerance,
-        investment_goals: investmentGoals,
-        target_market: targetMarket,
-        investment_horizon: investmentHorizon,
-        scenario: scenario,
+        holdings: values.holdings,
+        risk_tolerance: values.risk_tolerance,
+        investment_goals: values.investment_goals,
+        target_market: values.target_market,
+        investment_horizon: values.investment_horizon,
+        scenario: values.scenario,
+        include_rebalance: String(values.include_rebalance),
+        available_cash: values.available_cash,
+        allow_fractional_shares: String(values.allow_fractional_shares),
+        minimum_trade_amount: values.minimum_trade_amount,
+        tax_context: values.tax_context
     });
 
     const eventSource = new EventSource(`/review-portfolio/stream?${params.toString()}`);
+    let terminal = false;
+    let reviewReceived = false;
+    let rebalanceReceived = false;
+    let rebalanceErrorReceived = false;
 
-    eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
+    function finishStream() {
+        if (terminal) {
+            return;
+        }
+        terminal = true;
+        eventSource.close();
+        waitTimer.stop();
+        progressSection.classList.add('d-none');
+        resetButton();
+    }
+
+    function failStream(message) {
+        finishStream();
+        showReviewError(message);
+    }
+
+    eventSource.onmessage = function(messageEvent) {
+        if (terminal) {
+            return;
+        }
+        let data;
+        try {
+            data = JSON.parse(messageEvent.data);
+        } catch (error) {
+            failStream('The server returned an unreadable response. Please try again.');
+            return;
+        }
+        if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+            failStream('The server returned an invalid response. Please try again.');
+            return;
+        }
 
         if (data.type === 'progress') {
-            const pct = Math.round((data.step / data.total) * 100);
+            if (!Number.isFinite(data.step) || !Number.isFinite(data.total)
+                    || data.total <= 0 || typeof data.message !== 'string') {
+                failStream('The server returned invalid progress information. Please try again.');
+                return;
+            }
+            const percent = Math.max(0, Math.min(100, Math.round((data.step / data.total) * 100)));
             document.getElementById('progress-message').textContent = data.message;
-            document.getElementById('progress-bar').style.width = pct + '%';
-            document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
-        } else if (data.type === 'error') {
-            waitTimer.stop();
-            progressSection.classList.add('d-none');
-            errorSection.classList.remove('d-none');
-            document.getElementById('error-message').textContent = data.message;
-            eventSource.close();
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-clipboard-data me-1"></i>Review Portfolio';
-        } else if (data.type === 'result') {
-            waitTimer.stop();
-            progressSection.classList.add('d-none');
-            cachedResultNotice.classList.add('d-none');
-            resultSection.classList.remove('d-none');
-            renderMarkdown(data.content, document.getElementById('review-result'));
-            eventSource.close();
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-clipboard-data me-1"></i>Review Portfolio';
+            progressBar.style.width = `${percent}%`;
+            progressBar.setAttribute('aria-valuenow', String(percent));
+            document.getElementById('progress-step').textContent =
+                `Step ${data.step} of ${data.total}`;
+            return;
         }
+
+        if (data.type === 'error') {
+            failStream(typeof data.message === 'string' ? data.message : 'The review failed.');
+            return;
+        }
+
+        if (data.type === 'result') {
+            if (values.include_rebalance || !isNonEmptyString(data.content, 500000)) {
+                failStream('The server returned an unexpected review result. Please try again.');
+                return;
+            }
+            showReviewResult(data.content, null);
+            finishStream();
+            resultSection.focus();
+            return;
+        }
+
+        if (data.type === 'review_result') {
+            if (!values.include_rebalance || !isNonEmptyString(data.content, 500000)) {
+                failStream('The server returned an unexpected review result. Please try again.');
+                return;
+            }
+            reviewReceived = true;
+            showReviewResult(data.content, null);
+            return;
+        }
+
+        if (data.type === 'rebalance_result') {
+            if (!values.include_rebalance
+                    || !isValidRebalancePayload({content: data.content, plan: data.plan})) {
+                showRebalanceError(
+                    'The rebalance response was incomplete or invalid. Your portfolio review is still available.'
+                );
+                rebalanceErrorReceived = true;
+                return;
+            }
+            rebalanceReceived = renderRebalancePlan(data.content, data.plan, {});
+            return;
+        }
+
+        if (data.type === 'rebalance_error') {
+            if (!values.include_rebalance) {
+                failStream('The server returned an unexpected rebalance error. Please try again.');
+                return;
+            }
+            rebalanceErrorReceived = true;
+            showRebalanceError(
+                typeof data.message === 'string' ? data.message : 'The rebalance plan failed.'
+            );
+            finishStream();
+            rebalanceSection.focus();
+            return;
+        }
+
+        if (data.type === 'complete') {
+            if (!values.include_rebalance || !['success', 'rebalance_failed'].includes(data.status)) {
+                failStream('The server returned an unexpected completion status. Please try again.');
+                return;
+            }
+            if (!reviewReceived) {
+                failStream('The stream ended before the portfolio review was received. Please try again.');
+                return;
+            }
+            if (data.status === 'success' && !rebalanceReceived) {
+                showRebalanceError('The stream ended before a valid rebalance plan was received.');
+            } else if (data.status === 'rebalance_failed' && !rebalanceErrorReceived) {
+                showRebalanceError('The rebalance plan could not be completed.');
+            }
+            finishStream();
+            (data.status === 'success' ? rebalanceSection : resultSection).focus();
+            return;
+        }
+
+        failStream('The server returned an unknown response. Please try again.');
     };
 
     eventSource.onerror = function() {
-        waitTimer.stop();
-        progressSection.classList.add('d-none');
-        errorSection.classList.remove('d-none');
-        document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
-        eventSource.close();
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-clipboard-data me-1"></i>Review Portfolio';
+        if (!terminal) {
+            failStream('Connection lost before the review completed. Please try again.');
+        }
     };
 });
-
-function printReview() {
-    const content = document.getElementById('review-result').innerHTML;
-    const html = `<html lang="en"><head><title>Portfolio Review - {{ app_name }}</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-        <style>body { padding: 2rem; } @media print { body { padding: 0; } }</style>
-        </head><body><div class="container"><h1 class="mb-4">Portfolio Review</h1>${content}</div></body></html>`;
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const printWindow = window.open(url, '_blank');
-    printWindow.onload = function() {
-        printWindow.print();
-        URL.revokeObjectURL(url);
-    };
-}
 </script>
 {% if cached_result %}
 <script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
+{% endif %}
+{% if cached_rebalance %}
+<script id="cached-rebalance-data" type="application/json">{{ cached_rebalance | tojson }}</script>
 {% endif %}
 {% endblock %}
