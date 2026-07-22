@@ -11,3 +11,4 @@
 - feat: Cache Dividend Event inputs and results in user-scope storage.
 - feat: Cache Build and Review Portfolio inputs and results in user-scope storage.
 - feat: Cache Watchlist Monitor inputs and results in user-scope storage.
+- feat: Cache Earnings Catalyst Tracker inputs and results in user-scope storage.
