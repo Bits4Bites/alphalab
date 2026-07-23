@@ -1,5 +1,16 @@
 # AlphaLab release notes
 
+## 2026-07-23 - v0.9.0
+
+### Added/Refactoring/Deprecation
+
+- Feat(review portfolio): Add optional market-specific rebalance planner.
+- Feat: Add market-validated stock and ETF comparison.
+
+### Fixed/Improvements
+
+- Patch(UI): Sync Review Portfolio form across other features.
+
 ## 2026-07-22 - v0.8.0
 
 ### Added/Refactoring/Deprecation

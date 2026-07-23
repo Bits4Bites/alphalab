@@ -9,11 +9,15 @@
     <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
+                <div class="mb-3">
+                    <h2 class="h4 mb-1" id="ipo-analyzer-heading">Analyze an IPO or Listing Event</h2>
+                    <p class="text-muted mb-0">Get an AI-powered due-diligence brief on an upcoming IPO or market listing, with optional prospectus upload.</p>
+                </div>
                 <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
                     <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
                     <span id="storage-warning-message"></span>
                 </div>
-                <form id="ipo-form">
+                <form id="ipo-form" aria-labelledby="ipo-analyzer-heading">
                     <div class="row g-3">
                         <div class="col-12">
                             <label for="company-name" class="form-label fw-semibold">

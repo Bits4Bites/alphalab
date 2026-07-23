@@ -9,11 +9,15 @@
     <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
+                <div class="mb-3">
+                    <h2 class="h4 mb-1" id="market-outlook-heading">Get a Market Outlook</h2>
+                    <p class="text-muted mb-0">Generate an AI-assisted macro overview of current conditions and near-term direction across one or more markets.</p>
+                </div>
                 <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
                     <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
                     <span id="storage-warning-message"></span>
                 </div>
-                <form id="outlook-form">
+                <form id="outlook-form" aria-labelledby="market-outlook-heading">
                     <div class="row g-3">
                         <div class="col-12">
                             <label for="markets" class="form-label fw-semibold">
