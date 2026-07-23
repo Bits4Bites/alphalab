@@ -289,3 +289,120 @@ class TestExecutePromptTemperature:
         await execute_prompt(client, "gpt-4o", "test", temperature=0.6)
 
         assert client.responses.create.call_args.kwargs["temperature"] == 0.6
+
+
+class TestExecutePromptStructuredOutput:
+    schema = {
+        "type": "object",
+        "properties": {"answer": {"type": "string"}},
+        "required": ["answer"],
+        "additionalProperties": False,
+    }
+
+    @pytest.mark.asyncio
+    async def test_gemini_receives_json_schema_without_search(self) -> None:
+        from google.genai import Client
+
+        client = MagicMock(spec=Client)
+        client.aio.models.generate_content = AsyncMock(
+            return_value=FakeGeminiResponse(text='{"answer":"ok"}', usage_metadata=None)
+        )
+
+        result = await execute_prompt(
+            client,
+            "gemini-2.0-flash",
+            "Return JSON",
+            response_json_schema=self.schema,
+            enable_web_search=False,
+        )
+
+        assert result.success is True
+        config = client.aio.models.generate_content.call_args.kwargs["config"]
+        assert config.response_mime_type == "application/json"
+        assert config.response_json_schema == self.schema
+        assert config.tools is None
+
+    @pytest.mark.asyncio
+    async def test_openai_receives_strict_json_schema(self) -> None:
+        from openai import AsyncOpenAI
+
+        client = MagicMock(spec=AsyncOpenAI)
+        client.base_url = "https://api.openai.com/v1"
+        client.responses.create = AsyncMock(
+            return_value=FakeResponsesResponse(output_text='{"answer":"ok"}', usage=None)
+        )
+
+        result = await execute_prompt(
+            client,
+            "gpt-4o",
+            "Return JSON",
+            response_json_schema=self.schema,
+            schema_name="test_response",
+            enable_web_search=False,
+        )
+
+        assert result.success is True
+        request = client.responses.create.call_args.kwargs
+        assert "tools" not in request
+        assert request["text"]["format"] == {
+            "type": "json_schema",
+            "name": "test_response",
+            "strict": True,
+            "schema": self.schema,
+        }
+
+    @pytest.mark.asyncio
+    async def test_openai_combines_web_search_with_strict_json_schema(self) -> None:
+        from openai import AsyncOpenAI
+
+        client = MagicMock(spec=AsyncOpenAI)
+        client.base_url = "https://api.openai.com/v1"
+        client.responses.create = AsyncMock(
+            return_value=FakeResponsesResponse(output_text='{"answer":"ok"}', usage=None)
+        )
+
+        result = await execute_prompt(
+            client,
+            "gpt-4o",
+            "Research and return JSON",
+            response_json_schema=self.schema,
+            schema_name="test_response",
+            enable_web_search=True,
+        )
+
+        assert result.success is True
+        request = client.responses.create.call_args.kwargs
+        assert request["tools"] == [{"type": "web_search_preview"}]
+        assert request["text"]["format"]["type"] == "json_schema"
+        assert request["text"]["format"]["strict"] is True
+
+    @pytest.mark.asyncio
+    async def test_openrouter_receives_strict_json_schema(self) -> None:
+        from openai import AsyncOpenAI
+
+        client = MagicMock(spec=AsyncOpenAI)
+        client.base_url = "https://openrouter.ai/api/v1"
+        client.chat.completions.create = AsyncMock(
+            return_value=FakeOpenRouterResponse(
+                choices=[FakeChoice(message=FakeMessage(content='{"answer":"ok"}'))],
+                usage=None,
+            )
+        )
+
+        result = await execute_prompt(
+            client,
+            "provider/model",
+            "Return JSON",
+            response_json_schema=self.schema,
+            schema_name="test_response",
+            enable_web_search=False,
+        )
+
+        assert result.success is True
+        request = client.chat.completions.create.call_args.kwargs
+        assert "extra_body" not in request
+        assert request["response_format"]["json_schema"] == {
+            "name": "test_response",
+            "strict": True,
+            "schema": self.schema,
+        }

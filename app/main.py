@@ -13,6 +13,7 @@ from app.routers import (
     analyze_ticker,
     auth,
     build_portfolio,
+    compare_investments,
     dashboard,
     dividend_event,
     earnings_catalyst_tracker,
@@ -140,6 +141,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(analyze_ticker.router)
+app.include_router(compare_investments.router)
 app.include_router(build_portfolio.router)
 app.include_router(review_portfolio.router)
 app.include_router(dividend_event.router)

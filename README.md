@@ -21,6 +21,8 @@ investment insights.
 **Stock Analysis**
 - **Analyze Ticker** Build an evidence-based investment view for a stock or ETF using fundamentals, technical
   signals, macro context, sentiment, and scenario analysis.
+- **Compare Investments** Evaluate two to five stocks or ETFs with a consistent scorecard, sourced evidence,
+  profile-suitability views, scenario sensitivity, and a transparent overall ranking.
 - **IPO / Listing Event** Evaluate an upcoming or recent listing through valuation, market demand, catalysts, risks,
   and optional prospectus insights.
 - **Dividend Event** Assess the income opportunity, sustainability, timing, risks, and tax considerations around a
@@ -30,7 +32,8 @@ investment insights.
 - **Build Portfolio** Turn investment goals, risk tolerance, time horizon, and preferred themes into a practical
   portfolio allocation.
 - **Review Portfolio** Identify portfolio strengths, concentration risks, weak positions, and opportunities to
-  improve diversification and resilience.
+  improve diversification and resilience, with an optional market-specific plan showing estimated trades, cash impact,
+  and before-and-after allocations.
 
 **Signals**
 - **Watchlist Monitor** Prioritize the names that deserve attention by combining news, technical signals, valuation,

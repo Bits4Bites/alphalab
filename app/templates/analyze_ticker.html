@@ -9,11 +9,18 @@
     <div class="col-12">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
+                <div class="mb-3">
+                    <h2 class="h4 mb-1" id="analyze-ticker-heading">Analyze a Stock Ticker</h2>
+                    <p class="text-muted mb-0">
+                        Get an AI-generated analysis of any listed ticker, covering fundamentals, risk, and an optional
+                        stress test.
+                    </p>
+                </div>
                 <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
                     <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
                     <span id="storage-warning-message"></span>
                 </div>
-                <form id="analyze-form">
+                <form id="analyze-form" aria-labelledby="analyze-ticker-heading">
                     <label for="ticker" class="form-label fw-semibold">
                         Stock Ticker
                         <span class="text-danger ms-2">*</span>

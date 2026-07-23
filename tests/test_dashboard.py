@@ -25,6 +25,8 @@ def test_dashboard_renders_when_authenticated(client: TestClient) -> None:
     assert "Dashboard" in response.text
     assert "Test User" in response.text
     assert "Analyze Ticker" in response.text
+    assert "Compare Investments" in response.text
+    assert 'href="/compare-investments"' in response.text
     assert "Build Portfolio" in response.text
     assert "Review Portfolio" in response.text
     storage_key = local_storage.derive_user_key(user_data)
