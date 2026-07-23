@@ -286,11 +286,7 @@ async def test_structurally_invalid_core_response_is_repaired_once(
             ),
             ai.AIResponse(
                 success=True,
-                completion=json.dumps(
-                    comparison_fixtures._scenario_research_data(
-                        scenario="US-Iran war"
-                    )
-                ),
+                completion=json.dumps(comparison_fixtures._scenario_research_data(scenario="US-Iran war")),
             ),
         ]
     )
@@ -345,9 +341,7 @@ async def test_unknown_core_source_reference_is_downgraded_without_repair(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     core_with_unknown_source = comparison_fixtures._core_research_data()
-    core_with_unknown_source["candidates"][0]["categories"][0]["source_ids"] = [
-        "missing"
-    ]
+    core_with_unknown_source["candidates"][0]["categories"][0]["source_ids"] = ["missing"]
     execute_prompt = mock.AsyncMock(
         side_effect=[
             ai.AIResponse(success=True, completion="Generated comparison prompt"),
@@ -357,11 +351,7 @@ async def test_unknown_core_source_reference_is_downgraded_without_repair(
             ),
             ai.AIResponse(
                 success=True,
-                completion=json.dumps(
-                    comparison_fixtures._scenario_research_data(
-                        scenario="US-Iran war"
-                    )
-                ),
+                completion=json.dumps(comparison_fixtures._scenario_research_data(scenario="US-Iran war")),
             ),
         ]
     )
@@ -402,11 +392,7 @@ async def test_unknown_core_source_reference_is_downgraded_without_repair(
 
     assert events[-1]["type"] == "result"
     assert len(execute_prompt.await_args_list) == 3
-    candidate = next(
-        candidate
-        for candidate in events[-1]["result"]["candidates"]
-        if candidate["ticker"] == "AAPL"
-    )
+    candidate = next(candidate for candidate in events[-1]["result"]["candidates"] if candidate["ticker"] == "AAPL")
     assert candidate["categories"][0]["source_ids"] == []
     assert candidate["categories"][0]["confidence"] == "low"
     assert candidate["categories"][0]["score"] == 50

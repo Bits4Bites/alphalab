@@ -330,9 +330,7 @@ async def compare_investments_stream(
             yield {"data": error("AI task 'COMPARE_INVESTMENTS_ANALYZE' is not configured.")}
             return
 
-        core_analysis_prompt = (
-            f"{prompt_result.completion.rstrip()}\n\n{_CORE_STRUCTURAL_REQUIREMENTS}"
-        )
+        core_analysis_prompt = f"{prompt_result.completion.rstrip()}\n\n{_CORE_STRUCTURAL_REQUIREMENTS}"
         analysis_result = await ai.execute_prompt(
             analyze_client,
             analyze_task.model,
@@ -380,27 +378,17 @@ async def compare_investments_stream(
                 enable_web_search=False,
             )
             if not repair_result.success:
-                yield {
-                    "data": error(
-                        f"Failed to repair comparison research: {repair_result.error}"
-                    )
-                }
+                yield {"data": error(f"Failed to repair comparison research: {repair_result.error}")}
                 return
             try:
                 core_research = investment_comparison.validate_core_research(
-                    investment_comparison.parse_core_research(
-                        repair_result.completion
-                    ),
+                    investment_comparison.parse_core_research(repair_result.completion),
                     tickers=normalized_tickers,
                     quotes=quotes,
                     market=market,
                 )
             except investment_comparison.ComparisonResearchError:
-                yield {
-                    "data": error(
-                        "The AI comparison remained structurally invalid after one repair attempt."
-                    )
-                }
+                yield {"data": error("The AI comparison remained structurally invalid after one repair attempt.")}
                 return
 
         scenario_research = None
@@ -465,26 +453,18 @@ async def compare_investments_stream(
                     enable_web_search=False,
                 )
                 if not scenario_repair_result.success:
-                    yield {
-                        "data": error(
-                            "Failed to repair the comparison scenario: "
-                            f"{scenario_repair_result.error}"
-                        )
-                    }
+                    yield {"data": error(f"Failed to repair the comparison scenario: {scenario_repair_result.error}")}
                     return
                 try:
                     scenario_research = investment_comparison.validate_scenario_research(
-                        investment_comparison.parse_scenario_research(
-                            scenario_repair_result.completion
-                        ),
+                        investment_comparison.parse_scenario_research(scenario_repair_result.completion),
                         tickers=normalized_tickers,
                         scenario=cleaned_scenario,
                     )
                 except investment_comparison.ComparisonResearchError:
                     yield {
                         "data": error(
-                            "The AI scenario analysis remained structurally invalid "
-                            "after one repair attempt."
+                            "The AI scenario analysis remained structurally invalid after one repair attempt."
                         )
                     }
                     return

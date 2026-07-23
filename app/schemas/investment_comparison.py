@@ -178,19 +178,14 @@ class CoreCandidateResearch(_StrictModel):
         if len(set(profiles)) != len(profiles) or set(profiles) != set(PROFILE_NAMES):
             raise ValueError("each investor profile must appear exactly once")
 
-        unsourced = [
-            assessment for assessment in self.categories if not assessment.source_ids
-        ]
+        unsourced = [assessment for assessment in self.categories if not assessment.source_ids]
         if len(unsourced) > MAX_UNSOURCED_CATEGORIES:
             raise ValueError("a candidate cannot contain multiple unsourced categories")
         if any(
-            assessment.score != NEUTRAL_UNSOURCED_CATEGORY_SCORE
-            or assessment.confidence != "low"
+            assessment.score != NEUTRAL_UNSOURCED_CATEGORY_SCORE or assessment.confidence != "low"
             for assessment in unsourced
         ):
-            raise ValueError(
-                "an unsourced category must use a neutral score and low confidence"
-            )
+            raise ValueError("an unsourced category must use a neutral score and low confidence")
         return self
 
 

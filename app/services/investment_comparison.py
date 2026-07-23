@@ -203,11 +203,7 @@ def _normalize_core_candidate_sources(
     unsourced_category_count = 0
     categories: list[comparison_schemas.CategoryAssessment] = []
     for assessment in candidate.categories:
-        source_ids = [
-            source_id
-            for source_id in assessment.source_ids
-            if source_id in known_source_ids
-        ]
+        source_ids = [source_id for source_id in assessment.source_ids if source_id in known_source_ids]
         removed_count += len(assessment.source_ids) - len(source_ids)
         update: dict[str, object] = {"source_ids": source_ids}
         if not source_ids:
@@ -225,10 +221,7 @@ def _normalize_core_candidate_sources(
         categories.append(assessment.model_copy(update=update))
 
     if unsourced_category_count > comparison_schemas.MAX_UNSOURCED_CATEGORIES:
-        issue = (
-            f"candidate {candidate.ticker} has {unsourced_category_count} categories "
-            "without returned sources"
-        )
+        issue = f"candidate {candidate.ticker} has {unsourced_category_count} categories without returned sources"
         raise ComparisonResearchError(
             f"The AI comparison for {candidate.ticker} has insufficient source coverage.",
             repairable=True,
@@ -237,9 +230,7 @@ def _normalize_core_candidate_sources(
 
     metrics: list[comparison_schemas.MetricObservation] = []
     for metric in candidate.metrics:
-        source_ids = [
-            source_id for source_id in metric.source_ids if source_id in known_source_ids
-        ]
+        source_ids = [source_id for source_id in metric.source_ids if source_id in known_source_ids]
         removed_count += len(metric.source_ids) - len(source_ids)
         update = {"source_ids": source_ids}
         if metric.applicability == "applicable" and not source_ids:
@@ -260,9 +251,7 @@ def _normalize_core_candidate_sources(
         }
     )
     return (
-        comparison_schemas.CoreCandidateResearch.model_validate(
-            normalized.model_dump(mode="python")
-        ),
+        comparison_schemas.CoreCandidateResearch.model_validate(normalized.model_dump(mode="python")),
         removed_count,
     )
 

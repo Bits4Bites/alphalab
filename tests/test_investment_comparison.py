@@ -245,9 +245,9 @@ def test_ai_research_schemas_omit_unsupported_uri_format() -> None:
             "title": "Url",
             "type": "string",
         }
-    category_sources = investment_comparison.core_research_schema()["$defs"][
-        "CategoryAssessment"
-    ]["properties"]["source_ids"]
+    category_sources = investment_comparison.core_research_schema()["$defs"]["CategoryAssessment"]["properties"][
+        "source_ids"
+    ]
     assert category_sources["minItems"] == 1
     assert category_sources["maxItems"] == 6
 
@@ -373,9 +373,7 @@ def test_validate_core_research_safely_removes_unknown_source_references(
     assert candidate.categories[0].source_ids == []
     assert candidate.categories[0].confidence == "low"
     assert candidate.categories[0].score == 50
-    assert candidate.categories[0].summary.startswith(
-        "Returned source unavailable; backend normalized this category"
-    )
+    assert candidate.categories[0].summary.startswith("Returned source unavailable; backend normalized this category")
     assert candidate.categories[1].source_ids == ["S1"]
     assert candidate.metrics[0].source_ids == []
     assert candidate.metrics[0].applicability == "unavailable"
@@ -390,9 +388,7 @@ def test_validate_core_research_safely_removes_unknown_source_references(
         market=_market(),
         scenario="",
     )
-    assert investment_comparison.is_valid_cache_payload(
-        investment_comparison.cache_payload(result)
-    )
+    assert investment_comparison.is_valid_cache_payload(investment_comparison.cache_payload(result))
 
 
 def test_validate_core_research_rejects_multiple_unsourced_categories() -> None:
