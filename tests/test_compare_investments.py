@@ -143,6 +143,7 @@ async def test_successful_stream_ranks_and_caches_structured_result(
     assert execute_prompt.await_args_list[0].kwargs["enable_web_search"] is False
     assert "Recession" not in execute_prompt.await_args_list[0].args[2]
     assert "Recession" not in core_call.args[2]
+    assert "Backend structural requirements" in core_call.args[2]
     assert "Recession" in scenario_call.args[2]
     set_cached_payload.assert_awaited_once()
     cache_call = set_cached_payload.await_args
@@ -221,6 +222,7 @@ async def test_invalid_ai_response_is_not_cached(monkeypatch: pytest.MonkeyPatch
         side_effect=[
             ai.AIResponse(success=True, completion="Generated comparison prompt"),
             ai.AIResponse(success=True, completion="not json"),
+            ai.AIResponse(success=True, completion="still not json"),
         ]
     )
     set_cached_payload = mock.AsyncMock(return_value=True)
@@ -259,9 +261,156 @@ async def test_invalid_ai_response_is_not_cached(monkeypatch: pytest.MonkeyPatch
 
     assert events[-1] == {
         "type": "error",
-        "message": "The AI returned an invalid comparison response.",
+        "message": "The AI comparison remained structurally invalid after one repair attempt.",
     }
+    assert len(execute_prompt.await_args_list) == 3
+    repair_call = execute_prompt.await_args_list[2]
+    assert repair_call.kwargs["schema_name"] == "investment_comparison_core_repair"
+    assert repair_call.kwargs["enable_web_search"] is False
     set_cached_payload.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_structurally_invalid_core_response_is_repaired_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    invalid_core = comparison_fixtures._core_research_data()
+    invalid_core["sources"][0]["url"] = "javascript:invalid-source"
+    execute_prompt = mock.AsyncMock(
+        side_effect=[
+            ai.AIResponse(success=True, completion="Generated comparison prompt"),
+            ai.AIResponse(success=True, completion=json.dumps(invalid_core)),
+            ai.AIResponse(
+                success=True,
+                completion=json.dumps(comparison_fixtures._core_research_data()),
+            ),
+            ai.AIResponse(
+                success=True,
+                completion=json.dumps(
+                    comparison_fixtures._scenario_research_data(
+                        scenario="US-Iran war"
+                    )
+                ),
+            ),
+        ]
+    )
+    set_cached_payload = mock.AsyncMock(return_value=True)
+    monkeypatch.setattr(compare_investments.config, "ai_task_settings", _task_settings())
+    monkeypatch.setattr(compare_investments.ai, "execute_prompt", execute_prompt)
+    monkeypatch.setattr(
+        compare_investments.portfolio_market_data,
+        "fetch_quotes",
+        mock.AsyncMock(
+            return_value={
+                "AAPL": _quote("AAPL"),
+                "QQQ": _quote("QQQ", asset_type="etf"),
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        compare_investments.analysis_cache,
+        "set_cached_payload",
+        set_cached_payload,
+    )
+
+    response = await compare_investments.compare_investments_stream(
+        Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/compare-investments/stream",
+                "headers": [],
+            }
+        ),
+        tickers="AAPL, QQQ",
+        target_market="US",
+        scenario="US-Iran war",
+        user=_user(),
+    )
+    events = await _collect_stream_events(response)
+
+    assert events[-1]["type"] == "result"
+    assert len(execute_prompt.await_args_list) == 4
+    repair_call = execute_prompt.await_args_list[2]
+    assert repair_call.kwargs["schema_name"] == "investment_comparison_core_repair"
+    assert repair_call.kwargs["enable_web_search"] is False
+    assert "URL scheme should be 'http' or 'https'" in repair_call.args[2]
+    assert "US-Iran war" not in repair_call.args[2]
+    assert "US-Iran war" in execute_prompt.await_args_list[3].args[2]
+    set_cached_payload.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_unknown_core_source_reference_is_downgraded_without_repair(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    core_with_unknown_source = comparison_fixtures._core_research_data()
+    core_with_unknown_source["candidates"][0]["categories"][0]["source_ids"] = [
+        "missing"
+    ]
+    execute_prompt = mock.AsyncMock(
+        side_effect=[
+            ai.AIResponse(success=True, completion="Generated comparison prompt"),
+            ai.AIResponse(
+                success=True,
+                completion=json.dumps(core_with_unknown_source),
+            ),
+            ai.AIResponse(
+                success=True,
+                completion=json.dumps(
+                    comparison_fixtures._scenario_research_data(
+                        scenario="US-Iran war"
+                    )
+                ),
+            ),
+        ]
+    )
+    set_cached_payload = mock.AsyncMock(return_value=True)
+    monkeypatch.setattr(compare_investments.config, "ai_task_settings", _task_settings())
+    monkeypatch.setattr(compare_investments.ai, "execute_prompt", execute_prompt)
+    monkeypatch.setattr(
+        compare_investments.portfolio_market_data,
+        "fetch_quotes",
+        mock.AsyncMock(
+            return_value={
+                "AAPL": _quote("AAPL"),
+                "QQQ": _quote("QQQ", asset_type="etf"),
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        compare_investments.analysis_cache,
+        "set_cached_payload",
+        set_cached_payload,
+    )
+
+    response = await compare_investments.compare_investments_stream(
+        Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/compare-investments/stream",
+                "headers": [],
+            }
+        ),
+        tickers="AAPL, QQQ",
+        target_market="US",
+        scenario="US-Iran war",
+        user=_user(),
+    )
+    events = await _collect_stream_events(response)
+
+    assert events[-1]["type"] == "result"
+    assert len(execute_prompt.await_args_list) == 3
+    candidate = next(
+        candidate
+        for candidate in events[-1]["result"]["candidates"]
+        if candidate["ticker"] == "AAPL"
+    )
+    assert candidate["categories"][0]["source_ids"] == []
+    assert candidate["categories"][0]["confidence"] == "low"
+    assert candidate["categories"][0]["score"] == 50
+    set_cached_payload.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -271,6 +420,10 @@ async def test_core_response_cannot_inject_scenario_or_be_cached(
     execute_prompt = mock.AsyncMock(
         side_effect=[
             ai.AIResponse(success=True, completion="Generated comparison prompt"),
+            ai.AIResponse(
+                success=True,
+                completion=json.dumps(comparison_fixtures._research_data()),
+            ),
             ai.AIResponse(
                 success=True,
                 completion=json.dumps(comparison_fixtures._research_data()),
@@ -314,8 +467,9 @@ async def test_core_response_cannot_inject_scenario_or_be_cached(
 
     assert events[-1] == {
         "type": "error",
-        "message": "The AI comparison failed structured validation.",
+        "message": "The AI comparison remained structurally invalid after one repair attempt.",
     }
+    assert len(execute_prompt.await_args_list) == 3
     set_cached_payload.assert_not_awaited()
 
 
@@ -376,6 +530,70 @@ async def test_unassessed_scenario_response_is_not_emitted_or_cached(
         "message": "The AI scenario assessments do not match the comparison request.",
     }
     set_cached_payload.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_structurally_invalid_scenario_response_is_repaired_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    invalid_scenario = comparison_fixtures._scenario_research_data()
+    invalid_scenario["candidates"][0]["scenario"]["source_ids"] = ["missing"]
+    execute_prompt = mock.AsyncMock(
+        side_effect=[
+            ai.AIResponse(success=True, completion="Generated comparison prompt"),
+            ai.AIResponse(
+                success=True,
+                completion=json.dumps(comparison_fixtures._core_research_data()),
+            ),
+            ai.AIResponse(success=True, completion=json.dumps(invalid_scenario)),
+            ai.AIResponse(
+                success=True,
+                completion=json.dumps(comparison_fixtures._scenario_research_data()),
+            ),
+        ]
+    )
+    set_cached_payload = mock.AsyncMock(return_value=True)
+    monkeypatch.setattr(compare_investments.config, "ai_task_settings", _task_settings())
+    monkeypatch.setattr(compare_investments.ai, "execute_prompt", execute_prompt)
+    monkeypatch.setattr(
+        compare_investments.portfolio_market_data,
+        "fetch_quotes",
+        mock.AsyncMock(
+            return_value={
+                "AAPL": _quote("AAPL"),
+                "QQQ": _quote("QQQ", asset_type="etf"),
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        compare_investments.analysis_cache,
+        "set_cached_payload",
+        set_cached_payload,
+    )
+
+    response = await compare_investments.compare_investments_stream(
+        Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/compare-investments/stream",
+                "headers": [],
+            }
+        ),
+        tickers="AAPL, QQQ",
+        target_market="US",
+        scenario="Recession",
+        user=_user(),
+    )
+    events = await _collect_stream_events(response)
+
+    assert events[-1]["type"] == "result"
+    assert len(execute_prompt.await_args_list) == 4
+    repair_call = execute_prompt.await_args_list[3]
+    assert repair_call.kwargs["schema_name"] == "investment_comparison_scenario_repair"
+    assert repair_call.kwargs["enable_web_search"] is False
+    assert "scenario candidate AAPL references an unknown source" in repair_call.args[2]
+    set_cached_payload.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -481,6 +699,24 @@ def test_page_restores_cached_structured_comparison(
     assert "investment-comparison-" in response.text
     assert "safeCsvCell" in response.text
     assert "return Number(value).toFixed(2);" in response.text
+    assert "assessment.confidence === 'low' && assessment.score === 50" in response.text
+    assert "Decision support" not in response.text
+
+    export_button = response.text.split('id="export-comparison-btn"', maxsplit=1)[1].split(
+        "</button>",
+        maxsplit=1,
+    )[0]
+    assert 'title="Export CSV"' in export_button
+    assert 'aria-label="Export CSV"' in export_button
+    assert ">Export CSV" not in export_button
+
+    print_button = response.text.split('id="print-comparison-btn"', maxsplit=1)[1].split(
+        "</button>",
+        maxsplit=1,
+    )[0]
+    assert 'title="Print"' in print_button
+    assert 'aria-label="Print the visible investment comparison"' in print_button
+    assert ">Print" not in print_button
 
 
 def test_score_formatter_keeps_close_scores_visually_distinct() -> None:

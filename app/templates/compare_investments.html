@@ -178,20 +178,20 @@
                     <div class="card-header bg-white border-bottom-0 pt-3 px-3 px-md-4 pb-0
                                 d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <div>
-                            <div class="section-kicker mb-1">Decision support</div>
                             <h2 id="comparison-result-heading" class="h4 fw-semibold mb-0">
                                 <i class="bi bi-bar-chart-steps me-1" aria-hidden="true"></i>Investment Comparison
                             </h2>
                         </div>
                         <div class="d-flex flex-wrap gap-2 no-print">
                             <button type="button" class="btn btn-outline-primary btn-sm"
-                                    id="export-comparison-btn" disabled>
-                                <i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>Export CSV
+                                    id="export-comparison-btn" title="Export CSV"
+                                    aria-label="Export CSV" disabled>
+                                <i class="bi bi-filetype-csv" aria-hidden="true"></i>
                             </button>
                             <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    id="print-comparison-btn" disabled
+                                    id="print-comparison-btn" title="Print" disabled
                                     aria-label="Print the visible investment comparison">
-                                <i class="bi bi-printer me-1" aria-hidden="true"></i>Print
+                                <i class="bi bi-printer" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -459,8 +459,17 @@ function isValidComparisonResult(value, expectedTickers, expectedMarket) {
                         && COMPARE_INVESTMENTS_CONFIDENCE_VALUES.includes(assessment.confidence)
                         && isNonEmptyString(assessment.summary, 600)
                         && isStringArray(assessment.evidence, 1)
-                        && isStringArray(assessment.source_ids, 1);
+                        && Array.isArray(assessment.source_ids)
+                        && assessment.source_ids.every(function(sourceId) {
+                            return typeof sourceId === 'string' && sourceId.length > 0;
+                        })
+                        && (assessment.source_ids.length > 0 || (
+                            assessment.confidence === 'low' && assessment.score === 50
+                        ));
                 })
+                || candidate.categories.filter(function(assessment) {
+                    return assessment.source_ids.length === 0;
+                }).length > 1
                 || !candidate.metrics.every(function(metric) {
                     return isNonEmptyString(metric.label, 80)
                         && isNonEmptyString(metric.display_value, 120)

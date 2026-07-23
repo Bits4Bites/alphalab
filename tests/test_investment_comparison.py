@@ -197,6 +197,10 @@ def _scenario_research_data(
 
 def test_parse_tickers_normalizes_and_preserves_order() -> None:
     assert investment_comparison.parse_tickers(" cba.ax, BHP ", _market("AU")) == ("CBA", "BHP")
+    assert investment_comparison.parse_tickers(
+        "MSFT, AMZN, ORCL, GOOGL, AAPL",
+        _market("US"),
+    ) == ("MSFT", "AMZN", "ORCL", "GOOGL", "AAPL")
 
 
 @pytest.mark.parametrize(
@@ -230,6 +234,48 @@ def test_core_research_contract_excludes_scenario_assessments() -> None:
         comparison_schemas.CoreComparisonResearch.model_validate(data)
 
 
+def test_ai_research_schemas_omit_unsupported_uri_format() -> None:
+    for schema in (
+        investment_comparison.core_research_schema(),
+        investment_comparison.scenario_research_schema(),
+    ):
+        url_schema = schema["$defs"]["ResearchSource"]["properties"]["url"]
+        assert url_schema == {
+            "minLength": 1,
+            "title": "Url",
+            "type": "string",
+        }
+    category_sources = investment_comparison.core_research_schema()["$defs"][
+        "CategoryAssessment"
+    ]["properties"]["source_ids"]
+    assert category_sources["minItems"] == 1
+    assert category_sources["maxItems"] == 6
+
+
+def test_research_source_still_rejects_non_http_url() -> None:
+    source = comparison_schemas.ResearchSource.model_validate(
+        {
+            "id": "S1",
+            "title": "Valid source",
+            "publisher": "Example Publisher",
+            "url": "https://example.com/research",
+            "published_at": "2020-01-01",
+        }
+    )
+    assert str(source.url) == "https://example.com/research"
+
+    with pytest.raises(ValidationError, match="URL"):
+        comparison_schemas.ResearchSource.model_validate(
+            {
+                "id": "S1",
+                "title": "Invalid source",
+                "publisher": "Example Publisher",
+                "url": "javascript:alert(1)",
+                "published_at": "2020-01-01",
+            }
+        )
+
+
 def test_research_schema_rejects_unknown_source_reference() -> None:
     data = _research_data()
     data["candidates"][0]["categories"][0]["source_ids"] = ["missing"]
@@ -241,6 +287,29 @@ def test_research_schema_rejects_unknown_source_reference() -> None:
 def test_parse_research_rejects_invalid_json() -> None:
     with pytest.raises(investment_comparison.ComparisonResearchError, match="invalid"):
         investment_comparison.parse_research("```json\n{}\n```")
+
+
+def test_parse_core_research_logs_sanitized_validation_issues(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    data = _core_research_data()
+    data["sources"][0]["url"] = "javascript:private-value"
+
+    with caplog.at_level(
+        "WARNING",
+        logger="app.services.investment_comparison",
+    ):
+        with pytest.raises(
+            investment_comparison.ComparisonResearchError,
+            match="structured validation",
+        ) as error:
+            investment_comparison.parse_core_research(json.dumps(data))
+
+    assert error.value.repairable is True
+    assert error.value.validation_issues
+    assert "sources.0.url" in caplog.text
+    assert "URL scheme should be 'http' or 'https'" in caplog.text
+    assert "private-value" not in caplog.text
 
 
 def test_validate_research_requires_exact_tickers_and_asset_types() -> None:
@@ -276,6 +345,78 @@ def test_validate_research_requires_exact_tickers_and_asset_types() -> None:
             market=_market(),
             scenario="Recession",
         )
+
+
+def test_validate_core_research_safely_removes_unknown_source_references(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    data = _core_research_data()
+    first_candidate = data["candidates"][0]
+    first_candidate["categories"][0]["source_ids"] = ["missing"]
+    first_candidate["categories"][1]["source_ids"] = ["S1", "missing"]
+    first_candidate["metrics"][0]["source_ids"] = ["missing"]
+    core = comparison_schemas.CoreComparisonResearch.model_validate(data)
+    quotes = {"AAPL": _quote("AAPL"), "QQQ": _quote("QQQ", asset_type="etf")}
+
+    with caplog.at_level(
+        "WARNING",
+        logger="app.services.investment_comparison",
+    ):
+        validated = investment_comparison.validate_core_research(
+            core,
+            tickers=("AAPL", "QQQ"),
+            quotes=quotes,
+            market=_market(),
+        )
+
+    candidate = validated.candidates[0]
+    assert candidate.categories[0].source_ids == []
+    assert candidate.categories[0].confidence == "low"
+    assert candidate.categories[0].score == 50
+    assert candidate.categories[0].summary.startswith(
+        "Returned source unavailable; backend normalized this category"
+    )
+    assert candidate.categories[1].source_ids == ["S1"]
+    assert candidate.metrics[0].source_ids == []
+    assert candidate.metrics[0].applicability == "unavailable"
+    assert candidate.metrics[0].display_value == "Unavailable"
+    assert "Removed 3 unresolved source reference(s)" in caplog.text
+
+    combined = investment_comparison.combine_research(validated)
+    result = investment_comparison.build_result(
+        combined,
+        tickers=("AAPL", "QQQ"),
+        quotes=quotes,
+        market=_market(),
+        scenario="",
+    )
+    assert investment_comparison.is_valid_cache_payload(
+        investment_comparison.cache_payload(result)
+    )
+
+
+def test_validate_core_research_rejects_multiple_unsourced_categories() -> None:
+    data = _core_research_data()
+    data["candidates"][0]["categories"][0]["source_ids"] = ["missing-1"]
+    data["candidates"][0]["categories"][1]["source_ids"] = ["missing-2"]
+    core = comparison_schemas.CoreComparisonResearch.model_validate(data)
+
+    with pytest.raises(
+        investment_comparison.ComparisonResearchError,
+        match="insufficient source coverage",
+    ) as error:
+        investment_comparison.validate_core_research(
+            core,
+            tickers=("AAPL", "QQQ"),
+            quotes={
+                "AAPL": _quote("AAPL"),
+                "QQQ": _quote("QQQ", asset_type="etf"),
+            },
+            market=_market(),
+        )
+
+    assert error.value.repairable is True
+    assert "2 categories without returned sources" in error.value.validation_issues[0]
 
 
 def test_build_result_calculates_rankings_winners_and_profile_neutral_scores() -> None:
@@ -496,3 +637,10 @@ def test_comparison_cache_payload_validates_round_trip() -> None:
     mismatched_scenario = json.loads(json.dumps(payload))
     mismatched_scenario["result"]["scenario"] = ""
     assert investment_comparison.is_valid_cache_payload(mismatched_scenario) is False
+
+    excessively_unsourced = json.loads(json.dumps(payload))
+    for category in excessively_unsourced["result"]["candidates"][0]["categories"][:2]:
+        category["source_ids"] = []
+        category["confidence"] = "low"
+        category["score"] = 50
+    assert investment_comparison.is_valid_cache_payload(excessively_unsourced) is False

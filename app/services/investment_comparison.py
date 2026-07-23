@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 import re
 from decimal import Decimal
 from typing import NoReturn
@@ -10,6 +11,8 @@ from pydantic import ValidationError
 
 from app.schemas import investment_comparison as comparison_schemas
 from app.services import portfolio_market_data
+
+logger = logging.getLogger(__name__)
 
 CATEGORY_WEIGHTS: tuple[tuple[str, int], ...] = tuple(comparison_schemas.CATEGORY_WEIGHT_MAP.items())
 MIN_CANDIDATES = 2
@@ -26,7 +29,16 @@ class ComparisonInputError(ComparisonError):
 
 
 class ComparisonResearchError(ComparisonError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        repairable: bool = False,
+        validation_issues: tuple[str, ...] = (),
+    ) -> None:
+        super().__init__(message)
+        self.repairable = repairable
+        self.validation_issues = validation_issues
 
 
 def parse_tickers(value: str, market: portfolio_market_data.MarketDefinition) -> tuple[str, ...]:
@@ -85,7 +97,38 @@ def _decode_json(value: str, *, invalid_message: str) -> object:
     try:
         return json.loads(value, parse_constant=_reject_json_constant)
     except (json.JSONDecodeError, TypeError, ValueError) as exc:
-        raise ComparisonResearchError(invalid_message) from exc
+        logger.warning("%s", invalid_message)
+        raise ComparisonResearchError(
+            invalid_message,
+            repairable=True,
+            validation_issues=("response: invalid JSON",),
+        ) from exc
+
+
+def _structured_validation_error(
+    exc: ValidationError,
+    *,
+    subject: str,
+    message: str,
+) -> ComparisonResearchError:
+    issues = tuple(
+        f"{'.'.join(str(part) for part in error['loc']) or 'response'}: {error['msg']}"
+        for error in exc.errors(
+            include_url=False,
+            include_context=False,
+            include_input=False,
+        )[:12]
+    )
+    logger.warning(
+        "%s structured validation failed: %s",
+        subject,
+        " | ".join(issues),
+    )
+    return ComparisonResearchError(
+        message,
+        repairable=True,
+        validation_issues=issues,
+    )
 
 
 def parse_research(value: str) -> comparison_schemas.ComparisonResearch:
@@ -97,7 +140,11 @@ def parse_research(value: str) -> comparison_schemas.ComparisonResearch:
             )
         )
     except ValidationError as exc:
-        raise ComparisonResearchError("The AI comparison failed structured validation.") from exc
+        raise _structured_validation_error(
+            exc,
+            subject="Investment comparison",
+            message="The AI comparison failed structured validation.",
+        ) from exc
 
 
 def parse_core_research(value: str) -> comparison_schemas.CoreComparisonResearch:
@@ -109,7 +156,11 @@ def parse_core_research(value: str) -> comparison_schemas.CoreComparisonResearch
             )
         )
     except ValidationError as exc:
-        raise ComparisonResearchError("The AI comparison failed structured validation.") from exc
+        raise _structured_validation_error(
+            exc,
+            subject="Investment comparison core research",
+            message="The AI comparison failed structured validation.",
+        ) from exc
 
 
 def parse_scenario_research(value: str) -> comparison_schemas.ComparisonScenarioResearch:
@@ -121,7 +172,11 @@ def parse_scenario_research(value: str) -> comparison_schemas.ComparisonScenario
             )
         )
     except ValidationError as exc:
-        raise ComparisonResearchError("The AI scenario analysis failed structured validation.") from exc
+        raise _structured_validation_error(
+            exc,
+            subject="Investment comparison scenario research",
+            message="The AI scenario analysis failed structured validation.",
+        ) from exc
 
 
 def _validate_research_time(
@@ -138,6 +193,78 @@ def _validate_research_time(
     today = datetime.datetime.now(datetime.UTC).date()
     if any(source.published_at and source.published_at > today for source in sources):
         raise ComparisonResearchError(f"The AI {subject} contains a future-dated source.")
+
+
+def _normalize_core_candidate_sources(
+    candidate: comparison_schemas.CoreCandidateResearch,
+    known_source_ids: set[str],
+) -> tuple[comparison_schemas.CoreCandidateResearch, int]:
+    removed_count = 0
+    unsourced_category_count = 0
+    categories: list[comparison_schemas.CategoryAssessment] = []
+    for assessment in candidate.categories:
+        source_ids = [
+            source_id
+            for source_id in assessment.source_ids
+            if source_id in known_source_ids
+        ]
+        removed_count += len(assessment.source_ids) - len(source_ids)
+        update: dict[str, object] = {"source_ids": source_ids}
+        if not source_ids:
+            unsourced_category_count += 1
+            update.update(
+                {
+                    "score": comparison_schemas.NEUTRAL_UNSOURCED_CATEGORY_SCORE,
+                    "confidence": "low",
+                    "summary": (
+                        "Returned source unavailable; backend normalized this category "
+                        f"to a neutral score. {assessment.summary}"
+                    )[:600],
+                }
+            )
+        categories.append(assessment.model_copy(update=update))
+
+    if unsourced_category_count > comparison_schemas.MAX_UNSOURCED_CATEGORIES:
+        issue = (
+            f"candidate {candidate.ticker} has {unsourced_category_count} categories "
+            "without returned sources"
+        )
+        raise ComparisonResearchError(
+            f"The AI comparison for {candidate.ticker} has insufficient source coverage.",
+            repairable=True,
+            validation_issues=(issue,),
+        )
+
+    metrics: list[comparison_schemas.MetricObservation] = []
+    for metric in candidate.metrics:
+        source_ids = [
+            source_id for source_id in metric.source_ids if source_id in known_source_ids
+        ]
+        removed_count += len(metric.source_ids) - len(source_ids)
+        update = {"source_ids": source_ids}
+        if metric.applicability == "applicable" and not source_ids:
+            update.update(
+                {
+                    "display_value": "Unavailable",
+                    "applicability": "unavailable",
+                    "as_of": None,
+                    "note": "No returned source matched the AI citation.",
+                }
+            )
+        metrics.append(metric.model_copy(update=update))
+
+    normalized = candidate.model_copy(
+        update={
+            "categories": categories,
+            "metrics": metrics,
+        }
+    )
+    return (
+        comparison_schemas.CoreCandidateResearch.model_validate(
+            normalized.model_dump(mode="python")
+        ),
+        removed_count,
+    )
 
 
 def validate_core_research(
@@ -160,6 +287,7 @@ def validate_core_research(
 
     normalized_candidates: list[comparison_schemas.CoreCandidateResearch] = []
     by_ticker = {candidate.ticker: candidate for candidate in research.candidates}
+    known_source_ids = {source.id for source in research.sources}
     for ticker in tickers:
         candidate = by_ticker[ticker]
         quote = quotes.get(ticker)
@@ -167,6 +295,16 @@ def validate_core_research(
             raise ComparisonResearchError(f"Validated market data is missing for {ticker}.")
         if candidate.asset_type != quote.asset_type:
             raise ComparisonResearchError(f"The AI asset type for {ticker} does not match validated market data.")
+        candidate, removed_count = _normalize_core_candidate_sources(
+            candidate,
+            known_source_ids,
+        )
+        if removed_count:
+            logger.warning(
+                "Removed %d unresolved source reference(s) from core research for %s.",
+                removed_count,
+                ticker,
+            )
         normalized_candidates.append(candidate.model_copy(update={"name": quote.display_name or candidate.name}))
 
     if any(quote.currency != market.currency for quote in quotes.values()):

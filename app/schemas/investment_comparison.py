@@ -5,7 +5,15 @@ import re
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 
 CATEGORY_WEIGHT_MAP = {
     "valuation": 20,
@@ -25,6 +33,8 @@ METRIC_KEYS = (
     "cost",
 )
 PROFILE_NAMES = ("conservative", "moderate", "aggressive")
+NEUTRAL_UNSOURCED_CATEGORY_SCORE = 50
+MAX_UNSOURCED_CATEGORIES = 1
 
 CategoryName = Literal[
     "valuation",
@@ -37,6 +47,22 @@ CategoryName = Literal[
 MetricKey = Literal["size", "valuation", "growth", "income_yield", "volatility", "cost"]
 ProfileName = Literal["conservative", "moderate", "aggressive"]
 ShortText = Annotated[str, Field(min_length=1, max_length=500)]
+SourceUrl = Annotated[
+    AnyHttpUrl,
+    WithJsonSchema({"type": "string", "minLength": 1}),
+]
+CategorySourceIds = Annotated[
+    list[str],
+    Field(max_length=6),
+    WithJsonSchema(
+        {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "maxItems": 6,
+        }
+    ),
+]
 _TICKER_PATTERN = re.compile(r"^[A-Z0-9][A-Z0-9.-]{0,19}$")
 
 
@@ -48,7 +74,7 @@ class ResearchSource(_StrictModel):
     id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,32}$")
     title: str = Field(min_length=1, max_length=300)
     publisher: str = Field(min_length=1, max_length=120)
-    url: AnyHttpUrl
+    url: SourceUrl
     published_at: datetime.date | None
 
 
@@ -80,7 +106,7 @@ class CategoryAssessment(_StrictModel):
     confidence: Literal["high", "medium", "low"]
     summary: str = Field(min_length=1, max_length=600)
     evidence: list[ShortText] = Field(min_length=1, max_length=4)
-    source_ids: list[str] = Field(min_length=1, max_length=6)
+    source_ids: CategorySourceIds
 
     @field_validator("score", mode="before")
     @classmethod
@@ -88,6 +114,12 @@ class CategoryAssessment(_StrictModel):
         if isinstance(value, bool):
             raise ValueError("category score must be an integer")
         return value
+
+    @model_validator(mode="after")
+    def validate_source_confidence(self) -> CategoryAssessment:
+        if not self.source_ids and self.confidence != "low":
+            raise ValueError("a category without returned sources must use low confidence")
+        return self
 
 
 class ProfileSuitability(_StrictModel):
@@ -133,7 +165,7 @@ class CoreCandidateResearch(_StrictModel):
         return normalized
 
     @model_validator(mode="after")
-    def validate_complete_scorecard(self) -> CandidateResearch:
+    def validate_complete_scorecard(self) -> CoreCandidateResearch:
         categories = [assessment.category for assessment in self.categories]
         if len(set(categories)) != len(categories) or set(categories) != set(CATEGORY_NAMES):
             raise ValueError("each scorecard category must appear exactly once")
@@ -145,6 +177,20 @@ class CoreCandidateResearch(_StrictModel):
         profiles = [suitability.profile for suitability in self.profile_suitability]
         if len(set(profiles)) != len(profiles) or set(profiles) != set(PROFILE_NAMES):
             raise ValueError("each investor profile must appear exactly once")
+
+        unsourced = [
+            assessment for assessment in self.categories if not assessment.source_ids
+        ]
+        if len(unsourced) > MAX_UNSOURCED_CATEGORIES:
+            raise ValueError("a candidate cannot contain multiple unsourced categories")
+        if any(
+            assessment.score != NEUTRAL_UNSOURCED_CATEGORY_SCORE
+            or assessment.confidence != "low"
+            for assessment in unsourced
+        ):
+            raise ValueError(
+                "an unsourced category must use a neutral score and low confidence"
+            )
         return self
 
 
@@ -174,10 +220,6 @@ class CoreComparisonResearch(_StrictModel):
         source_ids = [source.id for source in self.sources]
         if len(source_ids) != len(set(source_ids)):
             raise ValueError("source IDs must be unique")
-        known_sources = set(source_ids)
-        for candidate in self.candidates:
-            if not _candidate_source_references(candidate).issubset(known_sources):
-                raise ValueError(f"candidate {candidate.ticker} references an unknown source")
         return self
 
 
