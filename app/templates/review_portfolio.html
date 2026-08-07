@@ -304,6 +304,20 @@
                             advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for
                             losses incurred based on this information.
                         </div>
+                        <div class="alert alert-primary d-flex flex-wrap align-items-center
+                                    justify-content-between gap-2 mb-3 no-print" role="note">
+                            <div>
+                                <i class="bi bi-lightning-charge me-1" aria-hidden="true"></i>
+                                <strong>Ready for next steps?</strong>
+                                Turn this review into a prioritized, time-boxed action briefing with
+                                specific buy, sell, trim, and watch actions.
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm"
+                                    id="continue-to-briefing-btn">
+                                Run Action Briefing with these holdings
+                                <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+                            </button>
+                        </div>
                         <div id="review-result" class="markdown-content"></div>
                     </div>
                 </div>
@@ -423,6 +437,11 @@ const REVIEW_PORTFOLIO_HORIZONS = [
 ];
 const REVIEW_PORTFOLIO_TAX_CONTEXTS = ['unknown', 'taxable', 'tax-advantaged'];
 const REVIEW_PORTFOLIO_MONEY_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/;
+
+const ACTION_BRIEFING_STORAGE_FEATURE = 'portfolio-action-briefing';
+const ACTION_BRIEFING_STORAGE_SCHEMA_VERSION = 1;
+const ACTION_BRIEFING_TICKER_PATTERN = /^[A-Z0-9][A-Z0-9.-]{0,19}$/;
+const ACTION_BRIEFING_MAX_HOLDINGS = 20;
 const REVIEW_PORTFOLIO_ISO_TIMESTAMP_PATTERN =
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
 const REVIEW_PORTFOLIO_PRINT_TITLE = {{ ('Portfolio Review - ' ~ app_name) | tojson }};
@@ -894,6 +913,98 @@ function exportRebalanceCsv() {
     }, 0);
 }
 
+function isCompatibleBriefingHoldings(holdingsText) {
+    if (typeof holdingsText !== 'string') {
+        return false;
+    }
+    const lines = holdingsText.split(/\r?\n/);
+    let sawLine = false;
+    let count = 0;
+    const seen = new Set();
+    for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) {
+            continue;
+        }
+        sawLine = true;
+        count += 1;
+        if (count > ACTION_BRIEFING_MAX_HOLDINGS) {
+            return false;
+        }
+        const fields = line.split(',').map(function(field) {
+            return field.trim();
+        });
+        if (fields.length !== 2 && fields.length !== 3) {
+            return false;
+        }
+        const ticker = fields[0].toUpperCase();
+        if (!ACTION_BRIEFING_TICKER_PATTERN.test(ticker) || seen.has(ticker)) {
+            return false;
+        }
+        if (!REVIEW_PORTFOLIO_MONEY_PATTERN.test(fields[1]) || Number(fields[1]) <= 0) {
+            return false;
+        }
+        if (fields.length === 3 && fields[2] !== '' && !REVIEW_PORTFOLIO_MONEY_PATTERN.test(fields[2])) {
+            return false;
+        }
+        seen.add(ticker);
+    }
+    return sawLine;
+}
+
+function mapReviewPortfolioToBriefingStorage(reviewValues) {
+    if (!isCompatibleBriefingHoldings(reviewValues.holdings)) {
+        return null;
+    }
+    const additionalContext = [reviewValues.investment_goals, reviewValues.scenario]
+        .map(function(text) { return text.trim(); })
+        .filter(Boolean)
+        .join('. ')
+        .slice(0, 2000);
+    return {
+        holdings: reviewValues.holdings,
+        target_market: reviewValues.target_market,
+        watchlist: '',
+        horizon: '7',
+        focus_preset: '',
+        focus_custom: '',
+        risk_tolerance: reviewValues.risk_tolerance,
+        available_cash: reviewValues.available_cash,
+        additional_context: additionalContext,
+        payload: null,
+        generated_at: null
+    };
+}
+
+function handoffToActionBriefing() {
+    let imported = false;
+    try {
+        const reviewValues = window.AlphaLabStorage.load(REVIEW_PORTFOLIO_STORAGE_FEATURE, {
+            schemaVersion: REVIEW_PORTFOLIO_STORAGE_SCHEMA_VERSION,
+            defaultValue: null,
+            validate: isValidStoredReviewPortfolio,
+            migrate: migrateReviewPortfolioStorage
+        });
+        if (reviewValues !== null && isValidStoredReviewPortfolio(reviewValues)) {
+            const mapped = mapReviewPortfolioToBriefingStorage(reviewValues);
+            if (mapped !== null) {
+                const saveBriefingData = window.AlphaLabStorage.save;
+                imported = saveBriefingData(
+                    ACTION_BRIEFING_STORAGE_FEATURE,
+                    mapped,
+                    {schemaVersion: ACTION_BRIEFING_STORAGE_SCHEMA_VERSION}
+                );
+            }
+        }
+    } catch (error) {
+        // Storage is unavailable or the saved data was invalid; continue to
+        // the briefing page anyway so the user is not blocked.
+    }
+    window.location.href = imported
+        ? '/portfolio-action-briefing?source=review-portfolio'
+        : '/portfolio-action-briefing';
+}
+
 window.addEventListener('alphalab:storage-warning', function(event) {
     const detail = event.detail;
     if (!detail || (detail.feature !== REVIEW_PORTFOLIO_STORAGE_FEATURE && detail.feature !== null)) {
@@ -921,6 +1032,7 @@ window.addEventListener('DOMContentLoaded', function() {
     });
     document.getElementById('target-market').addEventListener('change', updateMarketCurrency);
     document.getElementById('print-review-btn').addEventListener('click', printVisibleResults);
+    document.getElementById('continue-to-briefing-btn').addEventListener('click', handoffToActionBriefing);
     document.getElementById('print-rebalance-btn').addEventListener('click', printVisibleResults);
     document.getElementById('export-rebalance-btn').addEventListener('click', exportRebalanceCsv);
 

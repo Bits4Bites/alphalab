@@ -93,7 +93,7 @@ jobs:
 
   ReleaseDryRun:
     if: github.event_name == 'push'
-    needs: [test, docker]
+    needs: [test]
     runs-on: ubuntu-latest
     outputs:
       RESULT: ${{ steps.release_dry_run.outputs.result }}
@@ -124,7 +124,7 @@ jobs:
     if: |
       needs.ReleaseDryRun.outputs.RESULT == 'SUCCESS' &&
       github.ref == 'refs/heads/dev'
-    needs: [ ReleaseDryRun, test, docker ]
+    needs: [ ReleaseDryRun, docker ]
     runs-on: ubuntu-latest
     strategy:
       matrix:

@@ -40,6 +40,7 @@ class MarketDefinition:
     aliases: frozenset[str]
     input_exchanges: frozenset[str]
     quote_exchanges: frozenset[str]
+    time_zone: str
 
     @property
     def label(self) -> str:
@@ -68,6 +69,7 @@ _MARKETS = (
         aliases=frozenset({"US", "USA", "UNITED STATES", "UNITED STATES OF AMERICA"}),
         input_exchanges=frozenset({"US", "NYSE", "NASDAQ", "AMEX"}),
         quote_exchanges=frozenset({"NMS", "NYQ", "NGM", "NCM", "ASE", "PCX", "BTS", "NASDAQ", "NYSE"}),
+        time_zone="America/New_York",
     ),
     MarketDefinition(
         code="AU",
@@ -78,6 +80,7 @@ _MARKETS = (
         aliases=frozenset({"AU", "AUS", "AUSTRALIA", "ASX"}),
         input_exchanges=frozenset({"AU", "ASX"}),
         quote_exchanges=frozenset({"ASX"}),
+        time_zone="Australia/Sydney",
     ),
 )
 
