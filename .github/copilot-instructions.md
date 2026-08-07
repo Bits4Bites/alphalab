@@ -70,9 +70,11 @@ ruff format .                      # format
   ```python
   # ✅ Good
   from app.utils import ai
+
   result = ai.execute_prompt(...)
 
   # ❌ Bad
   from app.utils.ai import execute_prompt
+
   result = execute_prompt(...)
   ```
