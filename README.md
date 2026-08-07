@@ -31,9 +31,14 @@ investment insights.
 **Portfolio**
 - **Build Portfolio** Turn investment goals, risk tolerance, time horizon, and preferred themes into a practical
   portfolio allocation.
+- **Portfolio Action Briefing** Turn current holdings, available cash, and optional watchlist names into a sourced,
+  prioritized action plan. Choose a horizon from today through the next three months, review portfolio risks and
+  catalysts, and export the resulting action list to CSV. Rankings combine urgency, potential impact, portfolio
+  exposure, and evidence confidence; suggested quantities and values use validated delayed market snapshots.
 - **Review Portfolio** Identify portfolio strengths, concentration risks, weak positions, and opportunities to
   improve diversification and resilience, with an optional market-specific plan showing estimated trades, cash impact,
-  and before-and-after allocations.
+  and before-and-after allocations. Saved inputs can be handed directly to Portfolio Action Briefing in the same
+  browser.
 
 **Signals**
 - **Watchlist Monitor** Prioritize the names that deserve attention by combining news, technical signals, valuation,
@@ -138,6 +143,17 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 > **Uploaded-document model recommendation:** Configure tasks that analyze uploaded files, currently
 > `IPO_ANALYZER_ANALYZE`, with a model that supports at least 250k input tokens. Converted PDF content can be
 > very long, and models with smaller context windows may reject or truncate the analysis request.
+>
+> **Portfolio Action Briefing model recommendation:** Configure `PORTFOLIO_ACTION_BRIEFING_ANALYZE` with a model that
+> supports web search and structured JSON output. The lower-cost `PORTFOLIO_ACTION_BRIEFING_BUILD_PROMPT` task only
+> writes the self-contained research prompt.
+
+### Data storage
+
+AlphaLab does not persist portfolio or watchlist data in an application database. Feature inputs and the latest
+successful result are stored in user-scoped browser storage for convenience. Portfolio Action Briefing submits the
+current request for on-demand processing, returns a streamed response, and retains no server-side portfolio record.
+Redis, when configured, is used only for temporary application data and bounded analysis caches.
 
 **Optional configurations:**
 
