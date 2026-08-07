@@ -13,6 +13,19 @@ technical item is required to deliver a business feature safely or reliably.
 
 ### High Priority
 
+#### Portfolio Action Briefing
+
+Turn current holdings and watchlist names into an on-demand, prioritized view of what deserves attention now.
+
+**Status: Implemented**
+
+**MVP**
+
+- Rank sourced actions by timing urgency, potential impact, portfolio exposure, and evidence confidence.
+- Show portfolio risks and upcoming events within a selected today, 7-day, 2-week, 1-month, or 3-month horizon.
+- Import Review Portfolio inputs from user-scoped browser storage without retaining holdings server-side.
+- Calculate suggested quantities and estimated values deterministically from validated delayed market snapshots.
+
 #### Compare Investments
 
 Help investors choose two to five stocks or ETFs using a consistent scorecard.
@@ -125,7 +138,7 @@ and additional privacy and operational controls.
 
 ## Recommended Sequence
 
-Compare Investments and Review Portfolio: Rebalance Planner have been delivered.
+Portfolio Action Briefing, Compare Investments, and Review Portfolio: Rebalance Planner have been delivered.
 
 1. Filing and Earnings Report Analyzer.
 2. Investment Thesis Tracker.

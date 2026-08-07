@@ -1,5 +1,11 @@
 # AlphaLab release notes
 
+## 2026-08-07 - v0.10.0
+
+### Added/Refactoring/Deprecation
+
+- Feat(action-briefing): Add stateless portfolio action briefings with prioritized actions, risks, and catalysts.
+
 ## 2026-07-23 - v0.9.0
 
 ### Added/Refactoring/Deprecation
