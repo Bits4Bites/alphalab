@@ -285,13 +285,18 @@ class TestExecutePromptRuntimePolicy:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        ("reasoning_effort", "expected_max_tool_calls"),
-        [("low", 5), ("medium", 10), ("high", 15)],
+        ("reasoning_effort", "expected_max_tool_calls", "expected_search_context_size"),
+        [
+            ("low", 5, "low"),
+            ("medium", 10, "medium"),
+            ("high", 15, "high"),
+        ],
     )
-    async def test_openai_receives_reasoning_effort_and_tool_call_limit(
+    async def test_openai_receives_reasoning_effort_and_search_limits(
         self,
         reasoning_effort: ai_utils.ReasoningEffort,
         expected_max_tool_calls: int,
+        expected_search_context_size: str,
     ) -> None:
         from openai import AsyncOpenAI
 
@@ -299,11 +304,23 @@ class TestExecutePromptRuntimePolicy:
         client.base_url = "https://api.openai.com/v1"
         client.responses.create = AsyncMock(return_value=FakeResponsesResponse(output_text="ok", usage=None))
 
-        await execute_prompt(client, "gpt-5.6-terra", "test", reasoning_effort=reasoning_effort)
+        await execute_prompt(
+            client,
+            "gpt-5.6-terra",
+            "test",
+            enable_web_search=True,
+            reasoning_effort=reasoning_effort,
+        )
 
         request = client.responses.create.call_args.kwargs
         assert request["reasoning"] == {"effort": reasoning_effort}
         assert request["max_tool_calls"] == expected_max_tool_calls
+        assert request["tools"] == [
+            {
+                "type": "web_search",
+                "search_context_size": expected_search_context_size,
+            }
+        ]
 
     @pytest.mark.asyncio
     async def test_gemini_receives_mapped_thinking_level(self) -> None:
@@ -487,7 +504,12 @@ class TestExecutePromptStructuredOutput:
 
         assert result.success is True
         request = client.responses.create.call_args.kwargs
-        assert request["tools"] == [{"type": "web_search"}]
+        assert request["tools"] == [
+            {
+                "type": "web_search",
+                "search_context_size": "medium",
+            }
+        ]
         assert request["max_tool_calls"] == 10
         assert request["text"]["format"]["type"] == "json_schema"
         assert request["text"]["format"]["strict"] is True

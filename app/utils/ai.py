@@ -21,6 +21,13 @@ _MAX_TOOL_CALLS_BY_REASONING: dict[ReasoningEffort | None, int] = {
     "high": 15,
 }
 
+_SEARCH_CONTEXT_SIZE_BY_REASONING: dict[ReasoningEffort | None, str] = {
+    None: "medium",
+    "low": "low",
+    "medium": "medium",
+    "high": "high",
+}
+
 logger = logging.getLogger(__name__)
 
 
@@ -279,13 +286,15 @@ async def _execute_openai(
             }
         response = await client.chat.completions.create(**request_kwargs)
     else:
-        request_kwargs = {
+        request_kwargs: dict[str, object] = {
             "model": model,
             "input": prompt,
             "max_tool_calls": _MAX_TOOL_CALLS_BY_REASONING[reasoning_effort],
         }
         if enable_web_search:
-            request_kwargs["tools"] = [{"type": "web_search"}]
+            request_kwargs["tools"] = [
+                {"type": "web_search", "search_context_size": _SEARCH_CONTEXT_SIZE_BY_REASONING[reasoning_effort]}
+            ]
         if reasoning_effort is not None:
             request_kwargs["reasoning"] = {"effort": reasoning_effort}
         if response_json_schema is not None:
