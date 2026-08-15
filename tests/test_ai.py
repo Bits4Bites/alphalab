@@ -9,7 +9,7 @@ import pytest
 
 from app import config as app_config
 from app.utils import ai as ai_utils
-from app.utils.ai import DEFAULT_TEMPERATURE, AIResponse, _is_debug_mode, execute_prompt
+from app.utils.ai import AIResponse, _is_debug_mode, execute_prompt
 
 # --- Fixtures and helpers ---
 
@@ -265,34 +265,6 @@ class TestExecutePromptDebugLogging:
         assert "debug output" in caplog.text
 
 
-class TestExecutePromptTemperature:
-    @pytest.mark.asyncio
-    async def test_default_temperature_used_when_none(self) -> None:
-        """When temperature is not provided, DEFAULT_TEMPERATURE is passed to backend."""
-        from openai import AsyncOpenAI
-
-        client = MagicMock(spec=AsyncOpenAI)
-        client.base_url = "https://api.openai.com/v1"
-        client.responses.create = AsyncMock(return_value=FakeResponsesResponse(output_text="ok", usage=None))
-
-        await execute_prompt(client, "gpt-4o", "test")
-
-        assert client.responses.create.call_args.kwargs["temperature"] == DEFAULT_TEMPERATURE
-
-    @pytest.mark.asyncio
-    async def test_explicit_temperature_passed_through(self) -> None:
-        """An explicit temperature is forwarded to the backend call."""
-        from openai import AsyncOpenAI
-
-        client = MagicMock(spec=AsyncOpenAI)
-        client.base_url = "https://api.openai.com/v1"
-        client.responses.create = AsyncMock(return_value=FakeResponsesResponse(output_text="ok", usage=None))
-
-        await execute_prompt(client, "gpt-4o", "test", temperature=0.6)
-
-        assert client.responses.create.call_args.kwargs["temperature"] == 0.6
-
-
 class TestExecutePromptRuntimePolicy:
     @pytest.mark.asyncio
     async def test_defaults_omit_web_search_and_reasoning(self) -> None:
@@ -305,8 +277,7 @@ class TestExecutePromptRuntimePolicy:
         await execute_prompt(client, "gpt-5.6-luna", "test")
 
         request = client.responses.create.call_args.kwargs
-        assert "tools" not in request
-        assert "reasoning" not in request
+        assert request == {"model": "gpt-5.6-luna", "input": "test"}
 
     @pytest.mark.asyncio
     async def test_openai_receives_reasoning_effort(self) -> None:
@@ -376,9 +347,13 @@ class TestExecutePromptRuntimePolicy:
             reasoning_effort="low",
         )
 
-        assert client.chat.completions.create.call_args.kwargs["extra_body"] == {
-            "plugins": [{"id": "web"}],
-            "reasoning": {"effort": "low"},
+        assert client.chat.completions.create.call_args.kwargs == {
+            "model": "provider/model",
+            "messages": [{"role": "user", "content": "test"}],
+            "extra_body": {
+                "plugins": [{"id": "web"}],
+                "reasoning": {"effort": "low"},
+            },
         }
 
     @pytest.mark.asyncio
@@ -388,7 +363,6 @@ class TestExecutePromptRuntimePolicy:
     ) -> None:
         task = app_config.AITaskConfig(
             model="gpt-5.6-terra",
-            temperature=0.2,
             web_search=True,
             reasoning_level="HIGH",
         )
@@ -402,7 +376,6 @@ class TestExecutePromptRuntimePolicy:
             client,
             task.model,
             "test",
-            temperature=task.temperature,
             response_json_schema=None,
             schema_name="structured_response",
             enable_web_search=False,

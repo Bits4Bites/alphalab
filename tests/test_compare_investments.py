@@ -33,13 +33,11 @@ def _user() -> dict[str, str]:
 def _task_settings() -> types.SimpleNamespace:
     prompt_task = types.SimpleNamespace(
         model="test-model",
-        temperature=0.1,
         web_search=False,
         reasoning_level="low",
     )
     analyze_task = types.SimpleNamespace(
         model="test-model",
-        temperature=0.0,
         web_search=True,
         reasoning_level="high",
     )

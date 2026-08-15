@@ -182,7 +182,6 @@ class AITaskConfig(BaseSettings):
     vendor: str = ""
     tier: str = ""
     model: str = ""
-    temperature: float | None = None
     web_search: bool = False
     reasoning_level: Literal["low", "medium", "high"] | None = None
 

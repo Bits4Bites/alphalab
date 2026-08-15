@@ -16,9 +16,6 @@ ReasoningEffort = Literal["low", "medium", "high"]
 
 logger = logging.getLogger(__name__)
 
-# Default sampling temperature used when a task does not configure one explicitly.
-DEFAULT_TEMPERATURE = 0.1
-
 
 def _is_debug_mode() -> bool:
     return os.getenv("LLM_DEBUG_MODE", "").lower() in ("1", "true", "yes")
@@ -49,7 +46,6 @@ async def execute_prompt(
     client,
     model: str,
     prompt: str,
-    temperature: float | None = None,
     *,
     response_json_schema: Mapping[str, object] | None = None,
     schema_name: str = "structured_response",
@@ -63,7 +59,6 @@ async def execute_prompt(
             include OpenAI, Azure OpenAI, and OpenRouter.
         model: Provider model identifier used for the request.
         prompt: User prompt sent to the model.
-        temperature: Sampling temperature passed to the provider. ``None`` uses ``DEFAULT_TEMPERATURE``.
         response_json_schema: Optional JSON Schema used to request a structured response.
         schema_name: Name assigned to the structured-output schema for OpenAI-compatible providers.
         enable_web_search: Whether to enable the provider's web-search or grounding tool. Disabled by default.
@@ -78,13 +73,11 @@ async def execute_prompt(
     from google import genai
     from openai import AsyncOpenAI
 
-    resolved_temperature = DEFAULT_TEMPERATURE if temperature is None else temperature
     vendor = type(client).__name__
     logger.info(
-        "Executing prompt | vendor=%s | model=%s | temperature=%.2f | web_search=%s | reasoning_effort=%s",
+        "Executing prompt | vendor=%s | model=%s | web_search=%s | reasoning_effort=%s",
         vendor,
         model,
-        resolved_temperature,
         enable_web_search,
         reasoning_effort or "model_default",
     )
@@ -99,7 +92,6 @@ async def execute_prompt(
                 client,
                 model,
                 prompt,
-                resolved_temperature,
                 response_json_schema=response_json_schema,
                 enable_web_search=enable_web_search,
                 reasoning_effort=reasoning_effort,
@@ -109,7 +101,6 @@ async def execute_prompt(
                 client,
                 model,
                 prompt,
-                resolved_temperature,
                 response_json_schema=response_json_schema,
                 schema_name=schema_name,
                 enable_web_search=enable_web_search,
@@ -160,7 +151,7 @@ async def execute_task_prompt(
 
     Args:
         client: Initialized AI client for ``task_config.vendor`` and ``task_config.tier``.
-        task_config: Task policy supplying the model, temperature, web-search setting, and reasoning level.
+        task_config: Task policy supplying the model, web-search setting, and reasoning level.
         prompt: User prompt sent to the configured model.
         response_json_schema: Optional JSON Schema used to request a structured response.
         schema_name: Name assigned to the structured-output schema for OpenAI-compatible providers.
@@ -174,7 +165,6 @@ async def execute_task_prompt(
         client,
         task_config.model,
         prompt,
-        temperature=task_config.temperature,
         response_json_schema=response_json_schema,
         schema_name=schema_name,
         enable_web_search=resolved_web_search,
@@ -186,7 +176,6 @@ async def _execute_gemini(
     client,
     model: str,
     prompt: str,
-    temperature: float,
     *,
     response_json_schema: Mapping[str, object] | None,
     enable_web_search: bool,
@@ -195,7 +184,7 @@ async def _execute_gemini(
     """Execute prompt using Google Gemini client with grounding (web search)."""
     from google.genai.types import GenerateContentConfig, GoogleSearch, ThinkingConfig, ThinkingLevel, Tool
 
-    config_kwargs: dict[str, object] = {"temperature": temperature}
+    config_kwargs: dict[str, object] = {}
     if enable_web_search:
         config_kwargs["tools"] = [Tool(google_search=GoogleSearch())]
     if reasoning_effort is not None:
@@ -249,7 +238,6 @@ async def _execute_openai(
     client,
     model: str,
     prompt: str,
-    temperature: float,
     *,
     response_json_schema: Mapping[str, object] | None,
     schema_name: str,
@@ -264,7 +252,6 @@ async def _execute_openai(
         request_kwargs: dict[str, object] = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": temperature,
         }
         extra_body: dict[str, object] = {}
         if enable_web_search:
@@ -287,7 +274,6 @@ async def _execute_openai(
         request_kwargs = {
             "model": model,
             "input": prompt,
-            "temperature": temperature,
         }
         if enable_web_search:
             request_kwargs["tools"] = [{"type": "web_search_preview"}]
