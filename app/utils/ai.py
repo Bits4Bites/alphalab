@@ -14,6 +14,13 @@ if TYPE_CHECKING:
 
 ReasoningEffort = Literal["low", "medium", "high"]
 
+_MAX_TOOL_CALLS_BY_REASONING: dict[ReasoningEffort | None, int] = {
+    None: 10,
+    "low": 5,
+    "medium": 10,
+    "high": 15,
+}
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,7 +71,8 @@ async def execute_prompt(
         enable_web_search: Whether to enable the provider's web-search or grounding tool. Disabled by default.
         reasoning_effort: Provider-neutral reasoning level. ``None`` omits the setting and preserves the model's
             default. Gemini 2.5 levels are translated to thinking budgets; other supported providers receive their
-            native reasoning-level setting.
+            native reasoning-level setting. OpenAI and Azure OpenAI requests cap tool calls at 5 for ``low``, 10 for
+            ``medium`` or the model default, and 15 for ``high``.
 
     Returns:
         A normalized ``AIResponse``. Unsupported clients and provider exceptions are returned as failed responses
@@ -274,9 +282,10 @@ async def _execute_openai(
         request_kwargs = {
             "model": model,
             "input": prompt,
+            "max_tool_calls": _MAX_TOOL_CALLS_BY_REASONING[reasoning_effort],
         }
         if enable_web_search:
-            request_kwargs["tools"] = [{"type": "web_search_preview"}]
+            request_kwargs["tools"] = [{"type": "web_search"}]
         if reasoning_effort is not None:
             request_kwargs["reasoning"] = {"effort": reasoning_effort}
         if response_json_schema is not None:

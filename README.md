@@ -174,6 +174,9 @@ Redis, when configured, is used only for temporary application data and bounded 
 | `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Optional Redis connection for temporary application data     |
 | `AL_DATASTORE_REDIS_KEY_PREFIX`    | `al:`                      | Key namespace prefix for all Redis keys                      |
 
+When OpenAI or Azure OpenAI tools are enabled, tool calls are capped automatically by reasoning level: 5 for `low`,
+10 for `medium` or the model default, and 15 for `high`.
+
 **Examples:**
 
 ```env
