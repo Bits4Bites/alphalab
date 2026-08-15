@@ -120,7 +120,7 @@ class AIVendorSettings(BaseSettings):
                 return tiers
         return None
 
-    def get_ai_client(self, vendor: str, tier: str, timeout_sec: float = 180) -> GenaiClient | AsyncOpenAI | None:
+    def get_ai_client(self, vendor: str, tier: str, timeout_sec: float = 600) -> GenaiClient | AsyncOpenAI | None:
         """Return an async AI client for the given vendor and tier, or None if not found.
 
         Supported vendors:
