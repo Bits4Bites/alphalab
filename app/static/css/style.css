@@ -1,1 +1,19 @@
 /* Custom styles */
+
+.draft-intent-page {
+    max-width: 1140px;
+}
+
+.draft-intent-page .draft-intent-result {
+    min-height: 12rem;
+    resize: vertical;
+}
+
+.draft-intent-page .draft-intent-action {
+    min-height: 44px;
+}
+
+.draft-intent-page :focus-visible {
+    outline: 3px solid rgba(13, 110, 253, 0.35);
+    outline-offset: 2px;
+}

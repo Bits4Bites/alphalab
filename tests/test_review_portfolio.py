@@ -142,6 +142,10 @@ def test_page_embeds_cached_result_and_browser_storage(client: TestClient, monke
     assert "This is a cached analysis completed on" in response.text
     assert "AlphaLabStorage.load" in response.text
     assert "AlphaLabStorage.save" in response.text
+    assert "Draft Portfolio Intent" in response.text
+    assert "draft-portfolio-intent.js" in response.text
+    assert 'data-portfolio-intent-handoff-target="review"' in response.text
+    assert 'id="draft-portfolio-intent-form"' not in response.text
     save_call = response.text.split("window.AlphaLabStorage.save(", maxsplit=1)[1].split(");", maxsplit=1)[0]
     for field in (
         "holdings",

@@ -29,16 +29,18 @@ investment insights.
   dividend event.
 
 **Portfolio**
+- **Draft Portfolio Intent** Turn the strategy preferences you already know into a concise brief that sharpens
+  recommendations when building or reviewing a portfolio. Add as much or as little detail as needed and answer
+  focused clarification questions when necessary.
 - **Build Portfolio** Turn investment goals, risk tolerance, time horizon, and preferred themes into a practical
   portfolio allocation.
 - **Portfolio Action Briefing** Turn current holdings, available cash, and optional watchlist names into a sourced,
   prioritized action plan. Choose a horizon from today through the next three months, review portfolio risks and
-  catalysts, and export the resulting action list to CSV. Rankings combine urgency, potential impact, portfolio
-  exposure, and evidence confidence; suggested quantities and values use validated delayed market snapshots.
+  catalysts, and export the resulting action list to CSV. Focus first on actions with the greatest urgency and
+  portfolio impact, with suggested quantities and values grounded in recent market prices.
 - **Review Portfolio** Identify portfolio strengths, concentration risks, weak positions, and opportunities to
-  improve diversification and resilience, with an optional market-specific plan showing estimated trades, cash impact,
-  and before-and-after allocations. Saved inputs can be handed directly to Portfolio Action Briefing in the same
-  browser.
+  improve diversification and resilience. Create an optional market-specific plan showing estimated trades, cash
+  impact, and before-and-after allocations, then continue directly to Portfolio Action Briefing.
 
 **Signals**
 - **Watchlist Monitor** Prioritize the names that deserve attention by combining news, technical signals, valuation,
@@ -129,24 +131,46 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 
 > At least one identity provider (GitHub or LinkedIn) and one AI vendor must be configured for the app to function properly.
 
-**Supported AI vendors:**
+**AI vendor configuration:**
 
-| Vendor        | `<VENDOR>` value | Notes                                         |
-|---------------|------------------|-----------------------------------------------|
-| Google Gemini | `GEMINI`         | Uses Google GenAI SDK                         |
-| OpenAI        | `OPENAI`         | Native OpenAI API                             |
-| Azure OpenAI  | `AZURE_OPENAI`   | Use OpenAI API, support Azure AD credentials  |
-| OpenRouter    | `OPENROUTER`     | OpenAI-compatible, supports web search plugin |
+| Vendor        | `<VENDOR>` value | Status and notes                                           |
+|---------------|------------------|------------------------------------------------------------|
+| Google Gemini | `GEMINI`         | Supported through the Google GenAI SDK                     |
+| OpenAI        | `OPENAI`         | Supported through the native OpenAI API                    |
+| Azure OpenAI  | `AZURE_OPENAI`   | Supported through the OpenAI API with Azure AD credentials |
+| OpenRouter    | `OPENROUTER`     | Supported through its OpenAI-compatible API                |
+| Claude        | `CLAUDE`         | Model catalog retained; execution is not yet implemented   |
 
-**Pricing tiers (`<TIER>`):** `FREE`, `LOWCOST`, `PREMIUM` (or any custom tier name)
+**Preconfigured model catalog:**
 
+| Vendor                | `LOWCOST` models                            | `PREMIUM` models                           |
+|-----------------------|---------------------------------------------|--------------------------------------------|
+| Gemini                | `gemini-3.5-flash-lite`, `gemini-3.6-flash` | `gemini-2.5-pro`, `gemini-3.1-pro-preview` |
+| OpenAI / Azure OpenAI | `gpt-5.6-luna`, `gpt-5.4-mini`              | `gpt-5.6-terra`, `gpt-5.4`, `gpt-5.6-sol`  |
+| Claude                | `claude-haiku-4-5`                          | `claude-sonnet-5`, `claude-opus-5`         |
+| OpenRouter            | _(none)_                                    | _(none)_                                   |
+
+Claude entries remain in `ai_vendors.env` for future support but cannot currently execute tasks.
+
+**Pricing tiers (`<TIER>`):** `LOWCOST`, `PREMIUM` (or any custom tier name)
+
+> **General model recommendations:** Use reasoning-capable models for all AI tasks. Tasks with web search enabled must
+> use models that support web search. This currently applies to:
+>
+> - **Dashboard:** `DASHBOARD_ANALYZE`, `DASHBOARD_FETCH_MARKET_NEWS`,
+>   `DASHBOARD_EXECUTE_ACTIONABLE_PROMPT`
+> - **Market research:** `MARKET_OUTLOOK_ANALYZE`, `SECTOR_ROTATION_RADAR_ANALYZE`, `IPO_SCANNER_DISCOVER`,
+>   `IPO_SCANNER_VERIFY`
+> - **Stock analysis:** `ANALYZE_TICKER_ANALYZE_QUICK`, `ANALYZE_TICKER_ANALYZE`,
+>   `COMPARE_INVESTMENTS_ANALYZE`, `COMPARE_INVESTMENTS_ANALYZE_SCENARIO`, `DIVIDEND_EVENT_ANALYZE`,
+>   `IPO_ANALYZER_ANALYZE`
+> - **Portfolio:** `BUILD_PORTFOLIO_ANALYZE`, `REVIEW_PORTFOLIO_ANALYZE`,
+>   `PORTFOLIO_ACTION_BRIEFING_ANALYZE`
+> - **Signals:** `WATCHLIST_MONITOR_ANALYZE`, `EARNINGS_CATALYST_TRACKER_ANALYZE`
+>
 > **Uploaded-document model recommendation:** Configure tasks that analyze uploaded files, currently
 > `IPO_ANALYZER_ANALYZE`, with a model that supports at least 250k input tokens. Converted PDF content can be
 > very long, and models with smaller context windows may reject or truncate the analysis request.
->
-> **Portfolio Action Briefing model recommendation:** Configure `PORTFOLIO_ACTION_BRIEFING_ANALYZE` with a model that
-> supports web search and structured JSON output. The lower-cost `PORTFOLIO_ACTION_BRIEFING_BUILD_PROMPT` task only
-> writes the self-contained research prompt.
 
 ### Data storage
 
@@ -174,8 +198,14 @@ Redis, when configured, is used only for temporary application data and bounded 
 | `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Optional Redis connection for temporary application data     |
 | `AL_DATASTORE_REDIS_KEY_PREFIX`    | `al:`                      | Key namespace prefix for all Redis keys                      |
 
-When OpenAI or Azure OpenAI tools are enabled, tool calls are capped automatically by reasoning level: 5 for `low`,
-10 for `medium` or the model default, and 15 for `high`.
+OpenAI and Azure OpenAI web search limits are selected automatically from the task reasoning level:
+
+| Reasoning level | Search context size | Maximum tool calls |
+|-----------------|---------------------|--------------------|
+| `low`           | `low`               | 5                  |
+| `medium`        | `medium`            | 10                 |
+| `high`          | `high`              | 15                 |
+| Model default   | `medium`            | 10                 |
 
 **Examples:**
 
@@ -191,13 +221,13 @@ AL_GITHUB_CLIENT_SECRET=your-github-client-secret
 # ai_vendors.env (nested with __)
 AL_LLM__OPENAI__PREMIUM__ENDPOINT=https://api.openai.com/v1
 AL_LLM__OPENAI__PREMIUM__API_KEY=sk-...
-AL_LLM__OPENAI__PREMIUM__MODELS=gpt-4o,gpt-4o-mini
+AL_LLM__OPENAI__PREMIUM__MODELS=gpt-5.6-terra,gpt-5.4,gpt-5.6-sol
 
 # ai_tasks.env (nested with __)
-AL_TASK__DASHBOARD_BUILD_PROMPT__VENDOR=AzureOpenAI
-AL_TASK__DASHBOARD_BUILD_PROMPT__TIER=LowCost
-AL_TASK__DASHBOARD_BUILD_PROMPT__MODEL=gpt-5.6-luna
-AL_TASK__DASHBOARD_BUILD_PROMPT__REASONING_LEVEL=low
+AL_TASK__DRAFT_PORTFOLIO_INTENT__VENDOR=AzureOpenAI
+AL_TASK__DRAFT_PORTFOLIO_INTENT__TIER=LowCost
+AL_TASK__DRAFT_PORTFOLIO_INTENT__MODEL=gpt-5.6-luna
+AL_TASK__DRAFT_PORTFOLIO_INTENT__REASONING_LEVEL=low
 ```
 
 ## 🤝 Contributing

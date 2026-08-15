@@ -5,3 +5,4 @@
 - patch(AI): Disable web search by default.
 - feat(AI): Add configurable low, medium, and high reasoning effort.
 - impr(AI): Centralize task execution policies and optimize AI vendor and task model configurations.
+- feat: Add new feature Draft Portfolio Intent.
