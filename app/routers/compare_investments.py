@@ -308,15 +308,13 @@ async def compare_investments_stream(
             yield {"data": error("AI task 'COMPARE_INVESTMENTS_BUILD_PROMPT' is not configured.")}
             return
 
-        prompt_result = await ai.execute_prompt(
+        prompt_result = await ai.execute_task_prompt(
             prompt_client,
-            prompt_task.model,
+            prompt_task,
             _build_prompt_request(
                 market=market,
                 candidate_data=candidate_data,
             ),
-            temperature=prompt_task.temperature,
-            enable_web_search=False,
         )
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate comparison prompt: {prompt_result.error}")}
@@ -331,14 +329,12 @@ async def compare_investments_stream(
             return
 
         core_analysis_prompt = f"{prompt_result.completion.rstrip()}\n\n{_CORE_STRUCTURAL_REQUIREMENTS}"
-        analysis_result = await ai.execute_prompt(
+        analysis_result = await ai.execute_task_prompt(
             analyze_client,
-            analyze_task.model,
+            analyze_task,
             core_analysis_prompt,
-            temperature=analyze_task.temperature,
             response_json_schema=investment_comparison.core_research_schema(),
             schema_name="investment_comparison_core_research",
-            enable_web_search=True,
         )
         if not analysis_result.success:
             yield {"data": error(f"Failed to research comparison candidates: {analysis_result.error}")}
@@ -363,16 +359,15 @@ async def compare_investments_stream(
                     "Repairing the comparison research response...",
                 )
             }
-            repair_result = await ai.execute_prompt(
+            repair_result = await ai.execute_task_prompt(
                 analyze_client,
-                analyze_task.model,
+                analyze_task,
                 _build_core_repair_prompt(
                     market=market,
                     candidate_data=candidate_data,
                     validation_issues=exc.validation_issues,
                     previous_response=analysis_result.completion,
                 ),
-                temperature=analyze_task.temperature,
                 response_json_schema=investment_comparison.core_research_schema(),
                 schema_name="investment_comparison_core_repair",
                 enable_web_search=False,
@@ -401,19 +396,17 @@ async def compare_investments_stream(
                 yield {"data": error("AI task 'COMPARE_INVESTMENTS_ANALYZE_SCENARIO' is not configured.")}
                 return
 
-            scenario_result = await ai.execute_prompt(
+            scenario_result = await ai.execute_task_prompt(
                 scenario_client,
-                scenario_task.model,
+                scenario_task,
                 _build_scenario_prompt(
                     market=market,
                     scenario=cleaned_scenario,
                     candidate_data=candidate_data,
                     core_research=core_research.model_dump(mode="json"),
                 ),
-                temperature=scenario_task.temperature,
                 response_json_schema=investment_comparison.scenario_research_schema(),
                 schema_name="investment_comparison_scenario_research",
-                enable_web_search=True,
             )
             if not scenario_result.success:
                 yield {"data": error(f"Failed to assess the comparison scenario: {scenario_result.error}")}
@@ -437,9 +430,9 @@ async def compare_investments_stream(
                         "Repairing the scenario assessment response...",
                     )
                 }
-                scenario_repair_result = await ai.execute_prompt(
+                scenario_repair_result = await ai.execute_task_prompt(
                     scenario_client,
-                    scenario_task.model,
+                    scenario_task,
                     _build_scenario_repair_prompt(
                         market=market,
                         scenario=cleaned_scenario,
@@ -447,7 +440,6 @@ async def compare_investments_stream(
                         validation_issues=exc.validation_issues,
                         previous_response=scenario_result.completion,
                     ),
-                    temperature=scenario_task.temperature,
                     response_json_schema=investment_comparison.scenario_research_schema(),
                     schema_name="investment_comparison_scenario_repair",
                     enable_web_search=False,

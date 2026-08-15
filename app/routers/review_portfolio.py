@@ -330,9 +330,7 @@ async def review_portfolio_stream(
             investor_context=investor_context,
             scenario_context=scenario_context,
         )
-        prompt_result = await ai.execute_prompt(
-            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
-        )
+        prompt_result = await ai.execute_task_prompt(build_prompt_client, build_prompt_task, prompt_request)
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate review prompt: {prompt_result.error}")}
@@ -346,9 +344,7 @@ async def review_portfolio_stream(
             yield {"data": error("AI task 'REVIEW_PORTFOLIO_ANALYZE' is not configured.")}
             return
 
-        review_result = await ai.execute_prompt(
-            review_client, review_task.model, prompt_result.completion, temperature=review_task.temperature
-        )
+        review_result = await ai.execute_task_prompt(review_client, review_task, prompt_result.completion)
 
         if not review_result.success:
             yield {"data": error(f"Failed to review portfolio: {review_result.error}")}
@@ -419,11 +415,10 @@ async def review_portfolio_stream(
             review_content=review_result.completion,
             schema_json=json.dumps(portfolio_rebalance.recommendation_schema(), indent=2),
         )
-        rebalance_prompt_result = await ai.execute_prompt(
+        rebalance_prompt_result = await ai.execute_task_prompt(
             rebalance_prompt_client,
-            rebalance_prompt_task.model,
+            rebalance_prompt_task,
             prompt_request,
-            temperature=rebalance_prompt_task.temperature,
         )
         if not rebalance_prompt_result.success:
             yield {"data": rebalance_error(f"Failed to generate rebalance prompt: {rebalance_prompt_result.error}")}
@@ -439,14 +434,12 @@ async def review_portfolio_stream(
             yield {"data": complete("rebalance_failed")}
             return
 
-        allocation_result = await ai.execute_prompt(
+        allocation_result = await ai.execute_task_prompt(
             rebalance_client,
-            rebalance_task.model,
+            rebalance_task,
             rebalance_prompt_result.completion,
-            temperature=rebalance_task.temperature,
             response_json_schema=portfolio_rebalance.recommendation_schema(),
             schema_name="portfolio_rebalance_target",
-            enable_web_search=False,
         )
         if not allocation_result.success:
             yield {"data": rebalance_error(f"Failed to design target allocation: {allocation_result.error}")}

@@ -169,6 +169,9 @@ Redis, when configured, is used only for temporary application data and bounded 
 | `AL_TASK__<TASK>__VENDOR`          | _(empty)_                  | AI vendor for a specific task                                |
 | `AL_TASK__<TASK>__TIER`            | _(empty)_                  | AI tier for a specific task                                  |
 | `AL_TASK__<TASK>__MODEL`           | _(empty)_                  | Model for a specific task                                    |
+| `AL_TASK__<TASK>__TEMPERATURE`     | `0.1`                      | Sampling temperature for a specific task                     |
+| `AL_TASK__<TASK>__WEB_SEARCH`      | `false`                    | Enable provider-supported web search for a specific task     |
+| `AL_TASK__<TASK>__REASONING_LEVEL` | _(model default)_          | Reasoning level: `low`, `medium`, or `high`                  |
 | `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Optional Redis connection for temporary application data     |
 | `AL_DATASTORE_REDIS_KEY_PREFIX`    | `al:`                      | Key namespace prefix for all Redis keys                      |
 
@@ -189,9 +192,11 @@ AL_LLM__OPENAI__PREMIUM__API_KEY=sk-...
 AL_LLM__OPENAI__PREMIUM__MODELS=gpt-4o,gpt-4o-mini
 
 # ai_tasks.env (nested with __)
-AL_TASK__DASHBOARD_BUILD_PROMPT__VENDOR=openai
-AL_TASK__DASHBOARD_BUILD_PROMPT__TIER=premium
-AL_TASK__DASHBOARD_BUILD_PROMPT__MODEL=gpt-4o-mini
+AL_TASK__DASHBOARD_BUILD_PROMPT__VENDOR=AzureOpenAI
+AL_TASK__DASHBOARD_BUILD_PROMPT__TIER=LowCost
+AL_TASK__DASHBOARD_BUILD_PROMPT__MODEL=gpt-5.6-luna
+AL_TASK__DASHBOARD_BUILD_PROMPT__TEMPERATURE=0.1
+AL_TASK__DASHBOARD_BUILD_PROMPT__REASONING_LEVEL=low
 ```
 
 ## 🤝 Contributing

@@ -39,7 +39,7 @@ async def _collect_stream_events(response: sse.EventSourceResponse) -> list[dict
 
 
 def _task_settings() -> types.SimpleNamespace:
-    task = types.SimpleNamespace(model="test-model", temperature=0.1)
+    task = types.SimpleNamespace(model="test-model", temperature=0.1, web_search=False, reasoning_level=None)
     return types.SimpleNamespace(
         get_ai_client=lambda _task_id: object(),
         tasks={

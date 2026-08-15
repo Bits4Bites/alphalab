@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app import config as app_config
+from app.utils import ai as ai_utils
 from app.utils.ai import DEFAULT_TEMPERATURE, AIResponse, _is_debug_mode, execute_prompt
 
 # --- Fixtures and helpers ---
@@ -289,6 +291,132 @@ class TestExecutePromptTemperature:
         await execute_prompt(client, "gpt-4o", "test", temperature=0.6)
 
         assert client.responses.create.call_args.kwargs["temperature"] == 0.6
+
+
+class TestExecutePromptRuntimePolicy:
+    @pytest.mark.asyncio
+    async def test_defaults_omit_web_search_and_reasoning(self) -> None:
+        from openai import AsyncOpenAI
+
+        client = MagicMock(spec=AsyncOpenAI)
+        client.base_url = "https://api.openai.com/v1"
+        client.responses.create = AsyncMock(return_value=FakeResponsesResponse(output_text="ok", usage=None))
+
+        await execute_prompt(client, "gpt-5.6-luna", "test")
+
+        request = client.responses.create.call_args.kwargs
+        assert "tools" not in request
+        assert "reasoning" not in request
+
+    @pytest.mark.asyncio
+    async def test_openai_receives_reasoning_effort(self) -> None:
+        from openai import AsyncOpenAI
+
+        client = MagicMock(spec=AsyncOpenAI)
+        client.base_url = "https://api.openai.com/v1"
+        client.responses.create = AsyncMock(return_value=FakeResponsesResponse(output_text="ok", usage=None))
+
+        await execute_prompt(client, "gpt-5.6-terra", "test", reasoning_effort="high")
+
+        assert client.responses.create.call_args.kwargs["reasoning"] == {"effort": "high"}
+
+    @pytest.mark.asyncio
+    async def test_gemini_receives_mapped_thinking_level(self) -> None:
+        from google.genai import Client
+        from google.genai.types import ThinkingLevel
+
+        client = MagicMock(spec=Client)
+        client.aio.models.generate_content = AsyncMock(return_value=FakeGeminiResponse(text="ok", usage_metadata=None))
+
+        await execute_prompt(client, "gemini-3.6-flash", "test", reasoning_effort="medium")
+
+        generate_config = client.aio.models.generate_content.call_args.kwargs["config"]
+        assert generate_config.thinking_config.thinking_level == ThinkingLevel.MEDIUM
+        assert generate_config.tools is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("reasoning_effort", "expected_budget"),
+        [("low", 1024), ("medium", 8192), ("high", 32768)],
+    )
+    async def test_gemini_25_receives_mapped_thinking_budget(
+        self,
+        reasoning_effort: ai_utils.ReasoningEffort,
+        expected_budget: int,
+    ) -> None:
+        from google.genai import Client
+
+        client = MagicMock(spec=Client)
+        client.aio.models.generate_content = AsyncMock(return_value=FakeGeminiResponse(text="ok", usage_metadata=None))
+
+        await execute_prompt(client, "gemini-2.5-pro", "test", reasoning_effort=reasoning_effort)
+
+        generate_config = client.aio.models.generate_content.call_args.kwargs["config"]
+        assert generate_config.thinking_config.thinking_budget == expected_budget
+        assert generate_config.thinking_config.thinking_level is None
+
+    @pytest.mark.asyncio
+    async def test_openrouter_combines_search_and_reasoning(self) -> None:
+        from openai import AsyncOpenAI
+
+        client = MagicMock(spec=AsyncOpenAI)
+        client.base_url = "https://openrouter.ai/api/v1"
+        client.chat.completions.create = AsyncMock(
+            return_value=FakeOpenRouterResponse(
+                choices=[FakeChoice(message=FakeMessage(content="ok"))],
+                usage=None,
+            )
+        )
+
+        await execute_prompt(
+            client,
+            "provider/model",
+            "test",
+            enable_web_search=True,
+            reasoning_effort="low",
+        )
+
+        assert client.chat.completions.create.call_args.kwargs["extra_body"] == {
+            "plugins": [{"id": "web"}],
+            "reasoning": {"effort": "low"},
+        }
+
+    @pytest.mark.asyncio
+    async def test_task_policy_is_forwarded_with_search_override(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        task = app_config.AITaskConfig(
+            model="gpt-5.6-terra",
+            temperature=0.2,
+            web_search=True,
+            reasoning_level="HIGH",
+        )
+        execute = AsyncMock(return_value=AIResponse(completion="ok"))
+        monkeypatch.setattr(ai_utils, "execute_prompt", execute)
+        client = object()
+
+        await ai_utils.execute_task_prompt(client, task, "test", enable_web_search=False)
+
+        execute.assert_awaited_once_with(
+            client,
+            task.model,
+            "test",
+            temperature=task.temperature,
+            response_json_schema=None,
+            schema_name="structured_response",
+            enable_web_search=False,
+            reasoning_effort="high",
+        )
+
+    def test_task_policy_defaults_and_normalizes_reasoning(self) -> None:
+        default_task = app_config.AITaskConfig()
+        configured_task = app_config.AITaskConfig(reasoning_level=" Medium ", web_search=True)
+
+        assert default_task.web_search is False
+        assert default_task.reasoning_level is None
+        assert configured_task.web_search is True
+        assert configured_task.reasoning_level == "medium"
 
 
 class TestExecutePromptStructuredOutput:

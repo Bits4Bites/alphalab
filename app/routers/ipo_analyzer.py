@@ -190,9 +190,7 @@ async def ipo_analyzer_stream(
             cleaned_additional_notes,
             has_prospectus=bool(prospectus_markdown),
         )
-        prompt_result = await ai.execute_prompt(
-            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
-        )
+        prompt_result = await ai.execute_task_prompt(build_prompt_client, build_prompt_task, prompt_request)
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate IPO analysis prompt: {prompt_result.error}")}
@@ -209,9 +207,7 @@ async def ipo_analyzer_stream(
             return
 
         analyze_task = config.ai_task_settings.tasks.get("IPO_ANALYZER_ANALYZE")
-        analyze_result = await ai.execute_prompt(
-            analyze_client, analyze_task.model, premium_prompt, temperature=analyze_task.temperature
-        )
+        analyze_result = await ai.execute_task_prompt(analyze_client, analyze_task, premium_prompt)
 
         if not analyze_result.success:
             yield {"data": error(f"Failed to analyze IPO: {analyze_result.error}")}

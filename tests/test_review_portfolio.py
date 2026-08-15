@@ -25,14 +25,31 @@ def _user() -> dict[str, str]:
 
 
 def _task_settings() -> types.SimpleNamespace:
-    task = types.SimpleNamespace(model="test-model", temperature=0.1)
+    prompt_task = types.SimpleNamespace(
+        model="test-model",
+        temperature=0.1,
+        web_search=False,
+        reasoning_level="low",
+    )
+    analyze_task = types.SimpleNamespace(
+        model="test-model",
+        temperature=0.1,
+        web_search=True,
+        reasoning_level="medium",
+    )
+    rebalance_task = types.SimpleNamespace(
+        model="test-model",
+        temperature=0.0,
+        web_search=False,
+        reasoning_level="high",
+    )
     return types.SimpleNamespace(
         get_ai_client=lambda _task_id: object(),
         tasks={
-            "REVIEW_PORTFOLIO_BUILD_PROMPT": task,
-            "REVIEW_PORTFOLIO_ANALYZE": task,
-            "REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT": task,
-            "REVIEW_PORTFOLIO_REBALANCE_ANALYZE": task,
+            "REVIEW_PORTFOLIO_BUILD_PROMPT": prompt_task,
+            "REVIEW_PORTFOLIO_ANALYZE": analyze_task,
+            "REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT": prompt_task,
+            "REVIEW_PORTFOLIO_REBALANCE_ANALYZE": rebalance_task,
         },
     )
 
