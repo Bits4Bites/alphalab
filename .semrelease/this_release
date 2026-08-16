@@ -8,3 +8,4 @@
 - impr(dashboard): Validate and normalize AI-generated sample prompts.
 - impr(dashboard): Batch and validate market news and actionable research.
 - impr(market-outlook): Streamline structured research and safe rendering.
+- impr(analyze-ticker): Harden structured quick and full research, sourcing, caching, and safe rendering.

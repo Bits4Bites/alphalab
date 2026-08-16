@@ -5,7 +5,7 @@ This internal file tracks the remaining architecture reviews for AlphaLab flows 
 Remaining inventory:
 
 - 14 reviewable flows
-- 31 configured AI tasks used by these flows
+- 30 configured AI tasks used by these flows
 - All remaining items are authenticated feature flows
 
 ## Remaining flows
@@ -19,11 +19,12 @@ Remaining inventory:
      validate and cache the report -> render safe server-generated HTML
 
 2. **Analyze Ticker**
-   - [ ] Reviewed
-   - [ ] Implemented
-   - Tasks: `ANALYZE_TICKER_BUILD_PROMPT`, `ANALYZE_TICKER_ANALYZE_QUICK`, `ANALYZE_TICKER_ANALYZE`
-   - Flow: validate ticker -> fetch market metadata -> write research prompt -> run quick or comprehensive
-     web-enabled analysis -> cache result
+   - [x] Reviewed
+   - [x] Implemented
+   - Status: Done
+   - Tasks: `ANALYZE_TICKER_ANALYZE_QUICK`, `ANALYZE_TICKER_ANALYZE`
+   - Flow: validate POST request -> resolve ticker identity and market data -> build a deterministic research prompt ->
+     run one structured quick or full analysis -> validate and cache the report -> render safe server-generated HTML
 
 3. **Compare Investments**
    - [ ] Reviewed
