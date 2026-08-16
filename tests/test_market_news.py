@@ -147,6 +147,9 @@ def test_prompts_define_trusted_roles_and_untrusted_data(monkeypatch: pytest.Mon
 
 
 def test_news_schema_rejects_unsafe_url_and_control_characters() -> None:
+    assert '"format": "uri"' not in json.dumps(market_news_schemas.MarketNewsBatch.model_json_schema())
+    assert '"format": "uri"' not in json.dumps(market_news_schemas.ActionableIdeaBatch.model_json_schema())
+
     unsafe_url = _news_data()
     unsafe_url["items"][0]["url"] = "javascript:alert(1)"  # type: ignore[index]
     unsafe_text = _news_data()

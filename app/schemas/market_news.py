@@ -15,6 +15,10 @@ _SINGLE_LINE_FIELDS = {
 }
 
 
+def _remove_unsupported_uri_format(schema: dict[str, object]) -> None:
+    schema.pop("format", None)
+
+
 class _StrictModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -40,7 +44,7 @@ class MarketNewsItem(_StrictModel):
     market: str = Field(min_length=1, max_length=80)
     published_at: datetime.date
     publisher: str = Field(min_length=1, max_length=120)
-    url: HttpUrl
+    url: HttpUrl = Field(json_schema_extra=_remove_unsupported_uri_format)
 
 
 class MarketNewsBatch(_StrictModel):
@@ -52,7 +56,7 @@ class IdeaSource(_StrictModel):
     title: str = Field(min_length=1, max_length=200)
     publisher: str = Field(min_length=1, max_length=120)
     published_at: datetime.date
-    url: HttpUrl
+    url: HttpUrl = Field(json_schema_extra=_remove_unsupported_uri_format)
 
 
 class ActionableIdea(_StrictModel):
