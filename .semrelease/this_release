@@ -4,3 +4,4 @@
 #!VERSION=0.11.1
 - fix(UI): Draft Portfolio Intent wrongly displayed on the landing page.
 - patch(config): Change primary markets to AU,US,VN.
+- impr(dashboard): Harden AI planning, streamed requests, and result rendering.
