@@ -5,7 +5,7 @@ This internal file tracks the remaining architecture reviews for AlphaLab flows 
 Remaining inventory:
 
 - 14 reviewable flows
-- 30 configured AI tasks used by these flows
+- 29 configured AI tasks used by these flows
 - All remaining items are authenticated feature flows
 
 ## Remaining flows
@@ -42,10 +42,12 @@ Remaining inventory:
      content -> run web-enabled analysis -> cache result -> delete uploaded document
 
 5. **Dividend Event**
-   - [ ] Reviewed
-   - [ ] Implemented
-   - Tasks: `DIVIDEND_EVENT_BUILD_PROMPT`, `DIVIDEND_EVENT_ANALYZE`
-   - Flow: validate event details -> write research prompt -> run web-enabled analysis -> cache result
+   - [x] Reviewed
+   - [x] Implemented
+   - Status: Done
+   - Task: `DIVIDEND_EVENT_ANALYZE`
+   - Flow: validate POST request and ticker identity -> calculate bounded dividend-history metrics -> run one
+     structured web-enabled analysis -> validate and cache the report -> render safe server-generated HTML
 
 6. **Sector Rotation Radar**
    - [ ] Reviewed

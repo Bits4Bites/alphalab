@@ -1,0 +1,234 @@
+{% macro source_refs(source_ids) -%}
+<span class="dividend-source-refs ms-1">
+    {% for source_id in source_ids %}
+    <a href="#dividend-source-{{ source_id }}" class="text-decoration-none">[{{ source_id }}]</a>
+    {% endfor %}
+</span>
+{%- endmacro %}
+
+{% macro evidence_list(title, items) -%}
+<section class="mb-3">
+    <h6 class="fw-semibold mb-2">{{ title }}</h6>
+    <ul class="mb-0">
+        {% for item in items %}
+        <li class="mb-1">{{ item.statement }}{{ source_refs(item.source_ids) }}</li>
+        {% endfor %}
+    </ul>
+</section>
+{%- endmacro %}
+
+{% set analysis = report.report %}
+<article class="dividend-event-report">
+    <div class="card border mb-3">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="text-uppercase text-muted small fw-semibold">{{ report.asset.asset_type }}</div>
+                    <h5 class="mb-1">{{ report.asset.name }} ({{ report.asset.requested_ticker }})</h5>
+                    <div class="small text-muted">
+                        {{ report.asset.exchange }} &middot; {{ report.asset.currency }}
+                        {% if report.asset.sector %} &middot; {{ report.asset.sector }}{% endif %}
+                    </div>
+                </div>
+                <div class="text-end">
+                    {% if analysis.recommendation == "capture_dividend" %}
+                    <span class="badge text-bg-success">Capture dividend</span>
+                    {% elif analysis.recommendation == "post_dividend_discount" %}
+                    <span class="badge text-bg-primary">Post-dividend discount</span>
+                    {% else %}
+                    <span class="badge text-bg-secondary">No clear edge</span>
+                    {% endif %}
+                    <span class="badge bg-light text-dark border">{{ analysis.confidence | title }} confidence</span>
+                    <div class="small text-muted mt-1">Research as of {{ analysis.as_of }}</div>
+                </div>
+            </div>
+            <div class="row g-2 mt-2 small">
+                {% if report.market.provider_current_price is not none %}
+                <div class="col-md-4">
+                    <strong>Delayed price:</strong>
+                    {{ report.market.provider_current_price | round(4) }} {{ report.asset.currency }}
+                </div>
+                {% endif %}
+                {% if report.market.hinted_gross_yield_pct is not none %}
+                <div class="col-md-4">
+                    <strong>Hinted gross yield:</strong>
+                    {{ report.market.hinted_gross_yield_pct | round(3) }}%
+                </div>
+                {% endif %}
+                <div class="col-md-4"><strong>Market data:</strong> {{ report.market.retrieved_at }}</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="mb-3">
+        <h5 class="fw-semibold mb-2">Executive summary</h5>
+        <p class="mb-0">{{ analysis.executive_summary }}</p>
+    </section>
+
+    <section class="card border mb-3">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                <h5 class="fw-semibold mb-0">Verified dividend event</h5>
+                <span class="badge bg-light text-dark border">
+                    {{ analysis.event.status | replace("_", " ") | title }}
+                </span>
+            </div>
+            <div class="row g-2 small mb-2">
+                <div class="col-sm-4">
+                    <strong>Ex-dividend:</strong> {{ analysis.event.ex_dividend_date or "Not confirmed" }}
+                </div>
+                <div class="col-sm-4">
+                    <strong>Payment:</strong> {{ analysis.event.payment_date or "Not confirmed" }}
+                </div>
+                <div class="col-sm-4">
+                    <strong>Amount:</strong>
+                    {% if analysis.event.dividend_amount is not none %}
+                    {{ analysis.event.dividend_amount }} {{ analysis.event.currency }}
+                    {% else %}
+                    Not confirmed
+                    {% endif %}
+                </div>
+                {% if analysis.event.indicated_yield_pct is not none %}
+                <div class="col-sm-4">
+                    <strong>Indicated yield:</strong> {{ analysis.event.indicated_yield_pct | round(3) }}%
+                </div>
+                {% endif %}
+                {% if analysis.event.frequency %}
+                <div class="col-sm-4"><strong>Frequency:</strong> {{ analysis.event.frequency }}</div>
+                {% endif %}
+            </div>
+            <p class="mb-0">{{ analysis.event.evidence.statement
+                }}{{ source_refs(analysis.event.evidence.source_ids) }}</p>
+        </div>
+    </section>
+
+    <section class="mb-3">
+        <h5 class="fw-semibold mb-2">Server-calculated event history</h5>
+        {% if report.market.history_events %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Ex-date</th>
+                        <th>Dividend</th>
+                        <th>Price change</th>
+                        <th>Change %</th>
+                        <th>Adjustment minus dividend</th>
+                        <th>Recovery days</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in report.market.history_events %}
+                    <tr>
+                        <td>{{ event.ex_dividend_date }}</td>
+                        <td>{{ event.dividend_amount }}</td>
+                        <td>{{ event.price_change if event.price_change is not none else "Unavailable" }}</td>
+                        <td>
+                            {% if event.price_change_pct is not none %}
+                            {{ event.price_change_pct | round(3) }}%
+                            {% else %}
+                            Unavailable
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ event.adjustment_minus_dividend
+                               if event.adjustment_minus_dividend is not none else "Unavailable" }}
+                        </td>
+                        <td>
+                            {{ event.recovery_trading_days
+                               if event.recovery_trading_days is not none else "Not observed" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="row g-2 small">
+            {% if report.market.average_price_change is not none %}
+            <div class="col-md-4">
+                <strong>Average price change:</strong> {{ report.market.average_price_change }}
+            </div>
+            {% endif %}
+            {% if report.market.average_adjustment_minus_dividend is not none %}
+            <div class="col-md-4">
+                <strong>Average adjustment minus dividend:</strong>
+                {{ report.market.average_adjustment_minus_dividend }}
+            </div>
+            {% endif %}
+            {% if report.market.median_recovery_trading_days is not none %}
+            <div class="col-md-4">
+                <strong>Median recovery:</strong> {{ report.market.median_recovery_trading_days }} trading days
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No bounded dividend history was available for deterministic comparison.</p>
+        {% endif %}
+    </section>
+
+    <section class="mb-3">
+        <h5 class="fw-semibold mb-2">Research interpretation</h5>
+        <p>{{ analysis.historical_pattern.statement
+            }}{{ source_refs(analysis.historical_pattern.source_ids) }}</p>
+        <p class="mb-0">{{ analysis.valuation_and_momentum.statement
+            }}{{ source_refs(analysis.valuation_and_momentum.source_ids) }}</p>
+    </section>
+
+    <section class="mb-3">
+        <h5 class="fw-semibold mb-2">Strategy comparison</h5>
+        <div class="row g-2">
+            {% for title, strategy in [
+                ("Capture dividend", analysis.capture_strategy),
+                ("Post-dividend discount", analysis.post_dividend_strategy)
+            ] %}
+            <div class="col-md-6">
+                <div class="border rounded p-3 h-100">
+                    <h6 class="fw-semibold">{{ title }}</h6>
+                    <p>{{ strategy.summary }}{{ source_refs(strategy.source_ids) }}</p>
+                    <div class="small fw-semibold">Potentially favorable when</div>
+                    <ul class="small">
+                        {% for condition in strategy.favorable_conditions %}<li>{{ condition }}</li>{% endfor %}
+                    </ul>
+                    <div class="small fw-semibold">Key risks</div>
+                    <ul class="small mb-0">
+                        {% for risk in strategy.risks %}<li>{{ risk }}</li>{% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {{ evidence_list("Recommendation rationale", analysis.recommendation_rationale) }}
+    {{ evidence_list("Tax and transaction-cost considerations", analysis.tax_and_cost_considerations) }}
+    {{ evidence_list("Key risks", analysis.key_risks) }}
+
+    <section class="mb-3">
+        <h6 class="fw-semibold mb-2">Invalidation conditions</h6>
+        <ul class="mb-0">
+            {% for condition in analysis.invalidation_conditions %}<li>{{ condition }}</li>{% endfor %}
+        </ul>
+    </section>
+
+    {% if report.market.warnings or analysis.warnings %}
+    <section class="alert alert-warning">
+        <h6 class="alert-heading fw-semibold">Evidence and data limitations</h6>
+        <ul class="mb-0">
+            {% for warning in report.market.warnings %}<li>{{ warning }}</li>{% endfor %}
+            {% for warning in analysis.warnings %}<li>{{ warning }}</li>{% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    <section>
+        <h5 class="fw-semibold mb-2">Sources</h5>
+        <ol class="small mb-0">
+            {% for source in analysis.sources %}
+            <li id="dividend-source-{{ source.id }}" class="mb-1">
+                <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.title }}</a>
+                - {{ source.publisher }}, {{ source.published_at }}
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+</article>

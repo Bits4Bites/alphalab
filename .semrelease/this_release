@@ -9,3 +9,4 @@
 - impr(dashboard): Batch and validate market news and actionable research.
 - impr(market-outlook): Streamline structured research and safe rendering.
 - impr(analyze-ticker): Harden structured quick and full research, sourcing, caching, and safe rendering.
+- impr(dividend-event): Add deterministic event metrics and validated source-backed analysis.
