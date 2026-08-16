@@ -23,7 +23,7 @@ def _user() -> dict[str, str]:
 
 
 def _task_settings() -> types.SimpleNamespace:
-    task = types.SimpleNamespace(model="test-model", temperature=0.1)
+    task = types.SimpleNamespace(model="test-model", web_search=False, reasoning_level=None)
     return types.SimpleNamespace(
         get_ai_client=lambda _task_id: object(),
         tasks={
@@ -77,6 +77,38 @@ async def test_successful_stream_caches_inputs_without_prospectus(monkeypatch: p
     )
     delete_pdf.assert_called_once_with("c" * 32)
     assert events[-1] == {"type": "result", "content": "# IPO analysis"}
+
+
+@pytest.mark.asyncio
+async def test_missing_prospectus_cleanup_log_omits_document_id(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    document_id = "e" * 32
+    monkeypatch.setattr(
+        ipo_analyzer.prospectus,
+        "convert_pdf_to_markdown",
+        mock.AsyncMock(side_effect=ipo_analyzer.prospectus.ProspectusNotFoundError("Prospectus unavailable")),
+    )
+    monkeypatch.setattr(
+        ipo_analyzer.prospectus,
+        "delete_pdf",
+        mock.Mock(side_effect=ipo_analyzer.prospectus.ProspectusNotFoundError("Prospectus unavailable")),
+    )
+
+    with caplog.at_level("WARNING", logger="app.routers.ipo_analyzer"):
+        response = await ipo_analyzer.ipo_analyzer_stream(
+            Request({"type": "http", "method": "GET", "path": "/analyze-ipo/stream", "headers": []}),
+            company_name="Example Limited",
+            additional_notes="",
+            prospectus_id=document_id,
+            user=_user(),
+        )
+        events = await _collect_stream_events(response)
+
+    assert events[-1] == {"type": "error", "message": "Prospectus unavailable"}
+    assert "Uploaded prospectus was already missing during cleanup." in caplog.text
+    assert document_id not in caplog.text
 
 
 def test_page_embeds_cached_result_and_browser_storage(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

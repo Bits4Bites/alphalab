@@ -292,7 +292,7 @@ def validate_core_research(
             logger.warning(
                 "Removed %d unresolved source reference(s) from core research for %s.",
                 removed_count,
-                ticker,
+                ticker.replace("\r\n", "").replace("\n", "").replace("\r", ""),
             )
         normalized_candidates.append(candidate.model_copy(update={"name": quote.display_name or candidate.name}))
 

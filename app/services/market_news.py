@@ -145,11 +145,9 @@ async def _generate_actionable_prompts(news: list[dict]) -> list[str] | None:
 
     logger.info("Generating actionable prompts via AI task '%s'...", task_id)
     try:
-        from app.utils.ai import execute_prompt
+        from app.utils import ai
 
-        result = await execute_prompt(
-            client, task_config.model, _build_actionable_prompts_prompt(news), temperature=task_config.temperature
-        )
+        result = await ai.execute_task_prompt(client, task_config, _build_actionable_prompts_prompt(news))
     except Exception as exc:
         logger.error("Actionable prompt generation failed: %s", exc)
         return None
@@ -198,18 +196,17 @@ async def _execute_actionable_prompts(prompts: list[str]) -> None:
     redis = datastore_settings.redis_client
     prefix = datastore_settings.key_prefix
 
-    from app.utils.ai import execute_prompt
+    from app.utils import ai
 
     for prompt in prompts:
         prompt_id = _prompt_id(prompt)
         cache_key = f"{prefix}{REDIS_KEY_PROMPT_RESULT_PREFIX}{prompt_id}"
 
         try:
-            result = await execute_prompt(
+            result = await ai.execute_task_prompt(
                 client,
-                task_config.model,
+                task_config,
                 EXECUTE_PROMPT_TEMPLATE.format(prompt=prompt),
-                temperature=task_config.temperature,
             )
             if result.success and result.completion:
                 payload = json.dumps({"prompt": prompt, "result": result.completion.strip()})
@@ -265,11 +262,9 @@ async def fetch_market_news() -> None:
     # Fetch news
     logger.info("Fetching market news via AI task '%s'...", task_id)
     try:
-        from app.utils.ai import execute_prompt
+        from app.utils import ai
 
-        result = await execute_prompt(
-            client, task_config.model, _build_system_prompt(), temperature=task_config.temperature
-        )
+        result = await ai.execute_task_prompt(client, task_config, _build_system_prompt())
     except Exception as exc:
         logger.error("Market news fetch failed: %s", exc)
         return

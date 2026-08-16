@@ -157,9 +157,7 @@ async def build_portfolio_stream(
                 else ""
             ),
         )
-        prompt_result = await ai.execute_prompt(
-            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
-        )
+        prompt_result = await ai.execute_task_prompt(build_prompt_client, build_prompt_task, prompt_request)
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to generate portfolio prompt: {prompt_result.error}")}
@@ -179,9 +177,7 @@ async def build_portfolio_stream(
             return
 
         portfolio_task = config.ai_task_settings.tasks.get("BUILD_PORTFOLIO_ANALYZE")
-        portfolio_result = await ai.execute_prompt(
-            portfolio_client, portfolio_task.model, prompt_result.completion, temperature=portfolio_task.temperature
-        )
+        portfolio_result = await ai.execute_task_prompt(portfolio_client, portfolio_task, prompt_result.completion)
 
         if not portfolio_result.success:
             yield {"data": error(f"Failed to build portfolio: {portfolio_result.error}")}

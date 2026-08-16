@@ -75,9 +75,7 @@ async def dashboard_stream(
             f"- NOT include any suggested follow-up questions\n"
             f"Output only the prompt text, nothing else."
         )
-        prompt_result = await ai.execute_prompt(
-            build_prompt_client, build_prompt_task.model, prompt_request, temperature=build_prompt_task.temperature
-        )
+        prompt_result = await ai.execute_task_prompt(build_prompt_client, build_prompt_task, prompt_request)
 
         if not prompt_result.success:
             yield {"data": error(f"Failed to process your request: {prompt_result.error}")}
@@ -98,9 +96,7 @@ async def dashboard_stream(
             return
 
         analyze_task = config.ai_task_settings.tasks.get("DASHBOARD_ANALYZE")
-        analyze_result = await ai.execute_prompt(
-            analyze_client, analyze_task.model, completion, temperature=analyze_task.temperature
-        )
+        analyze_result = await ai.execute_task_prompt(analyze_client, analyze_task, completion)
 
         if not analyze_result.success:
             yield {"data": error(f"Failed to generate analysis: {analyze_result.error}")}
