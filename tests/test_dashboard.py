@@ -71,6 +71,7 @@ def test_dashboard_renders_when_authenticated(client: TestClient) -> None:
     assert "method: 'POST'" in response.text
     assert "renderSafeDashboardAnalysis(content" in response.text
     assert "sanitizeDashboardMarkdownNode" in response.text
+    assert "renderSafeDashboardAnalysis(element.textContent, element)" in response.text
 
 
 @pytest.mark.asyncio

@@ -5,7 +5,7 @@ This internal file tracks the architecture review of every AlphaLab flow that in
 Inventory baseline:
 
 - 17 reviewable flows
-- 38 configured AI tasks
+- 37 configured AI tasks
 - Authenticated feature flows and background AI jobs are both included
 
 ## Authenticated feature flows
@@ -120,12 +120,12 @@ Inventory baseline:
   - Flow: check cache freshness -> generate a structured prompt list -> parse and validate output -> cache prompts
 
 - **Dashboard market news and actionable research**
-  - [ ] Reviewed
-  - [ ] Implemented
-  - Tasks: `DASHBOARD_FETCH_MARKET_NEWS`, `DASHBOARD_GENERATE_ACTIONABLE_PROMPTS`,
-    `DASHBOARD_EXECUTE_ACTIONABLE_PROMPT`
-  - Flow: check cache freshness -> fetch web-enabled market news -> parse and cache news -> generate actionable
-    prompts -> parse and cache prompts -> execute each prompt with web search -> cache each result
+  - [x] Reviewed
+  - [x] Implemented
+  - Status: Done
+  - Tasks: `DASHBOARD_FETCH_MARKET_NEWS`, `DASHBOARD_GENERATE_ACTIONABLE_IDEAS`
+  - Flow: validate independent caches -> fetch structured web-enabled market news when stale -> generate one
+    structured, web-enabled batch of actionable ideas when stale -> validate and cache each batch
 
 ## Review criteria
 

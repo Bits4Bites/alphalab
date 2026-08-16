@@ -158,7 +158,7 @@ Claude entries remain in `ai_vendors.env` for future support but cannot currentl
 > use models that support web search. This currently applies to:
 >
 > - **Dashboard:** `DASHBOARD_ANALYZE`, `DASHBOARD_FETCH_MARKET_NEWS`,
->   `DASHBOARD_EXECUTE_ACTIONABLE_PROMPT`
+>   `DASHBOARD_GENERATE_ACTIONABLE_IDEAS`
 > - **Market research:** `MARKET_OUTLOOK_ANALYZE`, `SECTOR_ROTATION_RADAR_ANALYZE`, `IPO_SCANNER_DISCOVER`,
 >   `IPO_SCANNER_VERIFY`
 > - **Stock analysis:** `ANALYZE_TICKER_ANALYZE_QUICK`, `ANALYZE_TICKER_ANALYZE`,

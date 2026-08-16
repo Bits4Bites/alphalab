@@ -6,3 +6,4 @@
 - patch(config): Change primary markets to AU,US,VN.
 - impr(dashboard): Harden AI planning, streamed requests, and result rendering.
 - impr(dashboard): Validate and normalize AI-generated sample prompts.
+- impr(dashboard): Batch and validate market news and actionable research.

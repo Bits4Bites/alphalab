@@ -102,7 +102,7 @@
                         <p class="card-text text-muted small mb-2">{{ item.summary }}</p>
                         <div class="d-flex justify-content-between">
                             <span class="badge bg-light text-dark">{{ item.market }}</span>
-                            <small class="text-muted">{{ item.date }}</small>
+                            <small class="text-muted">{{ item.publisher }} · {{ item.published_at }}</small>
                         </div>
                     </div>
                 </div>
@@ -125,6 +125,15 @@
                     <div class="card-body p-3">
                         <h6 class="card-title fw-semibold text-primary mb-2">{{ idea.prompt }}</h6>
                         <div class="card-text small mb-0 ai-idea-content">{{ idea.result }}</div>
+                        <p class="small text-muted mt-2 mb-1">
+                            <strong>Uncertainty:</strong> {{ idea.uncertainty }}
+                        </p>
+                        <div class="small">
+                            {% for source in idea.sources %}
+                            <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer"
+                               class="me-2">{{ source.publisher }}</a>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -135,12 +144,6 @@
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script>
-// Render AI Ideas markdown content
-document.querySelectorAll('.ai-idea-content').forEach(el => {
-    renderMarkdown(el.textContent, el);
-});
-</script>
 <script>
 // Sample prompts - use server-provided prompts if available, otherwise static fallback
 const serverPrompts = {{ sample_prompts | tojson }};
@@ -266,6 +269,10 @@ function renderSafeDashboardAnalysis(content, element) {
     element.replaceChildren(sanitized);
     renderMath(element);
 }
+
+document.querySelectorAll('.ai-idea-content').forEach(function(element) {
+    renderSafeDashboardAnalysis(element.textContent, element);
+});
 
 function parseDashboardSseEvent(rawEvent) {
     const dataLines = [];
