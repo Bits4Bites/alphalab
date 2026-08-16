@@ -10,3 +10,4 @@
 - impr(market-outlook): Streamline structured research and safe rendering.
 - impr(analyze-ticker): Harden structured quick and full research, sourcing, caching, and safe rendering.
 - impr(dividend-event): Add deterministic event metrics and validated source-backed analysis.
+- impr(portfolio-intent): Add validated neutral drafting, persistent browser state, and safe portfolio handoffs.

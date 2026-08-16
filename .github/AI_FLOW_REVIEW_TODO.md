@@ -4,29 +4,13 @@ This internal file tracks the remaining architecture reviews for AlphaLab flows 
 
 Remaining inventory:
 
-- 14 reviewable flows
-- 29 configured AI tasks used by these flows
+- 11 reviewable flows
+- 25 configured AI tasks used by these flows
 - All remaining items are authenticated feature flows
 
 ## Remaining flows
 
-1. **Market Outlook**
-   - [x] Reviewed
-   - [x] Implemented
-   - Status: Done
-   - Task: `MARKET_OUTLOOK_ANALYZE`
-   - Flow: validate POST request -> build a deterministic research prompt -> run structured web-enabled analysis ->
-     validate and cache the report -> render safe server-generated HTML
-
-2. **Analyze Ticker**
-   - [x] Reviewed
-   - [x] Implemented
-   - Status: Done
-   - Tasks: `ANALYZE_TICKER_ANALYZE_QUICK`, `ANALYZE_TICKER_ANALYZE`
-   - Flow: validate POST request -> resolve ticker identity and market data -> build a deterministic research prompt ->
-     run one structured quick or full analysis -> validate and cache the report -> render safe server-generated HTML
-
-3. **Compare Investments**
+1. **Compare Investments**
    - [ ] Reviewed
    - [ ] Implemented
    - Tasks: `COMPARE_INVESTMENTS_BUILD_PROMPT`, `COMPARE_INVESTMENTS_ANALYZE`,
@@ -34,28 +18,20 @@ Remaining inventory:
    - Flow: validate candidates and quotes -> write research prompt -> run structured core research -> optionally repair
      invalid output -> optionally run and repair scenario research -> calculate rankings -> cache result
 
-4. **IPO / Listing Event Analyzer**
+2. **IPO / Listing Event Analyzer**
    - [ ] Reviewed
    - [ ] Implemented
    - Tasks: `IPO_ANALYZER_BUILD_PROMPT`, `IPO_ANALYZER_ANALYZE`
    - Flow: validate inputs -> optionally convert an uploaded prospectus -> write research prompt -> attach prospectus
      content -> run web-enabled analysis -> cache result -> delete uploaded document
 
-5. **Dividend Event**
-   - [x] Reviewed
-   - [x] Implemented
-   - Status: Done
-   - Task: `DIVIDEND_EVENT_ANALYZE`
-   - Flow: validate POST request and ticker identity -> calculate bounded dividend-history metrics -> run one
-     structured web-enabled analysis -> validate and cache the report -> render safe server-generated HTML
-
-6. **Sector Rotation Radar**
+3. **Sector Rotation Radar**
    - [ ] Reviewed
    - [ ] Implemented
    - Tasks: `SECTOR_ROTATION_RADAR_BUILD_PROMPT`, `SECTOR_ROTATION_RADAR_ANALYZE`
    - Flow: validate market inputs -> write research prompt -> run web-enabled analysis -> cache result
 
-7. **IPO Scanner**
+4. **IPO Scanner**
    - [ ] Reviewed
    - [ ] Implemented
    - Tasks: `IPO_SCANNER_VALIDATE_MARKET`, `IPO_SCANNER_BUILD_DISCOVERY_PROMPT`, `IPO_SCANNER_DISCOVER`,
@@ -63,46 +39,48 @@ Remaining inventory:
    - Flow: validate input -> AI-validate market -> write discovery prompt -> discover candidates with web search ->
      parse candidates -> write verification prompt -> verify candidates with web search -> cache result
 
-8. **Draft Portfolio Intent**
-   - [ ] Reviewed
-   - [ ] Implemented
+5. **Draft Portfolio Intent**
+   - [x] Reviewed
+   - [x] Implemented
+   - Status: Done
    - Task: `DRAFT_PORTFOLIO_INTENT`
-   - Flow: validate optional preferences -> generate a structured draft or clarification questions -> validate response ->
-     optionally repeat with clarification answers -> hand off the edited intent
+   - Flow: validate and persist optional preferences -> deterministically clarify an empty request or generate one
+     neutral structured draft -> optionally run one clarification follow-up -> validate and persist output -> choose
+     Build or Review handoff with compatible fields
 
-9. **Build Portfolio**
+6. **Build Portfolio**
    - [ ] Reviewed
    - [ ] Implemented
    - Tasks: `BUILD_PORTFOLIO_BUILD_PROMPT`, `BUILD_PORTFOLIO_ANALYZE`
    - Flow: validate investor inputs -> write portfolio research prompt -> run web-enabled portfolio analysis -> cache result
 
-10. **Review Portfolio**
+7. **Review Portfolio**
     - [ ] Reviewed
     - [ ] Implemented
     - Tasks: `REVIEW_PORTFOLIO_BUILD_PROMPT`, `REVIEW_PORTFOLIO_ANALYZE`
     - Flow: validate holdings and investor context -> write review prompt -> run web-enabled portfolio review -> cache result
 
-11. **Portfolio Rebalance Plan**
+8. **Portfolio Rebalance Plan**
     - [ ] Reviewed
     - [ ] Implemented
     - Tasks: `REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT`, `REVIEW_PORTFOLIO_REBALANCE_ANALYZE`
     - Flow: complete portfolio review -> fetch current quotes -> write allocation prompt -> generate structured target
       allocations -> validate proposed securities and prices -> calculate deterministic trades -> cache result
 
-12. **Portfolio Action Briefing**
+9. **Portfolio Action Briefing**
     - [ ] Reviewed
     - [ ] Implemented
     - Tasks: `PORTFOLIO_ACTION_BRIEFING_BUILD_PROMPT`, `PORTFOLIO_ACTION_BRIEFING_ANALYZE`
     - Flow: validate holdings and watchlist -> fetch current quotes -> write research prompt -> run structured web research ->
       optionally repair invalid output without web search -> rank and size actions deterministically
 
-13. **Watchlist Monitor**
+10. **Watchlist Monitor**
     - [ ] Reviewed
     - [ ] Implemented
     - Tasks: `WATCHLIST_MONITOR_BUILD_PROMPT`, `WATCHLIST_MONITOR_ANALYZE`
     - Flow: validate watchlist inputs -> write monitoring prompt -> run web-enabled analysis -> cache result
 
-14. **Earnings Catalyst Tracker**
+11. **Earnings Catalyst Tracker**
     - [ ] Reviewed
     - [ ] Implemented
     - Tasks: `EARNINGS_CATALYST_TRACKER_BUILD_PROMPT`, `EARNINGS_CATALYST_TRACKER_ANALYZE`

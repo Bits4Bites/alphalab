@@ -1,4 +1,5 @@
 import json
+import pathlib
 import types
 from unittest import mock
 
@@ -130,3 +131,12 @@ def test_page_embeds_cached_result_and_browser_storage(client: TestClient, monke
         "existing_holdings",
     ):
         assert f"{field}:" in save_call
+
+    handoff_script = pathlib.Path("app/static/js/draft-portfolio-intent.js").read_text(encoding="utf-8")
+    assert "const HANDOFF_VERSION = 2" in handoff_script
+    assert "age <= HANDOFF_MAX_AGE_MS" in handoff_script
+    assert "fields: buildHandoffFields()" in handoff_script
+    assert "fields.risk_tolerance = RISK_LABELS[inputs.risk_tolerance]" in handoff_script
+    assert "fields.target_market = inputs.market_country" in handoff_script
+    assert "fields.investment_horizon = inputs.holding_horizon" in handoff_script
+    assert "fields.budget = inputs.budget" in handoff_script

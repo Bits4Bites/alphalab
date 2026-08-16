@@ -1,5 +1,6 @@
 import datetime
 import json
+import pathlib
 import types
 from decimal import Decimal
 from unittest import mock
@@ -164,6 +165,13 @@ def test_page_embeds_cached_result_and_browser_storage(client: TestClient, monke
     assert "REVIEW_PORTFOLIO_MARKET_CURRENCIES" in response.text
     assert "marked/marked.min.js" in response.text
     assert "sanitizeMarkdownFragment" in response.text
+
+    handoff_script = pathlib.Path("app/static/js/draft-portfolio-intent.js").read_text(encoding="utf-8")
+    assert "value.version !== HANDOFF_VERSION" in handoff_script
+    assert "handoff.target !== expectedTarget" in handoff_script
+    assert "field.value.trim() && field.value.trim() !== resolvedValue.trim()" in handoff_script
+    assert "window.confirm('Replace the existing portfolio intent" in handoff_script
+    assert "removeHandoff();" in handoff_script
 
 
 def test_page_embeds_cached_rebalance_plan(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
