@@ -1,0 +1,124 @@
+{% macro source_refs(source_ids) -%}
+<span class="market-outlook-source-refs ms-1">
+    {% for source_id in source_ids %}
+    <a href="#market-outlook-source-{{ source_id }}" class="text-decoration-none">[{{ source_id }}]</a>
+    {% endfor %}
+</span>
+{%- endmacro %}
+
+{% macro evidence_section(title, items) -%}
+{% if items %}
+<section class="mb-3">
+    <h6 class="fw-semibold mb-2">{{ title }}</h6>
+    <ul class="mb-0">
+        {% for item in items %}
+        <li class="mb-1">{{ item.statement }}{{ source_refs(item.source_ids) }}</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{%- endmacro %}
+
+<article class="market-outlook-report">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+            <div class="text-uppercase text-muted small fw-semibold">Executive summary</div>
+            <p class="mb-0">{{ report.executive_summary }}</p>
+        </div>
+        <span class="badge bg-light text-dark border">As of {{ report.as_of }}</span>
+    </div>
+
+    {% for outlook in report.market_outlooks %}
+    <section class="card border mb-4" aria-labelledby="market-outlook-{{ loop.index }}">
+        <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h5 class="mb-0" id="market-outlook-{{ loop.index }}">{{ outlook.market }}</h5>
+            <div class="d-flex gap-2">
+                {% if outlook.direction == "bullish" %}
+                <span class="badge text-bg-success">Bullish</span>
+                {% elif outlook.direction == "bearish" %}
+                <span class="badge text-bg-danger">Bearish</span>
+                {% else %}
+                <span class="badge text-bg-secondary">Neutral</span>
+                {% endif %}
+                <span class="badge bg-light text-dark border">{{ outlook.confidence | title }} confidence</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <p class="lead fs-6">
+                {{ outlook.outlook.statement }}{{ source_refs(outlook.outlook.source_ids) }}
+            </p>
+
+            {{ evidence_section("Recent drivers", outlook.recent_drivers) }}
+            {{ evidence_section("Macro signals", outlook.macro_signals) }}
+
+            {% if outlook.upcoming_catalysts %}
+            <section class="mb-3">
+                <h6 class="fw-semibold mb-2">Upcoming catalysts</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Event</th>
+                                <th scope="col">Expected impact</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for catalyst in outlook.upcoming_catalysts %}
+                            <tr>
+                                <td class="text-nowrap">{{ catalyst.date }}</td>
+                                <td>{{ catalyst.event }}{{ source_refs(catalyst.source_ids) }}</td>
+                                <td>{{ catalyst.expected_impact }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            {% endif %}
+
+            {{ evidence_section("Supported market levels", outlook.key_levels) }}
+
+            <section class="mb-3">
+                <h6 class="fw-semibold mb-2">Scenarios</h6>
+                <div class="row g-2">
+                    {% for scenario in outlook.scenarios %}
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="fw-semibold text-capitalize mb-1">{{ scenario.name }} case</div>
+                            <p class="small mb-2">
+                                {{ scenario.description }}{{ source_refs(scenario.source_ids) }}
+                            </p>
+                            <div class="small text-muted fw-semibold">Triggers</div>
+                            <ul class="small mb-0">
+                                {% for trigger in scenario.triggers %}
+                                <li>{{ trigger }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            {{ evidence_section("Relative-strength themes", outlook.relative_strength_themes) }}
+            {{ evidence_section("Key risks", outlook.key_risks) }}
+        </div>
+    </section>
+    {% endfor %}
+
+    {{ evidence_section("Cross-market risks", report.cross_market_risks) }}
+    {{ evidence_section("Investor takeaways", report.investor_takeaways) }}
+
+    <section>
+        <h5 class="fw-semibold mb-2">Sources</h5>
+        <ol class="small mb-0">
+            {% for source in report.sources %}
+            <li id="market-outlook-source-{{ source.id }}" class="mb-1">
+                <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.title }}</a>
+                - {{ source.publisher }}, {{ source.published_at }}
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+</article>

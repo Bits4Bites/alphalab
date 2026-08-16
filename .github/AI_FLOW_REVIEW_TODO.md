@@ -5,16 +5,18 @@ This internal file tracks the remaining architecture reviews for AlphaLab flows 
 Remaining inventory:
 
 - 14 reviewable flows
-- 32 configured AI tasks used by these flows
+- 31 configured AI tasks used by these flows
 - All remaining items are authenticated feature flows
 
 ## Remaining flows
 
 1. **Market Outlook**
-   - [ ] Reviewed
-   - [ ] Implemented
-   - Tasks: `MARKET_OUTLOOK_BUILD_PROMPT`, `MARKET_OUTLOOK_ANALYZE`
-   - Flow: resolve markets -> write research prompt -> run web-enabled analysis -> cache result
+   - [x] Reviewed
+   - [x] Implemented
+   - Status: Done
+   - Task: `MARKET_OUTLOOK_ANALYZE`
+   - Flow: validate POST request -> build a deterministic research prompt -> run structured web-enabled analysis ->
+     validate and cache the report -> render safe server-generated HTML
 
 2. **Analyze Ticker**
    - [ ] Reviewed
