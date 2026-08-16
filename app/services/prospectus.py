@@ -98,7 +98,8 @@ def delete_pdf(
 ) -> None:
     """Delete a stored prospectus after its analysis lifecycle finishes."""
     path = get_pdf_path(document_id, upload_directory=upload_directory)
-    path.unlink()
+    if str(path).startswith(str(upload_directory)) and path.is_file():
+        path.unlink()
 
 
 async def convert_pdf_to_markdown(
