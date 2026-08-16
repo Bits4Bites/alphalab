@@ -1,5 +1,18 @@
 # AlphaLab release notes
 
+## 2026-08-16 - v0.11.0
+
+### Added/Refactoring/Deprecation
+
+- Feat(AI): Add configurable low, medium, and high reasoning effort.
+- Feat: Add new feature Draft Portfolio Intent.
+
+### Fixed/Improvements
+
+- Patch(AI): Disable web search by default.
+- Impr(AI): Centralize task execution policies and optimize AI vendor and task model configurations.
+- Fix(CodeQL): Fix CodeQL warnings.
+
 ## 2026-08-07 - v0.10.0
 
 ### Added/Refactoring/Deprecation
