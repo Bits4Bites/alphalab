@@ -54,12 +54,23 @@
                             </select>
                         </div>
                         <div class="col-md-8">
-                            <label for="investment-theme" class="form-label fw-semibold">
-                                Investment Theme / Flavor
-                                <span class="text-danger ms-2">*</span>
-                            </label>
-                            <input type="text" class="form-control" id="investment-theme" name="investment_theme"
-                                   placeholder="e.g. AI & Technology, Green Energy, Dividends, Growth, Value" required>
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                <label for="investment-theme" class="form-label fw-semibold mb-0">
+                                    Portfolio Intent / Investment Theme
+                                    <span class="text-danger ms-2">*</span>
+                                </label>
+                                <a class="small" href="/draft-portfolio-intent">
+                                    Need help? Draft portfolio intent
+                                </a>
+                            </div>
+                            <textarea class="form-control" id="investment-theme" name="investment_theme"
+                                      rows="4" required
+                                      data-portfolio-intent-handoff-target="build"
+                                      data-portfolio-intent-handoff-status="#investment-theme-draft-success"
+                                      placeholder="Paste a portfolio intent, or enter a theme such as AI, dividends, growth, or value"></textarea>
+                            <div id="investment-theme-draft-success"
+                                 class="alert alert-success small py-2 mt-2 mb-0 d-none"
+                                 role="status" aria-live="polite"></div>
                         </div>
                         <div class="col-md-4">
                             <label for="budget" class="form-label fw-semibold">
@@ -412,4 +423,8 @@ function printPortfolio() {
 {% if cached_result %}
 <script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/draft-portfolio-intent.js') }}"></script>
 {% endblock %}

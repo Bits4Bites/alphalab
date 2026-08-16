@@ -31,13 +31,22 @@ def _user() -> dict[str, str]:
 
 
 def _task_settings() -> types.SimpleNamespace:
-    task = types.SimpleNamespace(model="test-model", temperature=0.1)
+    prompt_task = types.SimpleNamespace(
+        model="test-model",
+        web_search=False,
+        reasoning_level="low",
+    )
+    analyze_task = types.SimpleNamespace(
+        model="test-model",
+        web_search=True,
+        reasoning_level="high",
+    )
     return types.SimpleNamespace(
         get_ai_client=lambda _task_id: object(),
         tasks={
-            "COMPARE_INVESTMENTS_BUILD_PROMPT": task,
-            "COMPARE_INVESTMENTS_ANALYZE": task,
-            "COMPARE_INVESTMENTS_ANALYZE_SCENARIO": task,
+            "COMPARE_INVESTMENTS_BUILD_PROMPT": prompt_task,
+            "COMPARE_INVESTMENTS_ANALYZE": analyze_task,
+            "COMPARE_INVESTMENTS_ANALYZE_SCENARIO": analyze_task,
         },
     )
 

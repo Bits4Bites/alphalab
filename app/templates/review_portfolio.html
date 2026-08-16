@@ -133,12 +133,23 @@
                             </div>
 
                             <div class="col-12">
-                                <label for="investment-goals" class="form-label fw-semibold">
-                                    Investment Goals <span class="text-muted fw-normal">(Optional)</span>
-                                </label>
-                                <input type="text" class="form-control" id="investment-goals"
-                                       name="investment_goals" maxlength="1000"
-                                       placeholder="e.g. Retirement savings, capital growth, passive income">
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                    <label for="investment-goals" class="form-label fw-semibold mb-0">
+                                        Portfolio Intent / Investment Goals
+                                        <span class="text-muted fw-normal">(Optional)</span>
+                                    </label>
+                                    <a class="small" href="/draft-portfolio-intent">
+                                        Need help? Draft portfolio intent
+                                    </a>
+                                </div>
+                                <textarea class="form-control" id="investment-goals"
+                                          name="investment_goals" rows="4" maxlength="2500"
+                                          data-portfolio-intent-handoff-target="review"
+                                          data-portfolio-intent-handoff-status="#investment-goals-draft-success"
+                                          placeholder="e.g. Retirement savings, capital growth, passive income"></textarea>
+                                <div id="investment-goals-draft-success"
+                                     class="alert alert-success small py-2 mt-2 mb-0 d-none"
+                                     role="status" aria-live="polite"></div>
                             </div>
 
                             <div class="col-12">
@@ -1313,4 +1324,8 @@ document.getElementById('review-form').addEventListener('submit', function(event
 {% if cached_rebalance %}
 <script id="cached-rebalance-data" type="application/json">{{ cached_rebalance | tojson }}</script>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/draft-portfolio-intent.js') }}"></script>
 {% endblock %}

@@ -196,9 +196,9 @@ async def portfolio_action_briefing_stream(
         if not prompt_client or not prompt_task:
             yield event("error", message="AI task 'PORTFOLIO_ACTION_BRIEFING_BUILD_PROMPT' is not configured.")
             return
-        prompt_result = await ai.execute_prompt(
+        prompt_result = await ai.execute_task_prompt(
             prompt_client,
-            prompt_task.model,
+            prompt_task,
             _build_prompt_request(
                 body,
                 market=market,
@@ -207,8 +207,6 @@ async def portfolio_action_briefing_stream(
                 quotes=quotes,
                 available_cash=str(settings.available_cash),
             ),
-            temperature=prompt_task.temperature,
-            enable_web_search=False,
         )
         if not prompt_result.success:
             yield event("error", message=f"Failed to build the briefing prompt: {prompt_result.error}")
@@ -220,14 +218,12 @@ async def portfolio_action_briefing_stream(
         if not analyze_client or not analyze_task:
             yield event("error", message="AI task 'PORTFOLIO_ACTION_BRIEFING_ANALYZE' is not configured.")
             return
-        analysis_result = await ai.execute_prompt(
+        analysis_result = await ai.execute_task_prompt(
             analyze_client,
-            analyze_task.model,
+            analyze_task,
             prompt_result.completion,
-            temperature=analyze_task.temperature,
             response_json_schema=portfolio_action_briefing.research_schema(),
             schema_name="portfolio_action_briefing_research",
-            enable_web_search=True,
         )
         if not analysis_result.success:
             yield event("error", message=f"Failed to research the action briefing: {analysis_result.error}")
@@ -246,9 +242,9 @@ async def portfolio_action_briefing_stream(
             )
         except portfolio_action_briefing.BriefingResearchError as exc:
             yield event("progress", step=5, total=total_steps, message="Repairing the briefing response...")
-            repair_result = await ai.execute_prompt(
+            repair_result = await ai.execute_task_prompt(
                 analyze_client,
-                analyze_task.model,
+                analyze_task,
                 _REPAIR_PROMPT_TEMPLATE.format(
                     allowed_tickers_json=json.dumps(sorted(allowed_tickers)),
                     validation_issues_json=json.dumps(exc.validation_issues, indent=2),
@@ -257,7 +253,6 @@ async def portfolio_action_briefing_stream(
                         indent=2,
                     ),
                 ),
-                temperature=analyze_task.temperature,
                 response_json_schema=portfolio_action_briefing.research_schema(),
                 schema_name="portfolio_action_briefing_repair",
                 enable_web_search=False,

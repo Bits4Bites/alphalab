@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
@@ -93,10 +93,10 @@ class AIVendorSettings(BaseSettings):
     Env var format: AL_LLM__{VENDOR}__{TIER}__{FIELD}
 
     Example:
-        AL_LLM__GEMINI__FREE__MODELS="gemini-2.5-flash, gemini-2.5-flash-lite"
-        AL_LLM__GEMINI__FREE__API_KEY="your-api-key"
-        AL_LLM__GEMINI__FREE__ENDPOINT="https://generativelanguage.googleapis.com"
-        AL_LLM__OPENAI__PREMIUM__MODELS="gpt-4o, o1-preview"
+        AL_LLM__GEMINI__LOWCOST__MODELS="gemini-3.5-flash-lite, gemini-3.6-flash"
+        AL_LLM__GEMINI__LOWCOST__API_KEY="your-api-key"
+        AL_LLM__GEMINI__LOWCOST__ENDPOINT="https://generativelanguage.googleapis.com"
+        AL_LLM__OPENAI__PREMIUM__MODELS="gpt-5.6-terra, gpt-5.6-sol"
         AL_LLM__OPENAI__PREMIUM__API_KEY="sk-..."
         AL_LLM__OPENAI__PREMIUM__ENDPOINT="https://api.openai.com"
     """
@@ -120,7 +120,7 @@ class AIVendorSettings(BaseSettings):
                 return tiers
         return None
 
-    def get_ai_client(self, vendor: str, tier: str, timeout_sec: float = 180) -> GenaiClient | AsyncOpenAI | None:
+    def get_ai_client(self, vendor: str, tier: str, timeout_sec: float = 600) -> GenaiClient | AsyncOpenAI | None:
         """Return an async AI client for the given vendor and tier, or None if not found.
 
         Supported vendors:
@@ -182,7 +182,16 @@ class AITaskConfig(BaseSettings):
     vendor: str = ""
     tier: str = ""
     model: str = ""
-    temperature: float | None = None
+    web_search: bool = False
+    reasoning_level: Literal["low", "medium", "high"] | None = None
+
+    @field_validator("reasoning_level", mode="before")
+    @classmethod
+    def normalize_reasoning_level(cls, value: object) -> object:
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            return normalized or None
+        return value
 
 
 class AITaskSettings(BaseSettings):
@@ -191,9 +200,11 @@ class AITaskSettings(BaseSettings):
     Env var format: AL_TASK__{TASK_NAME}__{FIELD}
 
     Example:
-        AL_TASK__ANALYZE_TICKER__VENDOR=GEMINI
-        AL_TASK__ANALYZE_TICKER__TIER=FREE
-        AL_TASK__ANALYZE_TICKER__MODEL=gemini-2.5-flash
+        AL_TASK__ANALYZE_TICKER__VENDOR=Gemini
+        AL_TASK__ANALYZE_TICKER__TIER=Premium
+        AL_TASK__ANALYZE_TICKER__MODEL=gemini-3.1-pro-preview
+        AL_TASK__ANALYZE_TICKER__WEB_SEARCH=true
+        AL_TASK__ANALYZE_TICKER__REASONING_LEVEL=Medium
     """
 
     tasks: dict[str, AITaskConfig] = Field(alias="AL_TASK", default={})

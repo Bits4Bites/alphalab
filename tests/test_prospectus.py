@@ -134,9 +134,8 @@ async def test_upload_endpoint_returns_document_id(monkeypatch: pytest.MonkeyPat
 
 @pytest.mark.asyncio
 async def test_upload_endpoint_returns_413_for_oversized_pdf(monkeypatch: pytest.MonkeyPatch) -> None:
-    save_pdf = mock.AsyncMock(
-        side_effect=prospectus.ProspectusTooLargeError("Prospectus PDF must be 20 MB or smaller.")
-    )
+    sensitive_error = "Prospectus PDF must be 20 MB or smaller: client-value"
+    save_pdf = mock.AsyncMock(side_effect=prospectus.ProspectusTooLargeError(sensitive_error))
     monkeypatch.setattr(ipo_analyzer.prospectus, "save_pdf", save_pdf)
 
     response = await ipo_analyzer.upload_prospectus(
@@ -145,4 +144,21 @@ async def test_upload_endpoint_returns_413_for_oversized_pdf(monkeypatch: pytest
     )
 
     assert response.status_code == 413
-    assert json.loads(response.body)["detail"] == "Prospectus PDF must be 20 MB or smaller."
+    assert json.loads(response.body)["detail"] == "Prospectus file is too large"
+    assert sensitive_error not in response.body.decode()
+
+
+@pytest.mark.asyncio
+async def test_upload_endpoint_returns_generic_415_for_invalid_pdf(monkeypatch: pytest.MonkeyPatch) -> None:
+    sensitive_error = "Invalid filename: client-value.pdf"
+    save_pdf = mock.AsyncMock(side_effect=prospectus.InvalidProspectusError(sensitive_error))
+    monkeypatch.setattr(ipo_analyzer.prospectus, "save_pdf", save_pdf)
+
+    response = await ipo_analyzer.upload_prospectus(
+        _upload_file(b"not a pdf"),
+        _user={},
+    )
+
+    assert response.status_code == 415
+    assert json.loads(response.body)["detail"] == "Prospectus file format is invalid or not supported"
+    assert sensitive_error not in response.body.decode()
