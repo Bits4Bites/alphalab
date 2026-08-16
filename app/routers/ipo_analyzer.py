@@ -116,10 +116,10 @@ async def upload_prospectus(
 ) -> JSONResponse:
     try:
         document_id = await prospectus.save_pdf(uploaded_prospectus)
-    except prospectus.ProspectusTooLargeError as exc:
-        return JSONResponse({"detail": str(exc)}, status_code=413)
-    except prospectus.InvalidProspectusError as exc:
-        return JSONResponse({"detail": str(exc)}, status_code=415)
+    except prospectus.ProspectusTooLargeError:
+        return JSONResponse({"detail": "Prospectus file is too large"}, status_code=413)
+    except prospectus.InvalidProspectusError:
+        return JSONResponse({"detail": "Prospectus file format is invalid or not supported"}, status_code=415)
     except OSError:
         logger.exception("Failed to store uploaded prospectus")
         return JSONResponse({"detail": "Failed to store the uploaded prospectus."}, status_code=500)
@@ -234,8 +234,8 @@ async def ipo_analyzer_stream(
                 try:
                     prospectus.delete_pdf(document_id)
                 except prospectus.ProspectusNotFoundError:
-                    logger.warning("Uploaded prospectus was already missing during cleanup: %s", document_id)
+                    logger.warning("Uploaded prospectus was already missing during cleanup.")
                 except OSError:
-                    logger.exception("Failed to delete uploaded prospectus after analysis: %s", document_id)
+                    logger.exception("Failed to delete uploaded prospectus after analysis.")
 
     return EventSourceResponse(event_generator())

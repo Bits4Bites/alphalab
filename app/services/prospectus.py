@@ -1,4 +1,5 @@
 import asyncio
+import os
 import pathlib
 import re
 import uuid
@@ -84,7 +85,8 @@ def get_pdf_path(
         raise ProspectusNotFoundError("The uploaded prospectus could not be found.")
 
     path = upload_directory / f"{normalized_id}.pdf"
-    if not path.is_file():
+    fullpath = os.path.normpath(os.path.join(upload_directory, f"{normalized_id}.pdf"))
+    if not fullpath.startswith(str(upload_directory)) or not os.path.isfile(fullpath):
         raise ProspectusNotFoundError("The uploaded prospectus could not be found.")
     return path
 
