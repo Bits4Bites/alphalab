@@ -113,8 +113,9 @@ Inventory baseline:
 ## Background dashboard-support flows
 
 - **Dashboard sample prompt generation**
-  - [ ] Reviewed
-  - [ ] Implemented
+  - [x] Reviewed
+  - [x] Implemented
+  - Status: Done
   - Task: `DASHBOARD_GENERATE_SAMPLE_PROMPTS`
   - Flow: check cache freshness -> generate a structured prompt list -> parse and validate output -> cache prompts
 
