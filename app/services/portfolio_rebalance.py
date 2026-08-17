@@ -116,7 +116,7 @@ def parse_holdings(value: str, market: portfolio_market_data.MarketDefinition) -
         if not line:
             continue
         if len(parsed) >= MAX_HOLDINGS:
-            raise RebalanceInputError(f"Rebalance mode supports at most {MAX_HOLDINGS} holdings.")
+            raise RebalanceInputError(f"Portfolio analysis supports at most {MAX_HOLDINGS} holdings.")
 
         fields = [field.strip() for field in line.split(",")]
         if len(fields) not in {2, 3}:
@@ -161,9 +161,7 @@ def parse_holdings(value: str, market: portfolio_market_data.MarketDefinition) -
         )
 
     if not parsed:
-        raise RebalanceInputError(
-            "Rebalance mode requires at least one line in the format TICKER, QUANTITY, AVERAGE_COST."
-        )
+        raise RebalanceInputError("At least one holding is required in the format TICKER, QUANTITY, AVERAGE_COST.")
     return tuple(parsed)
 
 

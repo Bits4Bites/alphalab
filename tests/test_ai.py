@@ -280,16 +280,16 @@ class TestExecutePromptRuntimePolicy:
         assert request == {
             "model": "gpt-5.6-luna",
             "input": "test",
-            "max_tool_calls": 10,
+            "max_tool_calls": 7,
         }
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("reasoning_effort", "expected_max_tool_calls", "expected_search_context_size"),
         [
-            ("low", 5, "low"),
-            ("medium", 10, "medium"),
-            ("high", 15, "high"),
+            ("low", 4, "low"),
+            ("medium", 7, "medium"),
+            ("high", 13, "high"),
         ],
     )
     async def test_openai_receives_reasoning_effort_and_search_limits(
@@ -510,7 +510,7 @@ class TestExecutePromptStructuredOutput:
                 "search_context_size": "medium",
             }
         ]
-        assert request["max_tool_calls"] == 10
+        assert request["max_tool_calls"] == 7
         assert request["text"]["format"]["type"] == "json_schema"
         assert request["text"]["format"]["strict"] is True
 

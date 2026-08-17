@@ -1,0 +1,178 @@
+<section class="portfolio-rebalance-plan" aria-label="Portfolio rebalance plan">
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge text-bg-primary">{{ result.market_name }} ({{ result.market }})</span>
+        <span class="badge text-bg-secondary">{{ result.currency }}</span>
+        {% if result.additional_budget %}
+        <span class="badge text-bg-success">{{ result.additional_budget.label }}</span>
+        {% endif %}
+        <span class="badge text-bg-light border text-dark">
+            {{ "Fractional shares" if result.plan.fractional_shares else "Whole shares" }}
+        </span>
+    </div>
+
+    <p class="lead">{{ result.research.strategy_summary }}</p>
+
+    {% if result.additional_budget and result.additional_budget.cadence != "total" %}
+    <div class="alert alert-info">
+        This plan applies to the next {{ result.additional_budget.cadence }} contribution only. Re-run the review
+        with fresh prices before each future contribution.
+    </div>
+    {% endif %}
+
+    <h3 class="h5">Deterministic portfolio result</h3>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th scope="col">Measure</th>
+                    <th scope="col" class="text-end">Before</th>
+                    <th scope="col" class="text-end">Proposed result</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th scope="row">Deployable cash</th>
+                    <td class="text-end">{{ result.currency }} {{ "{:,.2f}".format(result.plan.cash_before) }}</td>
+                    <td class="text-end">{{ result.currency }} {{ "{:,.2f}".format(result.plan.cash_after) }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Largest position</th>
+                    <td class="text-end">{{ "%.2f"|format(result.plan.largest_position_before_pct) }}%</td>
+                    <td class="text-end">{{ "%.2f"|format(result.plan.largest_position_after_pct) }}%</td>
+                </tr>
+                <tr>
+                    <th scope="row">Portfolio value used for planning</th>
+                    <td class="text-end">{{ result.currency }} {{ "{:,.2f}".format(result.plan.total_portfolio_value) }}</td>
+                    <td class="text-end">{{ result.currency }} {{ "{:,.2f}".format(result.plan.total_portfolio_value) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3 class="h5 mt-4">Proposed trades</h3>
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Action</th>
+                    <th scope="col">Ticker</th>
+                    <th scope="col" class="text-end">Current quantity</th>
+                    <th scope="col" class="text-end">Trade quantity</th>
+                    <th scope="col" class="text-end">Estimated value</th>
+                    <th scope="col" class="text-end">Current</th>
+                    <th scope="col" class="text-end">Target</th>
+                    <th scope="col" class="text-end">Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trade in result.plan.trades %}
+                <tr>
+                    <td>
+                        <span class="badge {% if trade.action in ['SELL', 'TRIM'] %}text-bg-warning{% elif trade.action == 'BUY' %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+                            {{ trade.action }}
+                        </span>
+                    </td>
+                    <td><strong>{{ trade.ticker }}</strong></td>
+                    <td class="text-end">{{ "{:,.6f}".format(trade.current_quantity).rstrip("0").rstrip(".") }}</td>
+                    <td class="text-end">{{ "{:,.6f}".format(trade.trade_quantity).rstrip("0").rstrip(".") }}</td>
+                    <td class="text-end">{{ result.currency }} {{ "{:,.2f}".format(trade.estimated_trade_value) }}</td>
+                    <td class="text-end">{{ "%.2f"|format(trade.current_weight_pct) }}%</td>
+                    <td class="text-end">{{ "%.2f"|format(trade.target_weight_pct) }}%</td>
+                    <td class="text-end">{{ "%.2f"|format(trade.resulting_weight_pct) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h3 class="h5 mt-4">Source-backed target allocation</h3>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th scope="col">Ticker</th>
+                    <th scope="col" class="text-end">Target</th>
+                    <th scope="col">Role and rationale</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for allocation in result.research.allocations %}
+                <tr>
+                    <td><strong>{{ allocation.ticker }}</strong></td>
+                    <td class="text-end">{{ "%.2f"|format(allocation.target_weight_pct) }}%</td>
+                    <td>
+                        <strong>{{ allocation.role }}</strong>
+                        <div>{{ allocation.rationale }}</div>
+                        <div class="small text-muted">Sources: {{ allocation.source_ids | join(", ") }}</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if result.plan.warnings %}
+    <div class="alert alert-warning">
+        <h3 class="h6 alert-heading">Plan constraints and warnings</h3>
+        <ul class="mb-0">
+            {% for warning in result.plan.warnings %}
+            <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <h3 class="h5">Material risks</h3>
+            <ul>
+                {% for item in result.research.portfolio_risks %}
+                <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="col-lg-6">
+            <h3 class="h5">Execution guidance</h3>
+            <ul>
+                {% for item in result.research.execution_guidance %}
+                <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    {% if result.research.tax_considerations %}
+    <h3 class="h5">Qualitative tax considerations</h3>
+    <ul>
+        {% for item in result.research.tax_considerations %}
+        <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if result.research.assumptions %}
+    <h3 class="h5">Assumptions</h3>
+    <ul>
+        {% for assumption in result.research.assumptions %}
+        <li>{{ assumption }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h3 class="h5 mt-4">Allocation sources</h3>
+    <ol class="small">
+        {% for source in result.research.sources %}
+        <li id="rebalance-source-{{ source.id }}">
+            <strong>{{ source.id }}:</strong>
+            <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.title }}</a>
+            - {{ source.publisher }}, {{ source.published_at }}
+        </li>
+        {% endfor %}
+    </ol>
+
+    <p class="small text-muted mb-0">
+        Allocation research date: {{ result.research_as_of }}.
+        Market data retrieved: {{ result.market_data_at }}.
+        Verify live prices, account rules, fees, taxes, and order details before trading.
+    </p>
+</section>
