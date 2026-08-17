@@ -376,4 +376,4 @@ def test_page_returns_service_error_without_supported_market(
     response = client.get("/review-portfolio")
 
     assert response.status_code == 503
-    assert response.text == "At least one supported primary market (US or AU) is required."
+    assert response.text == "At least one supported primary market (US, AU, or VN) is required."

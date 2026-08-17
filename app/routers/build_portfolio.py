@@ -1,203 +1,233 @@
 import json
+import logging
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
-from app.services import analysis_cache
+from app.schemas import build_portfolio as build_portfolio_schemas
+from app.services import analysis_cache, build_portfolio, portfolio_market_data
 from app.utils import ai
 
 router = APIRouter(tags=["build_portfolio"])
 TEMPLATE = "build_portfolio.html"
+_REPORT_TEMPLATE = "partials/build_portfolio_report.html"
 _CACHE_FEATURE = "build-portfolio"
 _CACHE_INPUT_FIELDS = (
     "risk_tolerance",
-    "investment_theme",
+    "portfolio_intent",
     "target_market",
     "investment_horizon",
     "budget",
+    "allow_fractional_shares",
     "existing_holdings",
 )
+_PROMPT_TASK_ID = "BUILD_PORTFOLIO_BUILD_PROMPT"
+_RESEARCH_TASK_ID = "BUILD_PORTFOLIO_ANALYZE"
+logger = logging.getLogger(__name__)
 
-_PROMPT_TEMPLATE = (
-    "You are an expert financial advisor and prompt engineer.\n"
-    "\n"
-    "Your task is to write a detailed, ready-to-execute prompt that instructs a premium AI model\n"
-    "to help an investor build a stock portfolio from scratch.\n"
-    "\n"
-    "## Prompt-writing role and constraints\n"
-    "- You are only drafting the prompt for the premium AI model. Do not perform the analysis yourself.\n"
-    "- Do not browse, research, summarize, or recommend anything in your own response.\n"
-    "- Return only one self-contained prompt that the premium model can execute without additional context.\n"
-    "\n"
-    "## Investor profile and goal\n"
-    "{investor_profile}\n"
-    "\n"
-    "## Prompt-writing instructions\n"
-    "Adapt the portfolio-building prompt to the investor's specific profile:\n"
-    "- For conservative profiles: weight toward dividend stocks, blue chips, bonds, or bond ETFs\n"
-    "- For aggressive profiles: allow higher allocation to growth stocks, small-caps, thematic ETFs\n"
-    "- For passive income goals: emphasize REITs, dividend ETFs, high-yield equities\n"
-    "- For short horizons: reduce volatility exposure, increase cash or short-duration assets\n"
-    "- For ESG exclusions: explicitly instruct the premium model to screen out excluded sectors\n"
-    "\n"
-    "Write a prompt that tells the premium model to:\n"
-    "1. Use its web search capability to gather current market data, valuations, and recent performance\n"
-    "2. Recommend a concrete, actionable portfolio - specific tickers, not vague asset classes\n"
-    "3. Justify every pick with data (valuation, growth profile, role in the portfolio)\n"
-    "4. Define the allocation clearly (percentage per position)\n"
-    "5. Flag key risks for the overall portfolio and for individual positions\n"
-    "6. Keep the portfolio manageable (no more than 15 positions unless the investor profile suggests otherwise)\n"
-    "\n"
-    "## The prompt must instruct the premium model to cover:\n"
-    "- A portfolio summary table (in Markdown) listing every position, with at minimum these columns:\n"
-    "  ticker, approximate allocation %, approximate number of shares, approximate cost, and the\n"
-    "  ticker's role in the portfolio (e.g. Yield Booster, Defensive, Growth, Core, Hedge)\n"
-    "- Proposed asset allocation strategy (equities / ETFs / REITs / bonds / cash %)\n"
-    "- Individual stock/ETF picks with:\n"
-    "  - Ticker and full name\n"
-    "  - Allocation % and estimated number of shares\n"
-    "  - Rationale (why this pick, why this weighting)\n"
-    "  - Key risks specific to this position\n"
-    "- Portfolio-level analysis:\n"
-    "  - Diversification assessment (sector, geography, market cap spread)\n"
-    "  - Expected income yield (if relevant to goal)\n"
-    "  - Overall risk profile vs. stated tolerance\n"
-    "- Relevant tax considerations (e.g. franking credits, withholding tax, capital gains treatment)\n"
-    "- Suggested rebalancing frequency\n"
-    "- A clear next-steps section for the investor to act on the recommendations\n"
-    "{existing_holdings_instruction}"
-    "\n"
-    "## Output format\n"
-    "Return ONLY the ready-to-execute prompt. No preamble, no explanation, no commentary, and no analysis.\n"
-    "The prompt must be self-contained, the premium model will receive it with no other context.\n"
-    "The prompt must instruct the premium model to format the response in Markdown, "
-    "and use the hyphen character (-) instead of em-dash (\u2014) throughout.\n"
-    "The premium model is NOT to include any suggested follow-up questions."
-)
+
+def _render_report_html(payload: build_portfolio_schemas.BuildPortfolioPayload) -> str:
+    template = templating.templates.get_template(_REPORT_TEMPLATE)
+    return template.render(report=payload.model_dump(mode="json"))
 
 
 @router.get("/build-portfolio", response_class=HTMLResponse)
-async def build_portfolio_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
-    cached_result = await analysis_cache.get_cached_result(
+async def build_portfolio_page(
+    request: Request,
+    user: dict = Depends(dependencies.get_current_user),
+) -> HTMLResponse:
+    try:
+        markets = portfolio_market_data.configured_markets(config.app_settings.primary_markets)
+    except portfolio_market_data.MarketConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    cached_result = await analysis_cache.get_cached_payload(
         user,
         feature=_CACHE_FEATURE,
         input_fields=_CACHE_INPUT_FIELDS,
+        payload_validator=build_portfolio.is_valid_cache_payload,
     )
     return templating.templates.TemplateResponse(
         request,
         TEMPLATE,
-        {"user": user, "cached_result": cached_result},
+        {
+            "user": user,
+            "cached_result": cached_result,
+            "market_options": markets,
+            "market_codes": [market.code for market in markets],
+            "default_market": markets[0].code,
+        },
     )
 
 
-@router.get("/build-portfolio/stream")
+@router.post("/build-portfolio/stream")
 async def build_portfolio_stream(
-    request: Request,
-    risk_tolerance: str = Query(...),
-    investment_theme: str = Query(...),
-    target_market: str = Query(...),
-    investment_horizon: str = Query(default=""),
-    budget: str = Query(default=""),
-    existing_holdings: str = Query(default=""),
+    body: build_portfolio_schemas.BuildPortfolioRequest,
     user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
-    cleaned_risk_tolerance = risk_tolerance.strip()
-    cleaned_investment_theme = investment_theme.strip()
-    cleaned_target_market = target_market.strip()
-    cleaned_investment_horizon = investment_horizon.strip()
-    cleaned_budget = budget.strip()
-    cleaned_existing_holdings = existing_holdings.strip()
-
     async def event_generator():
-        def progress(step: int, total: int, message: str):
-            return json.dumps({"type": "progress", "step": step, "total": total, "message": message})
+        def event(event_type: str, **data: object) -> dict[str, str]:
+            return {"data": json.dumps({"type": event_type, **data})}
 
-        def error(message: str):
-            return json.dumps({"type": "error", "message": message})
+        total_steps = 7
+        yield event("progress", step=1, total=total_steps, message="Validating portfolio inputs...")
 
-        def result(content: str):
-            return json.dumps({"type": "result", "content": content})
-
-        total_steps = 4
-
-        # Step 1: Validate inputs
-        yield {"data": progress(1, total_steps, "Validating inputs...")}
-        if not cleaned_risk_tolerance or not cleaned_investment_theme or not cleaned_target_market:
-            yield {"data": error("Risk tolerance, investment theme, and target market are required.")}
+        try:
+            market = portfolio_market_data.resolve_configured_market(
+                body.target_market,
+                config.app_settings.primary_markets,
+            )
+            budget = build_portfolio.parse_budget(body.budget, market)
+            holdings = build_portfolio.parse_existing_holdings(body.existing_holdings, market)
+        except (
+            build_portfolio.BuildPortfolioError,
+            portfolio_market_data.MarketConfigurationError,
+            portfolio_market_data.MarketSymbolError,
+        ) as exc:
+            yield event("error", message=str(exc))
             return
 
-        # Step 2: Generate portfolio construction prompt
-        yield {"data": progress(2, total_steps, "Generating portfolio strategy prompt...")}
-        build_prompt_client = config.ai_task_settings.get_ai_client("BUILD_PORTFOLIO_BUILD_PROMPT")
-        if not build_prompt_client:
-            yield {"data": error("AI task 'BUILD_PORTFOLIO_BUILD_PROMPT' is not configured.")}
+        prompt_client = config.ai_task_settings.get_ai_client(_PROMPT_TASK_ID)
+        prompt_task = config.ai_task_settings.tasks.get(_PROMPT_TASK_ID)
+        research_client = config.ai_task_settings.get_ai_client(_RESEARCH_TASK_ID)
+        research_task = config.ai_task_settings.tasks.get(_RESEARCH_TASK_ID)
+        if not prompt_client or not prompt_task or not research_client or not research_task:
+            yield event("error", message="Build Portfolio is temporarily unavailable.")
             return
 
-        build_prompt_task = config.ai_task_settings.tasks.get("BUILD_PORTFOLIO_BUILD_PROMPT")
-        context_parts = [
-            f"Risk Tolerance: {cleaned_risk_tolerance}",
-            f"Investment Theme/Flavor: {cleaned_investment_theme}",
-            f"Target Market: {cleaned_target_market}",
-        ]
-        if cleaned_investment_horizon:
-            context_parts.append(f"Investment Horizon: {cleaned_investment_horizon}")
-        if cleaned_budget:
-            context_parts.append(f"Budget: {cleaned_budget}")
-        if cleaned_existing_holdings:
-            context_parts.append(f"Existing Holdings: {cleaned_existing_holdings}")
-        investor_profile = "\n".join(context_parts)
+        yield event("progress", step=2, total=total_steps, message="Verifying existing holdings...")
+        holding_quotes: dict[str, portfolio_market_data.MarketQuote] = {}
+        if holdings:
+            try:
+                holding_quotes = await portfolio_market_data.fetch_quotes(
+                    tuple(holding.ticker for holding in holdings),
+                    market,
+                )
+            except portfolio_market_data.MarketDataError:
+                logger.warning("Build Portfolio could not verify existing holdings")
+                yield event(
+                    "error", message="Existing holdings could not be verified. Check the tickers and try again."
+                )
+                return
+        try:
+            verified_holdings = build_portfolio.build_verified_holdings(holdings, holding_quotes)
+        except build_portfolio.BuildPortfolioError:
+            yield event("error", message="Existing holdings could not be verified. Check the tickers and try again.")
+            return
 
-        prompt_request = _PROMPT_TEMPLATE.format(
-            investor_profile=investor_profile,
-            existing_holdings_instruction=(
-                "- How the new recommendations complement or adjust the existing holdings\n"
-                if cleaned_existing_holdings
-                else ""
+        yield event("progress", step=3, total=total_steps, message="Writing an adaptive research prompt...")
+        prompt_result = await ai.execute_task_prompt(
+            prompt_client,
+            prompt_task,
+            build_portfolio.build_prompt_writer_request(
+                body,
+                market,
+                budget,
+                verified_holdings,
             ),
         )
-        prompt_result = await ai.execute_task_prompt(build_prompt_client, build_prompt_task, prompt_request)
-
         if not prompt_result.success:
-            yield {"data": error(f"Failed to generate portfolio prompt: {prompt_result.error}")}
+            logger.warning("Build Portfolio prompt-writing task failed")
+            yield event("error", message="The portfolio research prompt could not be prepared. Please try again.")
+            return
+        try:
+            adaptive_prompt = build_portfolio.validate_adaptive_prompt(prompt_result.completion)
+        except build_portfolio.AdaptivePromptError:
+            yield event("error", message="The AI returned an invalid portfolio research prompt. Please try again.")
             return
 
-        # ### DEBUG: START
-        # yield {"data": progress(total_steps, total_steps, "Analysis complete!")}
-        # yield {"data": result(prompt_result.completion)}
-        # return
-        # ### DEBUG: END
-
-        # Step 3: Build portfolio with generated prompt
-        yield {"data": progress(3, total_steps, "Building portfolio with AI...")}
-        portfolio_client = config.ai_task_settings.get_ai_client("BUILD_PORTFOLIO_ANALYZE")
-        if not portfolio_client:
-            yield {"data": error("AI task 'BUILD_PORTFOLIO_ANALYZE' is not configured.")}
+        research_prompt = build_portfolio.build_research_prompt(
+            adaptive_prompt,
+            body,
+            market,
+            budget,
+            verified_holdings,
+        )
+        yield event("progress", step=4, total=total_steps, message="Researching the target portfolio...")
+        research_result = await ai.execute_task_prompt(
+            research_client,
+            research_task,
+            research_prompt,
+            response_json_schema=build_portfolio.response_schema(),
+            schema_name="build_portfolio_research",
+        )
+        if not research_result.success:
+            logger.warning("Build Portfolio research task failed")
+            yield event("error", message="Portfolio research failed. Please try again.")
             return
 
-        portfolio_task = config.ai_task_settings.tasks.get("BUILD_PORTFOLIO_ANALYZE")
-        portfolio_result = await ai.execute_task_prompt(portfolio_client, portfolio_task, prompt_result.completion)
+        yield event("progress", step=5, total=total_steps, message="Verifying recommendations and market data...")
+        correction_issue: str | None = None
+        try:
+            report = build_portfolio.parse_research(research_result.completion, market)
+            quotes = await portfolio_market_data.fetch_quotes(
+                build_portfolio.recommendation_tickers(report),
+                market,
+            )
+        except (build_portfolio.ResearchReportError, portfolio_market_data.MarketDataError) as exc:
+            correction_issue = str(exc)
 
-        if not portfolio_result.success:
-            yield {"data": error(f"Failed to build portfolio: {portfolio_result.error}")}
+        if correction_issue is not None:
+            correction_result = await ai.execute_task_prompt(
+                research_client,
+                research_task,
+                build_portfolio.build_correction_prompt(
+                    research_prompt,
+                    research_result.completion,
+                    correction_issue,
+                ),
+                response_json_schema=build_portfolio.response_schema(),
+                schema_name="build_portfolio_research",
+            )
+            if not correction_result.success:
+                logger.warning("Build Portfolio correction task failed")
+                yield event("error", message="Portfolio recommendations could not be verified. Please try again.")
+                return
+            try:
+                report = build_portfolio.parse_research(correction_result.completion, market)
+                quotes = await portfolio_market_data.fetch_quotes(
+                    build_portfolio.recommendation_tickers(report),
+                    market,
+                )
+            except (build_portfolio.ResearchReportError, portfolio_market_data.MarketDataError):
+                logger.warning("Build Portfolio rejected the corrected research")
+                yield event("error", message="Portfolio recommendations could not be verified. Please try again.")
+                return
+
+        yield event("progress", step=6, total=total_steps, message="Calculating portfolio sizing and quality checks...")
+        try:
+            payload = build_portfolio.build_payload(
+                body,
+                market,
+                budget,
+                report,
+                quotes,
+                verified_holdings,
+                holding_quotes,
+            )
+        except build_portfolio.ResearchReportError:
+            yield event("error", message="Portfolio recommendations could not be calculated. Please try again.")
             return
 
-        # Step 4: Done
-        yield {"data": progress(4, total_steps, "Portfolio complete!")}
-        await analysis_cache.set_cached_result(
+        await analysis_cache.set_cached_payload(
             user,
             feature=_CACHE_FEATURE,
             inputs={
-                "risk_tolerance": cleaned_risk_tolerance,
-                "investment_theme": cleaned_investment_theme,
-                "target_market": cleaned_target_market,
-                "investment_horizon": cleaned_investment_horizon,
-                "budget": cleaned_budget,
-                "existing_holdings": cleaned_existing_holdings,
+                "risk_tolerance": body.risk_tolerance,
+                "portfolio_intent": body.portfolio_intent,
+                "target_market": market.code,
+                "investment_horizon": body.investment_horizon,
+                "budget": body.budget,
+                "allow_fractional_shares": str(body.allow_fractional_shares).lower(),
+                "existing_holdings": body.existing_holdings,
             },
-            content=portfolio_result.completion,
+            payload=payload.model_dump(mode="json"),
+            ttl_seconds=build_portfolio.BUILD_PORTFOLIO_CACHE_TTL_SECONDS,
         )
-        yield {"data": result(portfolio_result.completion)}
+
+        yield event("progress", step=7, total=total_steps, message="Portfolio recommendation complete!")
+        yield event("result", html=_render_report_html(payload))
 
     return EventSourceResponse(event_generator())

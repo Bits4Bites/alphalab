@@ -57,6 +57,9 @@ class MarketQuote:
     retrieved_at: datetime.datetime
     asset_type: str = "stock"
     display_name: str = ""
+    market_cap: Decimal | None = None
+    average_volume: int | None = None
+    sector: str = ""
 
 
 _MARKETS = (
@@ -81,6 +84,17 @@ _MARKETS = (
         input_exchanges=frozenset({"AU", "ASX"}),
         quote_exchanges=frozenset({"ASX"}),
         time_zone="Australia/Sydney",
+    ),
+    MarketDefinition(
+        code="VN",
+        name="Vietnam",
+        currency="VND",
+        ticker_exchange="HOSE",
+        symbol_suffix=".VN",
+        aliases=frozenset({"VN", "VNM", "VIETNAM", "HOSE", "HNX", "UPCOM"}),
+        input_exchanges=frozenset({"VN", "HOSE", "HNX", "UPCOM"}),
+        quote_exchanges=frozenset({"VSE", "HOSE", "HCM", "HNX", "UPCOM"}),
+        time_zone="Asia/Ho_Chi_Minh",
     ),
 )
 
@@ -108,7 +122,7 @@ def configured_markets(configured: set[str] | None) -> tuple[MarketDefinition, .
             ", ".join(sorted(str(value) for value in unsupported)),
         )
     if not resolved_codes:
-        raise MarketConfigurationError("At least one supported primary market (US or AU) is required.")
+        raise MarketConfigurationError("At least one supported primary market (US, AU, or VN) is required.")
     return tuple(market for market in _MARKETS if market.code in resolved_codes)
 
 
@@ -167,6 +181,21 @@ def _positive_decimal(value: object, symbol: str) -> Decimal:
     return price
 
 
+def _optional_positive_decimal(value: object) -> Decimal | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return parsed if parsed.is_finite() and parsed > 0 else None
+
+
+def _optional_positive_int(value: object) -> int | None:
+    parsed = _optional_positive_decimal(value)
+    return int(parsed) if parsed is not None and parsed >= 1 else None
+
+
 def _fetch_quote_sync(symbol: str, market: MarketDefinition) -> MarketQuote:
     yahoo_symbol = to_yfinance_symbol(symbol, market)
     try:
@@ -193,6 +222,8 @@ def _fetch_quote_sync(symbol: str, market: MarketDefinition) -> MarketQuote:
         raise MarketDataError(f"Ticker {symbol} is not listed in the selected {market.name} market.")
 
     raw_price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
+    market_cap = _optional_positive_decimal(info.get("marketCap") or info.get("totalAssets"))
+    average_volume = _optional_positive_int(info.get("averageDailyVolume10Day") or info.get("averageVolume"))
     return MarketQuote(
         ticker=symbol,
         yahoo_symbol=yahoo_symbol,
@@ -202,6 +233,9 @@ def _fetch_quote_sync(symbol: str, market: MarketDefinition) -> MarketQuote:
         retrieved_at=datetime.datetime.now(datetime.UTC),
         asset_type="etf" if quote_type == "ETF" else "stock",
         display_name=str(info.get("longName") or info.get("shortName") or symbol),
+        market_cap=market_cap,
+        average_volume=average_volume,
+        sector=str(info.get("sector") or info.get("category") or ""),
     )
 
 
