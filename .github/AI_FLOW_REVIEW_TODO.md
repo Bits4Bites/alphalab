@@ -4,8 +4,8 @@ This internal file tracks the remaining architecture reviews for AlphaLab flows 
 
 Remaining inventory:
 
-- 11 reviewable flows
-- 25 configured AI tasks used by these flows
+- 7 reviewable flows
+- 18 configured AI tasks used by these flows
 - All remaining items are authenticated feature flows
 
 ## Remaining flows
@@ -39,48 +39,20 @@ Remaining inventory:
    - Flow: validate input -> AI-validate market -> write discovery prompt -> discover candidates with web search ->
      parse candidates -> write verification prompt -> verify candidates with web search -> cache result
 
-5. **Draft Portfolio Intent**
-   - [x] Reviewed
-   - [x] Implemented
-   - Status: Done
-   - Task: `DRAFT_PORTFOLIO_INTENT`
-   - Flow: validate and persist optional preferences -> deterministically clarify an empty request or generate one
-     neutral structured draft -> optionally run one clarification follow-up -> validate and persist output -> choose
-     Build or Review handoff with compatible fields
-
-6. **Build Portfolio**
-   - [ ] Reviewed
-   - [ ] Implemented
-   - Tasks: `BUILD_PORTFOLIO_BUILD_PROMPT`, `BUILD_PORTFOLIO_ANALYZE`
-   - Flow: validate investor inputs -> write portfolio research prompt -> run web-enabled portfolio analysis -> cache result
-
-7. **Review Portfolio**
-    - [ ] Reviewed
-    - [ ] Implemented
-    - Tasks: `REVIEW_PORTFOLIO_BUILD_PROMPT`, `REVIEW_PORTFOLIO_ANALYZE`
-    - Flow: validate holdings and investor context -> write review prompt -> run web-enabled portfolio review -> cache result
-
-8. **Portfolio Rebalance Plan**
-    - [ ] Reviewed
-    - [ ] Implemented
-    - Tasks: `REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT`, `REVIEW_PORTFOLIO_REBALANCE_ANALYZE`
-    - Flow: complete portfolio review -> fetch current quotes -> write allocation prompt -> generate structured target
-      allocations -> validate proposed securities and prices -> calculate deterministic trades -> cache result
-
-9. **Portfolio Action Briefing**
+5. **Portfolio Action Briefing**
     - [ ] Reviewed
     - [ ] Implemented
     - Tasks: `PORTFOLIO_ACTION_BRIEFING_BUILD_PROMPT`, `PORTFOLIO_ACTION_BRIEFING_ANALYZE`
     - Flow: validate holdings and watchlist -> fetch current quotes -> write research prompt -> run structured web research ->
       optionally repair invalid output without web search -> rank and size actions deterministically
 
-10. **Watchlist Monitor**
+6. **Watchlist Monitor**
     - [ ] Reviewed
     - [ ] Implemented
     - Tasks: `WATCHLIST_MONITOR_BUILD_PROMPT`, `WATCHLIST_MONITOR_ANALYZE`
     - Flow: validate watchlist inputs -> write monitoring prompt -> run web-enabled analysis -> cache result
 
-11. **Earnings Catalyst Tracker**
+7. **Earnings Catalyst Tracker**
     - [ ] Reviewed
     - [ ] Implemented
     - Tasks: `EARNINGS_CATALYST_TRACKER_BUILD_PROMPT`, `EARNINGS_CATALYST_TRACKER_ANALYZE`
@@ -90,10 +62,15 @@ Remaining inventory:
 
 For each flow, assess:
 
+- Expected output quality first. Cost and latency are secondary considerations and must not justify a design that is
+  expected to produce lower-quality output.
 - Whether AI stages should be introduced, removed, combined, reordered, or replaced with deterministic logic to
   improve the workflow
+- Whether each AI stage has one focused objective. Prefer separate focused stages when combining distinct goals could
+  overload a model or reduce output quality, even when separation requires additional AI calls.
 - Whether prompt-writing and analysis responsibilities are correctly separated
-- Model capability, reasoning level, web-search policy, latency, and cost
+- Model capability, reasoning level, and web-search policy; compare latency and cost only after quality requirements
+  are satisfied
 - Input validation, prompt-injection boundaries, and sensitive-data handling
 - Structured-output contracts, validation, repair behavior, and failure handling
 - Caching, retries, timeouts, cancellation, idempotency, and cleanup
@@ -103,8 +80,12 @@ For each flow, assess:
 
 - Treat all user inputs and all AI-model outputs as untrusted data.
 - Validate AI outputs before using them as input to another model or application stage.
-- New AI stages may be introduced when they materially improve quality, safety, reliability, or efficiency; use the
-  lowest-cost suitable model and account for added latency and trust boundaries.
+- Quality over cost is the governing rule for AI-flow architecture and model selection.
+- Do not treat fewer AI calls as an optimization goal. Introduce, retain, or split AI stages when focused tasks are
+  expected to materially improve output quality, safety, or reliability.
+- Use the lowest-cost model or design only when the alternatives are expected to provide materially equivalent output
+  quality, safety, and reliability. Account for added latency and trust boundaries without sacrificing quality merely
+  to reduce cost.
 - Sanitize AI-generated HTML before rendering it in the browser or using it in a print view.
 - Use POST rather than query-string GET requests for AI streaming flows.
 - Keep the current reasoning-based search-context and tool-call limits unless a later review explicitly changes them.
