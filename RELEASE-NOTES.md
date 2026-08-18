@@ -1,5 +1,27 @@
 # AlphaLab release notes
 
+## 2026-08-18 - v0.12.0
+
+### Removed
+
+- Remove(portfolio): Retire the standalone Portfolio Action Briefing feature.
+
+### Fixed/Improvements
+
+- Fix(UI): Draft Portfolio Intent wrongly displayed on the landing page.
+- Patch(config): Change primary markets to AU,US,VN.
+- Impr(dashboard): Harden AI planning, streamed requests, and result rendering.
+- Impr(dashboard): Validate and normalize AI-generated sample prompts.
+- Impr(dashboard): Batch and validate market news and actionable research.
+- Impr(market-outlook): Streamline structured research and safe rendering.
+- Impr(analyze-ticker): Harden structured quick and full research, sourcing, caching, and safe rendering.
+- Impr(dividend-event): Add deterministic event metrics and validated source-backed analysis.
+- Impr(portfolio-intent): Add validated neutral drafting, persistent browser state, and safe portfolio handoffs.
+- Impr(build-portfolio): Add adaptive structured research, verified market data, and deterministic sizing.
+- Impr(build-portfolio): Add focused prioritized action planning with deterministic transition sizing.
+- Impr(review-portfolio): Add focused structured review and conditional evidence-backed rebalance planning.
+- Impr(review-portfolio): Add prioritized NEW, ADD, HOLD, TRIM, and EXIT action plans.
+
 ## 2026-08-16 - v0.11.0
 
 ### Added/Refactoring/Deprecation
