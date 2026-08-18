@@ -210,6 +210,56 @@ def test_rebalance_stages_are_focused_and_recurring_budget_is_one_contribution()
     assert '"need": "major"' in research_prompt
 
 
+def test_action_stages_preserve_allowed_actions_and_block_unverified_new_positions() -> None:
+    request, market, settings, budget, snapshot = _context()
+    review = review_portfolio.parse_review_research(
+        json.dumps(_review_data()),
+        market,
+        ("AAPL",),
+        request.scenario,
+    )
+    candidates = review_portfolio.build_review_action_candidates(
+        settings,
+        budget,
+        snapshot,
+        review,
+    )
+
+    writer_prompt = review_portfolio.build_action_prompt_writer_request(
+        request,
+        market,
+        settings,
+        budget,
+        snapshot,
+        review,
+        candidates,
+        basis="review_only",
+    )
+    action_prompt = review_portfolio.build_action_research_prompt(
+        "Prioritize each allowed existing-holding action without introducing securities or changing constraints.",
+        request,
+        market,
+        settings,
+        budget,
+        snapshot,
+        review,
+        candidates,
+        basis="review_only",
+        today=datetime.date(2026, 8, 18),
+    )
+
+    assert "Act only as a prompt writer" in writer_prompt
+    assert "Do not perform research, analysis, recommendation, prioritization, sizing" in writer_prompt
+    assert "prohibit NEW unless it is already present" in writer_prompt
+    assert '"allowed_actions": [' in writer_prompt
+    assert '"TRIM"' in writer_prompt
+    assert "NEW means initiating a verified security" in action_prompt
+    assert "For an unlocked ADD, sizing_pct is the desired target portfolio weight" in action_prompt
+    assert "must exceed no_trade_weight_pct" in action_prompt
+    assert "Do not calculate money values or share quantities" in action_prompt
+    assert "2026-08-18" in action_prompt
+
+
 def test_adaptive_prompt_validation_is_bounded() -> None:
     valid = "Research the validated portfolio using current evidence and return only the required structured response."
     assert review_portfolio.validate_adaptive_prompt(valid) == valid

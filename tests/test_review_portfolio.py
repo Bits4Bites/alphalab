@@ -31,6 +31,10 @@ ADAPTIVE_REBALANCE_PROMPT = (
     "Research a strategic target allocation using the validated diagnosis, investor constraints, and current "
     "source-backed evidence without calculating trades or quantities."
 )
+ADAPTIVE_ACTION_PROMPT = (
+    "Prioritize and explain every supplied portfolio action while preserving all allowed-action, sizing, funding, "
+    "dependency, and source constraints in the structured planning context."
+)
 
 
 def _user() -> dict[str, str]:
@@ -199,11 +203,33 @@ def _rebalance_data() -> dict[str, object]:
     }
 
 
+def _action_data(
+    actions: list[tuple[str, str, float | None, str]],
+) -> dict[str, object]:
+    return {
+        "summary": "Sequence risk-reduction actions before purchases and preserve the validated portfolio intent.",
+        "actions": [
+            {
+                "action_id": action_id,
+                "action": action,
+                "priority": "High",
+                "rationale": f"{action} {action_id} follows the validated portfolio evidence and funding constraints.",
+                "sizing_pct": sizing_pct,
+                "dependency_ids": [],
+                "source_ids": [source_id],
+            }
+            for action_id, action, sizing_pct, source_id in actions
+        ],
+    }
+
+
 def _task_settings() -> types.SimpleNamespace:
     review_prompt_client = object()
     review_client = object()
     rebalance_prompt_client = object()
     rebalance_client = object()
+    action_prompt_client = object()
+    action_client = object()
     prompt_task = types.SimpleNamespace(
         vendor="AzureOpenAI",
         tier="LowCost",
@@ -218,11 +244,20 @@ def _task_settings() -> types.SimpleNamespace:
         web_search=True,
         reasoning_level="high",
     )
+    action_task = types.SimpleNamespace(
+        vendor="AzureOpenAI",
+        tier="Premium",
+        model="gpt-5.6-terra",
+        web_search=False,
+        reasoning_level="high",
+    )
     clients = {
         "REVIEW_PORTFOLIO_BUILD_PROMPT": review_prompt_client,
         "REVIEW_PORTFOLIO_ANALYZE": review_client,
         "REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT": rebalance_prompt_client,
         "REVIEW_PORTFOLIO_REBALANCE_ANALYZE": rebalance_client,
+        "REVIEW_PORTFOLIO_ACTION_BUILD_PROMPT": action_prompt_client,
+        "REVIEW_PORTFOLIO_ACTION_PLAN": action_client,
     }
     return types.SimpleNamespace(
         get_ai_client=lambda task_id: clients.get(task_id),
@@ -231,6 +266,8 @@ def _task_settings() -> types.SimpleNamespace:
             "REVIEW_PORTFOLIO_ANALYZE": premium_task,
             "REVIEW_PORTFOLIO_REBALANCE_BUILD_PROMPT": prompt_task,
             "REVIEW_PORTFOLIO_REBALANCE_ANALYZE": premium_task,
+            "REVIEW_PORTFOLIO_ACTION_BUILD_PROMPT": prompt_task,
+            "REVIEW_PORTFOLIO_ACTION_PLAN": action_task,
         },
     )
 
@@ -305,6 +342,69 @@ def _rebalance_payload_data(
     ).model_dump(mode="json")
 
 
+def _action_payload_data(
+    body: review_schemas.ReviewPortfolioRequest | None = None,
+) -> dict[str, object]:
+    request = body or _body(include_rebalance=True)
+    market = _market()
+    holdings = portfolio_rebalance.parse_holdings(request.holdings, market)
+    settings = portfolio_rebalance.parse_settings(
+        available_cash=request.available_cash,
+        fractional_shares=request.allow_fractional_shares,
+        minimum_trade_amount=request.minimum_trade_amount,
+        tax_context=request.tax_context,
+    )
+    budget = build_portfolio.parse_budget(request.additional_budget, market)
+    quotes = {"AAPL": _quote("AAPL"), "VTI": _quote("VTI")}
+    snapshot = portfolio_rebalance.build_snapshot(holdings, quotes, settings.available_cash)
+    review = review_portfolio.parse_review_research(
+        json.dumps(_review_data(need="major")),
+        market,
+        ("AAPL",),
+        "",
+    )
+    research = review_portfolio.parse_rebalance_research(json.dumps(_rebalance_data()), market)
+    plan_settings = review_portfolio.planning_settings(settings, budget)
+    plan_snapshot = portfolio_rebalance.build_snapshot(holdings, quotes, plan_settings.available_cash)
+    plan = portfolio_rebalance.calculate_plan(
+        plan_snapshot,
+        review_portfolio.to_plan_recommendation(research),
+        quotes,
+        market,
+        plan_settings,
+    )
+    candidates = review_portfolio.build_rebalance_action_candidates(
+        snapshot,
+        review,
+        research,
+        plan,
+        quotes,
+    )
+    action_research = review_schemas.ReviewActionPlanResearch.model_validate(
+        _action_data(
+            [
+                (
+                    candidate.action_id,
+                    candidate.allowed_actions[0],
+                    None,
+                    candidate.allowed_source_ids[0],
+                )
+                for candidate in candidates
+            ]
+        )
+    )
+    return review_portfolio.build_action_plan_payload(
+        market,
+        settings,
+        budget,
+        snapshot,
+        candidates,
+        action_research,
+        basis="rebalance",
+        market_data_at=plan.market_data_at,
+    ).model_dump(mode="json")
+
+
 def test_request_and_research_schemas_are_strict() -> None:
     request = _body(additional_budget="$1,000 monthly")
     assert request.additional_budget == "$1,000 monthly"
@@ -318,7 +418,11 @@ def test_request_and_research_schemas_are_strict() -> None:
         with pytest.raises(ValidationError):
             review_schemas.ReviewPortfolioRequest.model_validate(invalid)
 
-    for schema in (review_portfolio.review_response_schema(), review_portfolio.rebalance_response_schema()):
+    for schema in (
+        review_portfolio.review_response_schema(),
+        review_portfolio.rebalance_response_schema(),
+        review_portfolio.action_plan_response_schema(),
+    ):
         schema_json = json.dumps(schema)
         assert '"format": "uri"' not in schema_json
         pending: list[object] = [schema]
@@ -485,8 +589,176 @@ def test_target_allocation_must_follow_validated_position_actions() -> None:
         review_portfolio.validate_plan_alignment(hold_plan, hold_review)
 
 
+def test_review_only_action_plan_blocks_new_and_calculates_partial_sale() -> None:
+    body = _body()
+    market = _market()
+    holdings = portfolio_rebalance.parse_holdings(body.holdings, market)
+    settings = portfolio_rebalance.parse_settings(
+        available_cash=body.available_cash,
+        fractional_shares=body.allow_fractional_shares,
+        minimum_trade_amount=body.minimum_trade_amount,
+        tax_context=body.tax_context,
+    )
+    snapshot = portfolio_rebalance.build_snapshot(holdings, {"AAPL": _quote("AAPL")}, settings.available_cash)
+    review = review_portfolio.parse_review_research(
+        json.dumps(_review_data(need="major")),
+        market,
+        ("AAPL",),
+        "",
+    )
+    candidates = review_portfolio.build_review_action_candidates(settings, None, snapshot, review)
+
+    assert candidates[0].allowed_actions == ["TRIM", "HOLD"]
+    assert all("NEW" not in candidate.allowed_actions for candidate in candidates)
+    with pytest.raises(review_portfolio.ActionPlanError, match="allowed actions"):
+        review_portfolio.parse_action_plan_research(
+            json.dumps(_action_data([("A1", "NEW", None, "S1")])),
+            candidates,
+        )
+
+    action_research = review_portfolio.parse_action_plan_research(
+        json.dumps(_action_data([("A1", "TRIM", 25, "S1")])),
+        candidates,
+    )
+    payload = review_portfolio.build_action_plan_payload(
+        market,
+        settings,
+        None,
+        snapshot,
+        candidates,
+        action_research,
+        basis="review_only",
+    )
+
+    assert payload.actions[0].action == "TRIM"
+    assert payload.actions[0].sizing_pct == 20
+    assert payload.actions[0].estimated_quantity == 2
+    assert payload.actions[0].estimated_value == 200
+
+
+def test_review_only_action_plan_can_add_an_existing_holding() -> None:
+    body = _body(additional_budget="$1,000 monthly")
+    market = _market()
+    holdings = portfolio_rebalance.parse_holdings(body.holdings, market)
+    settings = portfolio_rebalance.parse_settings(
+        available_cash=body.available_cash,
+        fractional_shares=body.allow_fractional_shares,
+        minimum_trade_amount=body.minimum_trade_amount,
+        tax_context=body.tax_context,
+    )
+    budget = build_portfolio.parse_budget(body.additional_budget, market)
+    assert budget is not None
+    snapshot = portfolio_rebalance.build_snapshot(holdings, {"AAPL": _quote("AAPL")}, settings.available_cash)
+    review = review_portfolio.parse_review_research(
+        json.dumps(_review_data(need="none")),
+        market,
+        ("AAPL",),
+        "",
+    )
+    candidates = review_portfolio.build_review_action_candidates(settings, budget, snapshot, review)
+    action_research = review_portfolio.parse_action_plan_research(
+        json.dumps(_action_data([("A1", "ADD", 60, "S1")])),
+        candidates,
+    )
+    payload = review_portfolio.build_action_plan_payload(
+        market,
+        settings,
+        budget,
+        snapshot,
+        candidates,
+        action_research,
+        basis="review_only",
+    )
+
+    assert candidates[0].allowed_actions == ["ADD", "HOLD"]
+    assert payload.actions[0].action == "ADD"
+    assert payload.actions[0].target_weight_pct == 60
+    assert payload.actions[0].estimated_quantity == 2
+    assert payload.actions[0].estimated_value == 200
+    assert all(action.action != "NEW" for action in payload.actions)
+
+
+def test_exit_action_renders_as_sell_all() -> None:
+    body = _body()
+    market = _market()
+    holdings = portfolio_rebalance.parse_holdings(body.holdings, market)
+    settings = portfolio_rebalance.parse_settings(
+        available_cash=body.available_cash,
+        fractional_shares=body.allow_fractional_shares,
+        minimum_trade_amount=body.minimum_trade_amount,
+        tax_context=body.tax_context,
+    )
+    snapshot = portfolio_rebalance.build_snapshot(holdings, {"AAPL": _quote("AAPL")}, settings.available_cash)
+    review_data = _review_data(need="major")
+    review_data["position_assessments"][0]["recommendation"] = "EXIT"  # type: ignore[index]
+    review = review_portfolio.parse_review_research(json.dumps(review_data), market, ("AAPL",), "")
+    candidates = review_portfolio.build_review_action_candidates(settings, None, snapshot, review)
+    action_research = review_portfolio.parse_action_plan_research(
+        json.dumps(_action_data([("A1", "EXIT", None, "S1")])),
+        candidates,
+    )
+    payload = review_portfolio.build_action_plan_payload(
+        market,
+        settings,
+        None,
+        snapshot,
+        candidates,
+        action_research,
+        basis="review_only",
+    )
+
+    html = review_router._render_action_html(payload)
+    assert "SELL ALL" in html
+    assert payload.actions[0].estimated_quantity == 10
+    assert payload.actions[0].estimated_value == 1000
+
+
+def test_rebalance_action_plan_maps_new_and_existing_additions() -> None:
+    body = _body(include_rebalance=True, additional_budget="$1,000 monthly")
+    market = _market()
+    holdings = portfolio_rebalance.parse_holdings(body.holdings, market)
+    settings = portfolio_rebalance.parse_settings(
+        available_cash=body.available_cash,
+        fractional_shares=body.allow_fractional_shares,
+        minimum_trade_amount=body.minimum_trade_amount,
+        tax_context=body.tax_context,
+    )
+    budget = build_portfolio.parse_budget(body.additional_budget, market)
+    assert budget is not None
+    quotes = {"AAPL": _quote("AAPL"), "VTI": _quote("VTI")}
+    snapshot = portfolio_rebalance.build_snapshot(holdings, quotes, settings.available_cash)
+    plan_settings = review_portfolio.planning_settings(settings, budget)
+    plan_snapshot = portfolio_rebalance.build_snapshot(holdings, quotes, plan_settings.available_cash)
+    review = review_portfolio.parse_review_research(
+        json.dumps(_review_data(need="major")),
+        market,
+        ("AAPL",),
+        "",
+    )
+    research = review_portfolio.parse_rebalance_research(json.dumps(_rebalance_data()), market)
+    plan = portfolio_rebalance.calculate_plan(
+        plan_snapshot,
+        review_portfolio.to_plan_recommendation(research),
+        quotes,
+        market,
+        plan_settings,
+    )
+    candidates = review_portfolio.build_rebalance_action_candidates(
+        snapshot,
+        review,
+        research,
+        plan,
+        quotes,
+    )
+
+    actions = {candidate.ticker: candidate.allowed_actions[0] for candidate in candidates}
+    assert actions == {"VTI": "NEW", "AAPL": "ADD"}
+    assert all(candidate.sizing_locked for candidate in candidates)
+    assert candidates[0].current_quantity == 0
+
+
 @pytest.mark.asyncio
-async def test_review_only_verifies_holdings_uses_two_models_and_caches_structured_html(
+async def test_review_only_adds_focused_action_planning_and_caches_structured_html(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     unsafe_summary = "<script>alert('review')</script>"
@@ -494,6 +766,8 @@ async def test_review_only_verifies_holdings_uses_two_models_and_caches_structur
         side_effect=[
             ai.AIResponse(completion=ADAPTIVE_REVIEW_PROMPT),
             ai.AIResponse(completion=json.dumps(_review_data(summary=unsafe_summary))),
+            ai.AIResponse(completion=ADAPTIVE_ACTION_PROMPT),
+            ai.AIResponse(completion=json.dumps(_action_data([("A1", "TRIM", 25, "S1")]))),
         ]
     )
     fetch_quotes = mock.AsyncMock(side_effect=lambda symbols, _market: {ticker: _quote(ticker) for ticker in symbols})
@@ -506,21 +780,62 @@ async def test_review_only_verifies_holdings_uses_two_models_and_caches_structur
     response = await review_router.review_portfolio_stream(_body(), user=_user())
     events = await _collect_stream_events(response)
 
-    assert len(execute.await_args_list) == 2
+    assert len(execute.await_args_list) == 4
     assert events[-1] == {"type": "complete", "status": "review_only"}
     review_event = next(event for event in events if event["type"] == "review_result")
+    action_event = next(event for event in events if event["type"] == "action_result")
     assert "&lt;script&gt;alert" in review_event["html"]
     assert "<script>alert" not in review_event["html"]
     assert "Rebalance assessment" in review_event["html"]
+    assert "SELL 20.00%" in action_event["html"]
+    assert action_event["action_plan"]["actions"][0]["action"] == "TRIM"
     fetch_quotes.assert_awaited_once_with(("AAPL",), _market())
     assert '"current_price": "100"' in execute.await_args_list[0].args[2]
     assert execute.await_args_list[1].kwargs["schema_name"] == "portfolio_review_research"
-    set_cache.assert_awaited_once()
-    cache_call = set_cache.await_args
-    assert cache_call.kwargs["feature"] == "review-portfolio"
-    assert cache_call.kwargs["ttl_seconds"] == 72 * 60 * 60
-    assert cache_call.kwargs["inputs"]["additional_budget"] == ""
-    assert cache_call.kwargs["payload"]["positions"][0]["ticker"] == "AAPL"
+    assert execute.await_args_list[3].kwargs["schema_name"] == "review_portfolio_action_plan"
+    assert execute.await_args_list[3].args[1].web_search is False
+    assert set_cache.await_count == 2
+    review_cache, action_cache = set_cache.await_args_list
+    assert review_cache.kwargs["feature"] == "review-portfolio"
+    assert review_cache.kwargs["ttl_seconds"] == 72 * 60 * 60
+    assert review_cache.kwargs["inputs"]["additional_budget"] == ""
+    assert review_cache.kwargs["payload"]["positions"][0]["ticker"] == "AAPL"
+    assert action_cache.kwargs["feature"] == "review-portfolio-action-plan"
+    assert action_cache.kwargs["ttl_seconds"] == 15 * 60
+
+
+@pytest.mark.asyncio
+async def test_review_action_plan_allows_one_bounded_correction(monkeypatch: pytest.MonkeyPatch) -> None:
+    execute = mock.AsyncMock(
+        side_effect=[
+            ai.AIResponse(completion=ADAPTIVE_REVIEW_PROMPT),
+            ai.AIResponse(completion=json.dumps(_review_data())),
+            ai.AIResponse(completion=ADAPTIVE_ACTION_PROMPT),
+            ai.AIResponse(completion=json.dumps(_action_data([("A1", "NEW", None, "S1")]))),
+            ai.AIResponse(completion=json.dumps(_action_data([("A1", "TRIM", 25, "S1")]))),
+        ]
+    )
+    monkeypatch.setattr(review_router.config, "ai_task_settings", _task_settings())
+    monkeypatch.setattr(review_router.ai, "execute_task_prompt", execute)
+    monkeypatch.setattr(
+        review_router.portfolio_market_data,
+        "fetch_quotes",
+        mock.AsyncMock(return_value={"AAPL": _quote("AAPL")}),
+    )
+    monkeypatch.setattr(
+        review_router.analysis_cache,
+        "set_cached_payload",
+        mock.AsyncMock(return_value=True),
+    )
+
+    response = await review_router.review_portfolio_stream(_body(), user=_user())
+    events = await _collect_stream_events(response)
+
+    assert len(execute.await_args_list) == 5
+    correction_prompt = execute.await_args_list[4].args[2]
+    assert "failed application validation" in correction_prompt
+    assert "must use one of its allowed actions: TRIM, HOLD" in correction_prompt
+    assert events[-1] == {"type": "complete", "status": "review_only"}
 
 
 @pytest.mark.asyncio
@@ -529,6 +844,8 @@ async def test_no_rebalance_need_skips_both_allocation_models(monkeypatch: pytes
         side_effect=[
             ai.AIResponse(completion=ADAPTIVE_REVIEW_PROMPT),
             ai.AIResponse(completion=json.dumps(_review_data(need="none"))),
+            ai.AIResponse(completion=ADAPTIVE_ACTION_PROMPT),
+            ai.AIResponse(completion=json.dumps(_action_data([("A1", "HOLD", None, "S1")]))),
         ]
     )
     set_cache = mock.AsyncMock(return_value=True)
@@ -547,14 +864,15 @@ async def test_no_rebalance_need_skips_both_allocation_models(monkeypatch: pytes
     )
     events = await _collect_stream_events(response)
 
-    assert len(execute.await_args_list) == 2
+    assert len(execute.await_args_list) == 4
     assert any(event["type"] == "rebalance_skipped" for event in events)
+    assert any(event["type"] == "action_result" for event in events)
     assert events[-1] == {"type": "complete", "status": "not_needed"}
-    set_cache.assert_awaited_once()
+    assert set_cache.await_count == 2
 
 
 @pytest.mark.asyncio
-async def test_rebalance_uses_four_focused_models_and_next_monthly_contribution(
+async def test_rebalance_uses_six_focused_models_and_standardized_actions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings = _task_settings()
@@ -564,6 +882,17 @@ async def test_rebalance_uses_four_focused_models_and_next_monthly_contribution(
             ai.AIResponse(completion=json.dumps(_review_data(need="major"))),
             ai.AIResponse(completion=ADAPTIVE_REBALANCE_PROMPT),
             ai.AIResponse(completion=json.dumps(_rebalance_data())),
+            ai.AIResponse(completion=ADAPTIVE_ACTION_PROMPT),
+            ai.AIResponse(
+                completion=json.dumps(
+                    _action_data(
+                        [
+                            ("A1", "NEW", None, "R1"),
+                            ("A2", "ADD", None, "R1"),
+                        ]
+                    )
+                )
+            ),
         ]
     )
     fetch_quotes = mock.AsyncMock(side_effect=lambda symbols, _market: {ticker: _quote(ticker) for ticker in symbols})
@@ -579,7 +908,7 @@ async def test_rebalance_uses_four_focused_models_and_next_monthly_contribution(
     )
     events = await _collect_stream_events(response)
 
-    assert len(execute.await_args_list) == 4
+    assert len(execute.await_args_list) == 6
     assert events[-1] == {"type": "complete", "status": "success"}
     rebalance_event = next(event for event in events if event["type"] == "rebalance_result")
     assert rebalance_event["plan"]["cash_before"] == 1100
@@ -588,16 +917,26 @@ async def test_rebalance_uses_four_focused_models_and_next_monthly_contribution(
     assert trades["VTI"]["trade_quantity"] == 10
     assert "next monthly contribution only" in rebalance_event["html"]
     assert "Source-backed target allocation" in rebalance_event["html"]
+    assert "Proposed trades" not in rebalance_event["html"]
+    action_event = next(event for event in events if event["type"] == "action_result")
+    actions = {action["ticker"]: action for action in action_event["action_plan"]["actions"]}
+    assert actions["VTI"]["action"] == "NEW"
+    assert actions["AAPL"]["action"] == "ADD"
+    assert "NEW" in action_event["html"]
+    assert "ADD" in action_event["html"]
     assert execute.await_args_list[1].kwargs["schema_name"] == "portfolio_review_research"
     assert execute.await_args_list[3].kwargs["schema_name"] == "portfolio_rebalance_research"
+    assert execute.await_args_list[5].kwargs["schema_name"] == "review_portfolio_action_plan"
     assert execute.await_args_list[1].args[1].web_search is True
     assert execute.await_args_list[3].args[1].web_search is True
-    assert set_cache.await_count == 2
-    review_cache, plan_cache = set_cache.await_args_list
+    assert set_cache.await_count == 3
+    review_cache, plan_cache, action_cache = set_cache.await_args_list
     assert review_cache.kwargs["ttl_seconds"] == 72 * 60 * 60
     assert plan_cache.kwargs["feature"] == "review-portfolio-rebalance"
     assert plan_cache.kwargs["ttl_seconds"] == 15 * 60
     assert plan_cache.kwargs["payload"]["additional_budget"]["cadence"] == "monthly"
+    assert action_cache.kwargs["feature"] == "review-portfolio-action-plan"
+    assert action_cache.kwargs["payload"]["basis"] == "rebalance"
 
 
 @pytest.mark.asyncio
@@ -612,6 +951,17 @@ async def test_review_and_rebalance_each_allow_one_conditional_correction(
             ai.AIResponse(completion=ADAPTIVE_REBALANCE_PROMPT),
             ai.AIResponse(completion="invalid allocation"),
             ai.AIResponse(completion=json.dumps(_rebalance_data())),
+            ai.AIResponse(completion=ADAPTIVE_ACTION_PROMPT),
+            ai.AIResponse(
+                completion=json.dumps(
+                    _action_data(
+                        [
+                            ("A1", "TRIM", None, "R1"),
+                            ("A2", "NEW", None, "R1"),
+                        ]
+                    )
+                )
+            ),
         ]
     )
     monkeypatch.setattr(review_router.config, "ai_task_settings", _task_settings())
@@ -633,7 +983,7 @@ async def test_review_and_rebalance_each_allow_one_conditional_correction(
     )
     events = await _collect_stream_events(response)
 
-    assert len(execute.await_args_list) == 6
+    assert len(execute.await_args_list) == 8
     assert "failed application validation" in execute.await_args_list[2].args[2]
     assert "failed application validation" in execute.await_args_list[5].args[2]
     assert events[-1] == {"type": "complete", "status": "success"}
@@ -655,6 +1005,17 @@ async def test_hold_alignment_correction_receives_exact_minimum_weight(
             ai.AIResponse(completion=ADAPTIVE_REBALANCE_PROMPT),
             ai.AIResponse(completion=json.dumps(_rebalance_data())),
             ai.AIResponse(completion=json.dumps(corrected_rebalance)),
+            ai.AIResponse(completion=ADAPTIVE_ACTION_PROMPT),
+            ai.AIResponse(
+                completion=json.dumps(
+                    _action_data(
+                        [
+                            ("A1", "NEW", None, "R1"),
+                            ("A2", "ADD", None, "R1"),
+                        ]
+                    )
+                )
+            ),
         ]
     )
     monkeypatch.setattr(review_router.config, "ai_task_settings", _task_settings())
@@ -676,7 +1037,7 @@ async def test_hold_alignment_correction_receives_exact_minimum_weight(
     )
     events = await _collect_stream_events(response)
 
-    assert len(execute.await_args_list) == 5
+    assert len(execute.await_args_list) == 7
     correction_prompt = execute.await_args_list[4].args[2]
     assert '"minimum_target_weight_pct": "90.909091"' in correction_prompt
     assert "target_weight_pct must be at least 90.909091%" in correction_prompt
@@ -759,16 +1120,24 @@ def test_page_renders_structured_caches_and_post_storage_ui(
         "payload": _rebalance_payload_data(body),
         "generated_at": generated_at,
     }
-    get_cache = mock.AsyncMock(side_effect=[cached_review, cached_rebalance])
+    cached_action = {
+        **inputs,
+        "payload": _action_payload_data(body),
+        "generated_at": generated_at,
+    }
+    get_cache = mock.AsyncMock(side_effect=[cached_review, cached_rebalance, cached_action])
     monkeypatch.setattr(review_router.analysis_cache, "get_cached_payload", get_cache)
     client.cookies.set("access_token", auth.create_access_token(_user()))
 
     response = client.get("/review-portfolio")
 
     assert response.status_code == 200
-    assert get_cache.await_count == 2
+    assert get_cache.await_count == 3
     assert "The portfolio has a quality holding" in response.text
     assert "Source-backed target allocation" in response.text
+    assert "Prioritized Action Plan" in response.text
+    assert "SELL " in response.text
+    assert "NEW" in response.text
     assert "REVIEW_STORAGE_VERSION = 3" in response.text
     assert "additional_budget" in response.text
     assert "fetch('/review-portfolio/stream'" in response.text
@@ -780,13 +1149,22 @@ def test_page_renders_structured_caches_and_post_storage_ui(
     assert "draft-portfolio-intent.js" in response.text
     assert 'data-portfolio-intent-handoff-target="review"' in response.text
     assert "safeCsvCell" in response.text
-    assert "portfolio-rebalance-" in response.text
+    assert "portfolio-action-plan-" in response.text
     assert "portfolio-action-briefing" not in response.text
     assert client.get("/portfolio-action-briefing").status_code == 404
 
     handoff_script = pathlib.Path("app/static/js/draft-portfolio-intent.js").read_text(encoding="utf-8")
     assert "handoff.target !== expectedTarget" in handoff_script
     assert "window.confirm('Replace the existing portfolio intent" in handoff_script
+
+
+def test_action_cache_must_not_predate_its_parent_result() -> None:
+    parent = {"generated_at": "2026-08-18T04:00:01+00:00"}
+    stale_action = {"generated_at": "2026-08-18T04:00:00+00:00"}
+    current_action = {"generated_at": "2026-08-18T04:00:02+00:00"}
+
+    assert review_router._cache_is_at_least_as_new(stale_action, parent) is False
+    assert review_router._cache_is_at_least_as_new(current_action, parent) is True
 
 
 def test_stream_is_post_only_and_requires_strict_body(client: TestClient) -> None:
@@ -804,15 +1182,29 @@ def test_stream_is_post_only_and_requires_strict_body(client: TestClient) -> Non
 def test_cache_payloads_enforce_separate_freshness_windows() -> None:
     review_payload = _review_payload_data()
     rebalance_payload = _rebalance_payload_data()
+    action_payload = _action_payload_data()
     assert review_portfolio.is_valid_review_cache_payload(review_payload) is True
     assert review_portfolio.is_valid_rebalance_cache_payload(rebalance_payload) is True
+    assert review_portfolio.is_valid_action_plan_cache_payload(action_payload) is True
 
     stale_review = copy.deepcopy(review_payload)
     stale_review["generated_at"] = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=74)).isoformat()
     stale_plan = copy.deepcopy(rebalance_payload)
     stale_plan["generated_at"] = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=17)).isoformat()
+    stale_action = copy.deepcopy(action_payload)
+    stale_action["generated_at"] = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=17)).isoformat()
     assert review_portfolio.is_valid_review_cache_payload(stale_review) is False
     assert review_portfolio.is_valid_rebalance_cache_payload(stale_plan) is False
+    assert review_portfolio.is_valid_action_plan_cache_payload(stale_action) is False
+
+    action_prompt_task = review_router.config.ai_task_settings.tasks["REVIEW_PORTFOLIO_ACTION_BUILD_PROMPT"]
+    action_task = review_router.config.ai_task_settings.tasks["REVIEW_PORTFOLIO_ACTION_PLAN"]
+    assert action_prompt_task.model == "gpt-5.6-luna"
+    assert action_prompt_task.web_search is False
+    assert action_prompt_task.reasoning_level == "low"
+    assert action_task.model == "gpt-5.6-terra"
+    assert action_task.web_search is False
+    assert action_task.reasoning_level == "high"
 
 
 def test_page_returns_service_error_without_supported_market(

@@ -326,16 +326,12 @@
                     <div class="card-header bg-white border-bottom-0 pt-3 px-3 px-md-4 pb-0
                                 d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <div>
-                            <div class="section-kicker mb-1">Action plan</div>
+                            <div class="section-kicker mb-1">Allocation</div>
                             <h2 id="rebalance-result-heading" class="h4 fw-semibold mb-0">
                                 <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>Rebalance Plan
                             </h2>
                         </div>
                         <div class="d-flex flex-wrap gap-2 no-print">
-                            <button type="button" class="btn btn-outline-primary btn-sm"
-                                    id="export-rebalance-btn" {% if not cached_rebalance %}disabled{% endif %}>
-                                <i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>Export CSV
-                            </button>
                             <button type="button" class="btn btn-outline-secondary btn-sm"
                                     id="print-rebalance-btn" {% if not cached_rebalance %}disabled{% endif %}>
                                 <i class="bi bi-printer me-1" aria-hidden="true"></i>Print
@@ -371,6 +367,48 @@
                     </div>
                 </div>
             </section>
+
+            <section id="action-section"
+                     class="{% if not cached_action %}d-none{% endif %} mb-4"
+                     tabindex="-1" aria-labelledby="action-result-heading">
+                <div class="card border-0 shadow-sm" id="action-print-area">
+                    <div class="card-header bg-white border-bottom-0 pt-3 px-3 px-md-4 pb-0
+                                d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <div class="section-kicker mb-1">Implementation</div>
+                            <h2 id="action-result-heading" class="h4 fw-semibold mb-0">
+                                <i class="bi bi-list-check me-1" aria-hidden="true"></i>Prioritized Action Plan
+                            </h2>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm no-print"
+                                id="export-action-btn" {% if not cached_action %}disabled{% endif %}>
+                            <i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body px-3 px-md-4">
+                        <div id="cached-action-notice"
+                             class="alert alert-info small py-2 mb-3 {% if not cached_action %}d-none{% endif %}"
+                             role="status">
+                            This cached action plan was completed on
+                            <time id="cached-action-time"
+                                  {% if cached_action %}datetime="{{ cached_action.generated_at }}"{% endif %}>
+                                {% if cached_action %}{{ cached_action.generated_at }}{% endif %}
+                            </time>.
+                        </div>
+                        <div id="action-error" class="alert alert-danger d-none" role="alert">
+                            <h3 class="h6">The portfolio research succeeded, but no action plan was produced</h3>
+                            <div id="action-error-message"></div>
+                        </div>
+                        <div id="action-result">
+                            {% if cached_action %}
+                                {% with action_plan=cached_action.payload %}
+                                    {% include "partials/review_portfolio_action_plan.html" %}
+                                {% endwith %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
 </div>
@@ -396,6 +434,8 @@ const MONEY_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/;
 const PRINT_TITLE = {{ ('Portfolio Review - ' ~ app_name) | tojson }};
 let currentRebalancePlan =
     {% if cached_rebalance %}{{ cached_rebalance.payload.plan | tojson }}{% else %}null{% endif %};
+let currentActionPlan =
+    {% if cached_action %}{{ cached_action.payload | tojson }}{% else %}null{% endif %};
 
 function defaultInputs() {
     return {
@@ -573,6 +613,45 @@ function isValidPlan(value) {
         });
 }
 
+function isValidActionPlan(value) {
+    const actionTypes = ['NEW', 'ADD', 'HOLD', 'TRIM', 'EXIT'];
+    const priorities = ['Critical', 'High', 'Medium', 'Low'];
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && typeof value.generated_at === 'string'
+        && typeof value.market_data_at === 'string'
+        && typeof value.currency === 'string'
+        && ['review_only', 'rebalance'].includes(value.basis)
+        && Array.isArray(value.actions)
+        && value.actions.length > 0
+        && value.actions.every(function(action) {
+            return action !== null
+                && typeof action === 'object'
+                && typeof action.action_id === 'string'
+                && typeof action.ticker === 'string'
+                && actionTypes.includes(action.action)
+                && priorities.includes(action.priority)
+                && typeof action.rationale === 'string'
+                && typeof action.timing === 'string'
+                && ['target_portfolio', 'current_position', 'none'].includes(action.sizing_basis)
+                && Array.isArray(action.dependencies)
+                && action.dependencies.every(function(value) { return typeof value === 'string'; })
+                && Array.isArray(action.source_ids)
+                && action.source_ids.every(function(value) { return typeof value === 'string'; })
+                && (action.target_weight_pct === null
+                    || (typeof action.target_weight_pct === 'number'
+                        && Number.isFinite(action.target_weight_pct)))
+                && (action.sizing_pct === null
+                    || (typeof action.sizing_pct === 'number' && Number.isFinite(action.sizing_pct)))
+                && (action.estimated_quantity === null
+                    || (typeof action.estimated_quantity === 'number'
+                        && Number.isFinite(action.estimated_quantity)))
+                && (action.estimated_value === null
+                    || (typeof action.estimated_value === 'number' && Number.isFinite(action.estimated_value)));
+        });
+}
+
 function showReview(html) {
     if (typeof html !== 'string' || !html.trim()) return false;
     document.getElementById('review-result').innerHTML = html;
@@ -589,9 +668,19 @@ function showRebalance(html, plan) {
     document.getElementById('rebalance-message').classList.add('d-none');
     document.getElementById('cached-rebalance-notice').classList.add('d-none');
     document.getElementById('rebalance-section').classList.remove('d-none');
-    document.getElementById('export-rebalance-btn').disabled = false;
     document.getElementById('print-rebalance-btn').disabled = false;
     updateMarketDataWarning(plan);
+    return true;
+}
+
+function showAction(html, actionPlan) {
+    if (typeof html !== 'string' || !html.trim() || !isValidActionPlan(actionPlan)) return false;
+    currentActionPlan = actionPlan;
+    document.getElementById('action-result').innerHTML = html;
+    document.getElementById('action-error').classList.add('d-none');
+    document.getElementById('cached-action-notice').classList.add('d-none');
+    document.getElementById('action-section').classList.remove('d-none');
+    document.getElementById('export-action-btn').disabled = false;
     return true;
 }
 
@@ -603,7 +692,6 @@ function showRebalanceMessage(message) {
     notice.textContent = message;
     notice.classList.remove('d-none');
     document.getElementById('rebalance-section').classList.remove('d-none');
-    document.getElementById('export-rebalance-btn').disabled = true;
     document.getElementById('print-rebalance-btn').disabled = false;
 }
 
@@ -614,8 +702,16 @@ function showRebalanceError(message) {
     document.getElementById('rebalance-error-message').textContent = message;
     document.getElementById('rebalance-error').classList.remove('d-none');
     document.getElementById('rebalance-section').classList.remove('d-none');
-    document.getElementById('export-rebalance-btn').disabled = true;
     document.getElementById('print-rebalance-btn').disabled = false;
+}
+
+function showActionError(message) {
+    currentActionPlan = null;
+    document.getElementById('action-result').replaceChildren();
+    document.getElementById('action-error-message').textContent = message;
+    document.getElementById('action-error').classList.remove('d-none');
+    document.getElementById('action-section').classList.remove('d-none');
+    document.getElementById('export-action-btn').disabled = true;
 }
 
 function updateMarketDataWarning(plan) {
@@ -699,6 +795,15 @@ function handleSseEvent(data, state) {
         }
         return false;
     }
+    if (data.type === 'action_result') {
+        if (!showAction(data.html, data.action_plan)) {
+            showActionError('The server returned an incomplete portfolio action plan.');
+            state.actionFailed = true;
+        } else {
+            state.actionReceived = true;
+        }
+        return false;
+    }
     if (data.type === 'rebalance_skipped') {
         showRebalanceMessage(
             typeof data.message === 'string'
@@ -715,8 +820,15 @@ function handleSseEvent(data, state) {
         state.rebalanceFailed = true;
         return false;
     }
+    if (data.type === 'action_error') {
+        showActionError(
+            typeof data.message === 'string' ? data.message : 'The portfolio action plan could not be completed.'
+        );
+        state.actionFailed = true;
+        return false;
+    }
     if (data.type === 'complete') {
-        const validStatuses = ['review_only', 'not_needed', 'success', 'rebalance_failed'];
+        const validStatuses = ['review_only', 'not_needed', 'success', 'rebalance_failed', 'action_failed'];
         if (!validStatuses.includes(data.status) || !state.reviewReceived) {
             state.fail('The stream ended before a valid portfolio review was received.');
             return true;
@@ -729,6 +841,12 @@ function handleSseEvent(data, state) {
         }
         if (data.status === 'rebalance_failed' && !state.rebalanceFailed) {
             showRebalanceError('The rebalance plan could not be completed.');
+        }
+        if (['review_only', 'not_needed', 'success'].includes(data.status) && !state.actionReceived) {
+            showActionError('The stream ended before a valid portfolio action plan was received.');
+        }
+        if (data.status === 'action_failed' && !state.actionFailed) {
+            showActionError('The portfolio action plan could not be completed.');
         }
         state.finish();
         return true;
@@ -800,7 +918,7 @@ function createPrintDocument(content) {
 }
 
 function printVisibleResults() {
-    const content = ['review-print-area', 'rebalance-print-area'].flatMap(function(id) {
+    const content = ['review-print-area', 'rebalance-print-area', 'action-print-area'].flatMap(function(id) {
         const area = document.getElementById(id);
         const section = area ? area.closest('section') : null;
         return area && section && !section.classList.contains('d-none') ? [area.outerHTML] : [];
@@ -829,23 +947,23 @@ function safeCsvCell(value) {
     return `"${text.replace(/"/g, '""')}"`;
 }
 
-function exportRebalanceCsv() {
-    if (!isValidPlan(currentRebalancePlan)) {
-        showRebalanceError('There is no valid rebalance plan available to export.');
+function exportActionPlanCsv() {
+    if (!isValidActionPlan(currentActionPlan)) {
+        showActionError('There is no valid portfolio action plan available to export.');
         return;
     }
-    const plan = currentRebalancePlan;
+    const plan = currentActionPlan;
     const headers = [
-        'Action', 'Ticker', 'Current Quantity', 'Trade Quantity', 'Resulting Quantity',
-        'Current Price', 'Estimated Trade Value', 'Current Weight %',
-        'Target Weight %', 'Resulting Weight %', 'Currency', 'Market Data At'
+        'Sequence', 'Priority', 'Action', 'Ticker', 'Target Weight %', 'Sizing Basis',
+        'Sizing %', 'Estimated Quantity', 'Estimated Value', 'Currency', 'Timing',
+        'Rationale', 'Dependencies', 'Sources', 'Market Data At'
     ];
-    const rows = plan.trades.map(function(trade) {
+    const rows = plan.actions.map(function(action) {
         return [
-            trade.action, trade.ticker, trade.current_quantity, trade.trade_quantity,
-            trade.resulting_quantity, trade.current_price, trade.estimated_trade_value,
-            trade.current_weight_pct, trade.target_weight_pct, trade.resulting_weight_pct,
-            plan.currency, plan.market_data_at
+            action.sequence, action.priority, action.action, action.ticker, action.target_weight_pct,
+            action.sizing_basis, action.sizing_pct, action.estimated_quantity, action.estimated_value,
+            plan.currency, action.timing, action.rationale, action.dependencies.join('; '),
+            action.source_ids.join('; '), plan.market_data_at
         ];
     });
     const csv = [headers, ...rows].map(function(row) {
@@ -855,7 +973,7 @@ function exportRebalanceCsv() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `portfolio-rebalance-${new Date(plan.generated_at).toISOString().slice(0, 10)}.csv`;
+    link.download = `portfolio-action-plan-${new Date(plan.generated_at).toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -887,21 +1005,25 @@ window.addEventListener('DOMContentLoaded', function() {
     updateCurrencies();
     localizeTime('cached-result-time');
     localizeTime('cached-rebalance-time');
+    localizeTime('cached-action-time');
     if (isValidPlan(currentRebalancePlan)) updateMarketDataWarning(currentRebalancePlan);
 
     document.getElementById('target-market').addEventListener('change', updateCurrencies);
     document.getElementById('print-review-btn').addEventListener('click', printVisibleResults);
     document.getElementById('print-rebalance-btn').addEventListener('click', printVisibleResults);
-    document.getElementById('export-rebalance-btn').addEventListener('click', exportRebalanceCsv);
+    document.getElementById('export-action-btn').addEventListener('click', exportActionPlanCsv);
 });
 
 document.getElementById('review-form').addEventListener('input', function() {
     saveInputs();
     currentRebalancePlan = null;
+    currentActionPlan = null;
     document.getElementById('result-section').classList.add('d-none');
     document.getElementById('rebalance-section').classList.add('d-none');
+    document.getElementById('action-section').classList.add('d-none');
     document.getElementById('cached-result-notice').classList.add('d-none');
     document.getElementById('cached-rebalance-notice').classList.add('d-none');
+    document.getElementById('cached-action-notice').classList.add('d-none');
 });
 
 document.getElementById('review-form').addEventListener('submit', async function(event) {
@@ -925,7 +1047,9 @@ document.getElementById('review-form').addEventListener('submit', async function
     document.getElementById('error-section').classList.add('d-none');
     document.getElementById('result-section').classList.add('d-none');
     document.getElementById('rebalance-section').classList.add('d-none');
+    document.getElementById('action-section').classList.add('d-none');
     currentRebalancePlan = null;
+    currentActionPlan = null;
     waitTimer.start();
 
     let finished = false;
@@ -934,6 +1058,8 @@ document.getElementById('review-form').addEventListener('submit', async function
         rebalanceReceived: false,
         rebalanceSkipped: false,
         rebalanceFailed: false,
+        actionReceived: false,
+        actionFailed: false,
         finish: function() {
             if (finished) return;
             finished = true;

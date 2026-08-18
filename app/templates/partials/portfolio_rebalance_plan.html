@@ -49,42 +49,6 @@
         </table>
     </div>
 
-    <h3 class="h5 mt-4">Proposed trades</h3>
-    <div class="table-responsive">
-        <table class="table table-sm table-striped align-middle">
-            <thead>
-                <tr>
-                    <th scope="col">Action</th>
-                    <th scope="col">Ticker</th>
-                    <th scope="col" class="text-end">Current quantity</th>
-                    <th scope="col" class="text-end">Trade quantity</th>
-                    <th scope="col" class="text-end">Estimated value</th>
-                    <th scope="col" class="text-end">Current</th>
-                    <th scope="col" class="text-end">Target</th>
-                    <th scope="col" class="text-end">Result</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for trade in result.plan.trades %}
-                <tr>
-                    <td>
-                        <span class="badge {% if trade.action in ['SELL', 'TRIM'] %}text-bg-warning{% elif trade.action == 'BUY' %}text-bg-success{% else %}text-bg-secondary{% endif %}">
-                            {{ trade.action }}
-                        </span>
-                    </td>
-                    <td><strong>{{ trade.ticker }}</strong></td>
-                    <td class="text-end">{{ "{:,.6f}".format(trade.current_quantity).rstrip("0").rstrip(".") }}</td>
-                    <td class="text-end">{{ "{:,.6f}".format(trade.trade_quantity).rstrip("0").rstrip(".") }}</td>
-                    <td class="text-end">{{ result.currency }} {{ "{:,.2f}".format(trade.estimated_trade_value) }}</td>
-                    <td class="text-end">{{ "%.2f"|format(trade.current_weight_pct) }}%</td>
-                    <td class="text-end">{{ "%.2f"|format(trade.target_weight_pct) }}%</td>
-                    <td class="text-end">{{ "%.2f"|format(trade.resulting_weight_pct) }}%</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
     <h3 class="h5 mt-4">Source-backed target allocation</h3>
     <div class="table-responsive">
         <table class="table table-sm">

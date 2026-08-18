@@ -40,6 +40,10 @@ SourceId = Annotated[
     str,
     StringConstraints(strip_whitespace=True, pattern=r"^[A-Za-z0-9_-]{1,32}$"),
 ]
+ActionId = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, pattern=r"^A[1-9][0-9]{0,2}$"),
+]
 SingleLineText = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=300),
@@ -71,6 +75,11 @@ InvestmentHorizon = Literal[
 TaxContext = Literal["unknown", "taxable", "tax-advantaged"]
 BudgetCadence = Literal["total", "weekly", "fortnightly", "monthly", "quarterly", "annual"]
 RebalanceNeed = Literal["none", "minor", "major"]
+ReviewActionType = Literal["NEW", "ADD", "HOLD", "TRIM", "EXIT"]
+ReviewActionPriority = Literal["Critical", "High", "Medium", "Low"]
+ActionSizingBasis = Literal["target_portfolio", "current_position", "none"]
+ActionPlanBasis = Literal["review_only", "rebalance"]
+ActionSourceScope = Literal["review", "rebalance"]
 
 
 class _StrictModel(BaseModel):
@@ -266,6 +275,66 @@ class RebalanceResearch(_StrictModel):
         return self
 
 
+class ReviewActionCandidate(_StrictModel):
+    action_id: ActionId
+    ticker: str
+    display_name: str
+    allowed_actions: list[ReviewActionType] = Field(min_length=1, max_length=4)
+    sizing_locked: bool
+    current_quantity: float = Field(ge=0)
+    current_price: float = Field(gt=0)
+    current_market_value: float = Field(ge=0)
+    current_weight_pct: float = Field(ge=0, le=100)
+    no_trade_weight_pct: float = Field(ge=0, le=100)
+    target_weight_pct: float | None = Field(default=None, ge=0, le=100)
+    sizing_pct: float | None = Field(default=None, gt=0, le=100)
+    estimated_quantity: float | None = Field(default=None, gt=0)
+    estimated_value: float | None = Field(default=None, ge=0)
+    strategic_rationale: LongText
+    allowed_source_ids: list[SourceId] = Field(max_length=5)
+    source_scope: ActionSourceScope
+
+    @model_validator(mode="after")
+    def validate_allowed_actions(self) -> ReviewActionCandidate:
+        if len(self.allowed_actions) != len(set(self.allowed_actions)):
+            raise ValueError("allowed actions must be unique")
+        if "NEW" in self.allowed_actions and self.current_quantity > 0:
+            raise ValueError("NEW is only valid for a security outside the current portfolio")
+        return self
+
+
+class ReviewActionDecision(_StrictModel):
+    action_id: ActionId
+    action: ReviewActionType
+    priority: ReviewActionPriority
+    rationale: LongText
+    sizing_pct: float | None = Field(gt=0, le=100)
+    dependency_ids: list[ActionId] = Field(max_length=5)
+    source_ids: list[SourceId] = Field(min_length=1, max_length=5)
+
+
+class ReviewActionPlanResearch(_StrictModel):
+    summary: LongText
+    actions: list[ReviewActionDecision] = Field(min_length=1, max_length=40)
+
+    @model_validator(mode="after")
+    def validate_actions(self) -> ReviewActionPlanResearch:
+        action_ids = [action.action_id for action in self.actions]
+        if len(action_ids) != len(set(action_ids)):
+            raise ValueError("action IDs must be unique")
+        known_ids = set(action_ids)
+        for action in self.actions:
+            if len(action.dependency_ids) != len(set(action.dependency_ids)):
+                raise ValueError("action dependencies within an item must be unique")
+            if action.action_id in action.dependency_ids:
+                raise ValueError("an action cannot depend on itself")
+            if set(action.dependency_ids) - known_ids:
+                raise ValueError("all action dependencies must identify a supplied action")
+            if len(action.source_ids) != len(set(action.source_ids)):
+                raise ValueError("action source references within an item must be unique")
+        return self
+
+
 def _validate_source_contract(
     sources: list[PortfolioSource],
     reference_groups: list[list[str]],
@@ -348,6 +417,37 @@ class ReviewPortfolioPayload(_StrictModel):
     assumptions: list[str]
     warnings: list[str]
     sources: list[PortfolioSource]
+
+
+class ReviewAction(_StrictModel):
+    sequence: int = Field(ge=1, le=40)
+    action_id: ActionId
+    ticker: str
+    display_name: str
+    action: ReviewActionType
+    priority: ReviewActionPriority
+    timing: str
+    target_weight_pct: float | None = Field(default=None, ge=0, le=100)
+    sizing_basis: ActionSizingBasis
+    sizing_pct: float | None = Field(default=None, gt=0, le=100)
+    estimated_quantity: float | None = Field(default=None, gt=0)
+    estimated_value: float | None = Field(default=None, ge=0)
+    rationale: str
+    dependencies: list[str] = Field(max_length=40)
+    source_ids: list[SourceId] = Field(min_length=1, max_length=5)
+    source_scope: ActionSourceScope
+
+
+class ReviewActionPlanPayload(_StrictModel):
+    generated_at: datetime.datetime
+    market_data_at: datetime.datetime
+    market: str
+    market_name: str
+    currency: str
+    basis: ActionPlanBasis
+    summary: str
+    actions: list[ReviewAction] = Field(min_length=1, max_length=40)
+    warnings: list[str] = Field(max_length=10)
 
 
 class RebalanceApplicationPayload(_StrictModel):
