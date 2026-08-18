@@ -1,109 +1,35 @@
 import json
+import logging
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app import config, dependencies, templating
-from app.services import analysis_cache
+from app.schemas import dividend_event as dividend_event_schemas
+from app.services import analysis_cache, analyze_ticker, dividend_event
 from app.utils import ai
 
 router = APIRouter(tags=["dividend_event"])
 TEMPLATE = "dividend_event.html"
+_REPORT_TEMPLATE = "partials/dividend_event_report.html"
 _CACHE_FEATURE = "dividend-event"
-_CACHE_INPUT_FIELDS = (
-    "ticker",
-    "dividend_amount",
-    "ex_dividend_date",
-    "current_price",
-    "holding_period",
-    "tax_bracket",
-    "additional_notes",
-)
+_CACHE_INPUT_FIELDS = ("ticker",)
+logger = logging.getLogger(__name__)
 
-_PROMPT_TEMPLATE = (
-    "You are an expert financial analyst and prompt engineer specializing in dividend strategies.\n"
-    "\n"
-    "Your task is to write a detailed, ready-to-execute prompt that instructs a premium AI model\n"
-    "to analyze a specific dividend event and recommend whether the investor should:\n"
-    "\n"
-    "## Prompt-writing role and constraints\n"
-    "- You are only drafting the prompt for the premium AI model. Do not perform the analysis yourself.\n"
-    "- Do not browse, research, summarize, or recommend anything in your own response.\n"
-    "- Return only one self-contained prompt that the premium model can execute without additional context.\n"
-    "1. **Capture the dividend** - buy/hold before ex-dividend date to receive the payout\n"
-    "2. **Post-dividend discount** - wait and buy after the ex-dividend date at a lower price\n"
-    "3. **N/A** - not enough information or the event does not present a clear opportunity\n"
-    "\n"
-    "## Dividend event details\n"
-    "{event_context}\n"
-    "\n"
-    "## Prompt-writing instructions\n"
-    "Write a prompt that tells the premium model to:\n"
-    "1. Use its web search capability to fetch the latest stock price, dividend history, ex-dividend date,\n"
-    "   payment date, dividend yield, payout ratio, and recent price action around prior ex-dividend dates\n"
-    "2. Analyze the historical price behavior around ex-dividend dates for this stock\n"
-    "   (average drop vs. dividend amount, recovery time)\n"
-    "3. Evaluate the current dividend yield relative to the stock's historical yield range\n"
-    "4. Consider the investor's holding period, tax situation, and transaction costs\n"
-    "5. Assess broader market conditions and the stock's current momentum/trend\n"
-    "6. Provide a clear recommendation: Capture the Dividend, Post-Dividend Discount, or N/A\n"
-    "7. Include a risk assessment and break-even analysis\n"
-    "\n"
-    "## The prompt must instruct the premium model to cover:\n"
-    "\n"
-    "### 1. Dividend event summary\n"
-    "- Stock ticker, company name, sector\n"
-    "- Ex-dividend date, record date, payment date\n"
-    "- Dividend amount (per share), dividend yield, payout ratio\n"
-    "- Dividend frequency and growth history (last 5 years)\n"
-    "\n"
-    "### 2. Historical ex-dividend analysis\n"
-    "- Average price drop on ex-dividend date vs. dividend amount (last 4-8 events)\n"
-    "- Average recovery time after the ex-dividend drop\n"
-    "- Pattern consistency (does the stock reliably drop by the dividend amount or less/more?)\n"
-    "- Pre-ex-dividend run-up pattern (does the stock tend to rise before the ex-date?)\n"
-    "\n"
-    "### 3. Current valuation context\n"
-    "- Current price vs. 52-week range\n"
-    "- Current yield vs. historical yield range\n"
-    "- P/E ratio and comparison to sector peers\n"
-    "- Recent earnings and revenue trend\n"
-    "- Analyst consensus and price targets\n"
-    "\n"
-    "### 4. Strategy analysis\n"
-    "- **Capture the Dividend**: Expected total return (dividend income minus expected price drop),\n"
-    "  tax implications of dividend income, holding period required\n"
-    "- **Post-Dividend Discount**: Expected discount amount, historical reliability of the discount,\n"
-    "  risk of missing a price recovery, opportunity cost\n"
-    "- Break-even analysis: at what price drop does capturing become unprofitable?\n"
-    "\n"
-    "### 5. Recommendation\n"
-    "- Clear recommendation: **Capture the Dividend**, **Post-Dividend Discount**, or **N/A**\n"
-    "- Confidence level (High / Medium / Low)\n"
-    "- Key factors driving the recommendation\n"
-    "- Specific action plan (when to buy, target price, position size consideration)\n"
-    "- Risk factors and what could invalidate the recommendation\n"
-    "\n"
-    "### 6. Summary table\n"
-    "- Side-by-side comparison of both strategies with expected outcomes\n"
-    "- Net expected return for each strategy after costs and taxes\n"
-    "\n"
-    "## Output format\n"
-    "Return ONLY the ready-to-execute prompt. No preamble, no explanation, no commentary, and no analysis.\n"
-    "The prompt must be self-contained, the premium model will receive it with no other context.\n"
-    "The prompt must instruct the premium model to format the response in Markdown, "
-    "and use the hyphen character (-) instead of em-dash (\u2014) throughout.\n"
-    "The premium model is NOT to include any suggested follow-up questions."
-)
+
+def _render_report_html(payload: dividend_event_schemas.DividendEventPayload) -> str:
+    template = templating.templates.get_template(_REPORT_TEMPLATE)
+    return template.render(report=payload.model_dump(mode="json"))
 
 
 @router.get("/dividend-event", response_class=HTMLResponse)
 async def dividend_event_page(request: Request, user: dict = Depends(dependencies.get_current_user)) -> HTMLResponse:
-    cached_result = await analysis_cache.get_cached_result(
+    cached_result = await analysis_cache.get_cached_payload(
         user,
         feature=_CACHE_FEATURE,
         input_fields=_CACHE_INPUT_FIELDS,
+        payload_validator=dividend_event.is_valid_cache_payload,
     )
     return templating.templates.TemplateResponse(
         request,
@@ -112,104 +38,98 @@ async def dividend_event_page(request: Request, user: dict = Depends(dependencie
     )
 
 
-@router.get("/dividend-event/stream")
+@router.post("/dividend-event/stream")
 async def dividend_event_stream(
     request: Request,
-    ticker: str = Query(...),
-    dividend_amount: str = Query(default=""),
-    ex_dividend_date: str = Query(default=""),
-    current_price: str = Query(default=""),
-    holding_period: str = Query(default=""),
-    tax_bracket: str = Query(default=""),
-    additional_notes: str = Query(default=""),
+    body: dividend_event_schemas.DividendEventRequest,
     user: dict = Depends(dependencies.get_current_user),
 ) -> EventSourceResponse:
-    cleaned_ticker = ticker.strip().upper()
-    cleaned_dividend_amount = dividend_amount.strip()
-    cleaned_ex_dividend_date = ex_dividend_date.strip()
-    cleaned_current_price = current_price.strip()
-    cleaned_holding_period = holding_period.strip()
-    cleaned_tax_bracket = tax_bracket.strip()
-    cleaned_additional_notes = additional_notes.strip()
-
     async def event_generator():
-        def progress(step: int, total: int, message: str):
-            return json.dumps({"type": "progress", "step": step, "total": total, "message": message})
+        def event(event_type: str, **data: object) -> dict[str, str]:
+            return {"data": json.dumps({"type": event_type, **data})}
 
-        def error(message: str):
-            return json.dumps({"type": "error", "message": message})
-
-        def result(content: str):
-            return json.dumps({"type": "result", "content": content})
-
-        total_steps = 4
-
-        # Step 1: Validate inputs
-        yield {"data": progress(1, total_steps, "Validating inputs...")}
-        if not cleaned_ticker:
-            yield {"data": error("Stock ticker is required.")}
+        total_steps = 5
+        yield event("progress", step=1, total=total_steps, message="Validating the dividend event...")
+        if await request.is_disconnected():
+            return
+        try:
+            dividend_event.validate_request(body)
+            asset = await analyze_ticker.fetch_asset_snapshot(body.ticker)
+            dividend_event.validate_asset(asset)
+        except (dividend_event.DividendEventInputError, analyze_ticker.TickerInputError) as exc:
+            yield event("error", message=str(exc))
+            return
+        except analyze_ticker.TickerMarketDataError:
+            logger.warning("Dividend Event could not resolve ticker market data")
+            yield event("error", message="Ticker market data is temporarily unavailable. Please try again.")
             return
 
-        # Step 2: Generate analysis prompt
-        yield {"data": progress(2, total_steps, "Generating dividend analysis prompt...")}
-        build_prompt_client = config.ai_task_settings.get_ai_client("DIVIDEND_EVENT_BUILD_PROMPT")
-        if not build_prompt_client:
-            yield {"data": error("AI task 'DIVIDEND_EVENT_BUILD_PROMPT' is not configured.")}
+        if await request.is_disconnected():
             return
 
-        build_prompt_task = config.ai_task_settings.tasks.get("DIVIDEND_EVENT_BUILD_PROMPT")
-        context_parts = [f"Stock Ticker: {cleaned_ticker}"]
-        if cleaned_dividend_amount:
-            context_parts.append(f"Dividend Amount (per share): {cleaned_dividend_amount}")
-        if cleaned_ex_dividend_date:
-            context_parts.append(f"Ex-Dividend Date: {cleaned_ex_dividend_date}")
-        if cleaned_current_price:
-            context_parts.append(f"Current Stock Price: {cleaned_current_price}")
-        if cleaned_holding_period:
-            context_parts.append(f"Intended Holding Period: {cleaned_holding_period}")
-        if cleaned_tax_bracket:
-            context_parts.append(f"Tax Bracket / Situation: {cleaned_tax_bracket}")
-        if cleaned_additional_notes:
-            context_parts.append(f"Additional Notes: {cleaned_additional_notes}")
-        event_context = "\n".join(context_parts)
-
-        prompt_request = _PROMPT_TEMPLATE.format(event_context=event_context)
-        prompt_result = await ai.execute_task_prompt(build_prompt_client, build_prompt_task, prompt_request)
-
-        if not prompt_result.success:
-            yield {"data": error(f"Failed to generate analysis prompt: {prompt_result.error}")}
+        yield event("progress", step=2, total=total_steps, message="Calculating historical dividend behavior...")
+        try:
+            market = await dividend_event.fetch_market_snapshot(asset, body)
+        except dividend_event.DividendEventMarketDataError:
+            logger.warning("Dividend Event history retrieval failed for %s", asset.yahoo_symbol)
+            yield event("error", message="Dividend history is temporarily unavailable. Please try again.")
             return
 
-        # Step 3: Analyze dividend event with generated prompt
-        yield {"data": progress(3, total_steps, "Analyzing dividend event with AI...")}
-        analyze_client = config.ai_task_settings.get_ai_client("DIVIDEND_EVENT_ANALYZE")
-        if not analyze_client:
-            yield {"data": error("AI task 'DIVIDEND_EVENT_ANALYZE' is not configured.")}
+        if await request.is_disconnected():
             return
 
-        analyze_task = config.ai_task_settings.tasks.get("DIVIDEND_EVENT_ANALYZE")
-        analyze_result = await ai.execute_task_prompt(analyze_client, analyze_task, prompt_result.completion)
-
-        if not analyze_result.success:
-            yield {"data": error(f"Failed to analyze dividend event: {analyze_result.error}")}
+        task_id = "DIVIDEND_EVENT_ANALYZE"
+        analyze_client = config.ai_task_settings.get_ai_client(task_id)
+        analyze_task = config.ai_task_settings.tasks.get(task_id)
+        if not analyze_client or not analyze_task:
+            yield event("error", message="Dividend Event analysis is temporarily unavailable.")
             return
 
-        # Step 4: Done
-        yield {"data": progress(4, total_steps, "Analysis complete!")}
-        await analysis_cache.set_cached_result(
+        yield event("progress", step=3, total=total_steps, message="Researching the dividend event...")
+        analysis_result = await ai.execute_task_prompt(
+            analyze_client,
+            analyze_task,
+            dividend_event.build_research_prompt(body, asset, market),
+            response_json_schema=dividend_event.response_schema(),
+            schema_name="dividend_event_report",
+        )
+        if not analysis_result.success:
+            logger.warning("Dividend Event AI task failed")
+            yield event("error", message="Dividend Event research failed. Please try again.")
+            return
+
+        if await request.is_disconnected():
+            return
+
+        yield event("progress", step=4, total=total_steps, message="Validating dividend research...")
+        try:
+            report = dividend_event.parse_report(
+                analysis_result.completion,
+                request=body,
+                asset=asset,
+            )
+        except dividend_event.DividendEventReportError as exc:
+            logger.warning("Dividend Event rejected the report: %s", exc)
+            yield event("error", message="The AI returned an invalid dividend report. Please try again.")
+            return
+
+        if await request.is_disconnected():
+            return
+
+        payload = dividend_event.build_payload(asset, market, report)
+        await analysis_cache.set_cached_payload(
             user,
             feature=_CACHE_FEATURE,
-            inputs={
-                "ticker": cleaned_ticker,
-                "dividend_amount": cleaned_dividend_amount,
-                "ex_dividend_date": cleaned_ex_dividend_date,
-                "current_price": cleaned_current_price,
-                "holding_period": cleaned_holding_period,
-                "tax_bracket": cleaned_tax_bracket,
-                "additional_notes": cleaned_additional_notes,
-            },
-            content=analyze_result.completion,
+            inputs={"ticker": asset.requested_ticker},
+            payload=payload.model_dump(mode="json"),
+            ttl_seconds=dividend_event.DIVIDEND_EVENT_CACHE_TTL_SECONDS,
         )
-        yield {"data": result(analyze_result.completion)}
+
+        yield event("progress", step=5, total=total_steps, message="Dividend Event analysis complete!")
+        yield event(
+            "result",
+            html=_render_report_html(payload),
+            ticker=asset.requested_ticker,
+        )
 
     return EventSourceResponse(event_generator())

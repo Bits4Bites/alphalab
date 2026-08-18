@@ -43,16 +43,26 @@ def _recommendation(
 
 
 def test_configured_markets_are_canonical_and_ordered(caplog: pytest.LogCaptureFixture) -> None:
-    markets = portfolio_market_data.configured_markets({"Australia", "USA", "LSE"})
+    markets = portfolio_market_data.configured_markets({"Australia", "USA", "Vietnam", "LSE"})
 
-    assert [market.code for market in markets] == ["US", "AU"]
-    assert [market.currency for market in markets] == ["USD", "AUD"]
+    assert [market.code for market in markets] == ["US", "AU", "VN"]
+    assert [market.currency for market in markets] == ["USD", "AUD", "VND"]
     assert "Ignoring primary markets unsupported" in caplog.text
 
 
 def test_configured_markets_requires_at_least_one_supported_market() -> None:
     with pytest.raises(portfolio_market_data.MarketConfigurationError, match="At least one supported"):
         portfolio_market_data.configured_markets({"LSE"})
+
+
+def test_vietnam_market_normalizes_supported_exchange_aliases() -> None:
+    market = _market("VN")
+
+    assert market.name == "Vietnam"
+    assert market.currency == "VND"
+    assert portfolio_market_data.normalize_symbol("HOSE:VNM", market) == "VNM"
+    assert portfolio_market_data.normalize_symbol("HNX:VNM.VN", market) == "VNM"
+    assert portfolio_market_data.to_yfinance_symbol("VNM", market) == "VNM.VN"
 
 
 def test_parse_holdings_normalizes_market_symbols() -> None:

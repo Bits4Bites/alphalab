@@ -1,0 +1,148 @@
+{% macro source_refs(source_ids) -%}
+<span class="ticker-source-refs ms-1">
+    {% for source_id in source_ids %}
+    <a href="#ticker-source-{{ source_id }}" class="text-decoration-none">[{{ source_id }}]</a>
+    {% endfor %}
+</span>
+{%- endmacro %}
+
+{% macro evidence_section(title, items) -%}
+{% if items %}
+<section class="mb-3">
+    <h6 class="fw-semibold mb-2">{{ title }}</h6>
+    <ul class="mb-0">
+        {% for item in items %}
+        <li class="mb-1">{{ item.statement }}{{ source_refs(item.source_ids) }}</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{%- endmacro %}
+
+<article class="analyze-ticker-report">
+    <div class="card border mb-3">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="text-uppercase text-muted small fw-semibold">{{ report.asset.asset_type }}</div>
+                    <h5 class="mb-1">{{ report.asset.name }} ({{ report.asset.requested_ticker }})</h5>
+                    <div class="small text-muted">
+                        {{ report.asset.exchange }} &middot; {{ report.asset.currency }}
+                        {% if report.asset.sector %} &middot; {{ report.asset.sector }}{% endif %}
+                        {% if report.asset.industry %} &middot; {{ report.asset.industry }}{% endif %}
+                    </div>
+                </div>
+                <div class="text-end">
+                    {% if report.research.stance == "bullish" %}
+                    <span class="badge text-bg-success">Bullish</span>
+                    {% elif report.research.stance == "bearish" %}
+                    <span class="badge text-bg-danger">Bearish</span>
+                    {% else %}
+                    <span class="badge text-bg-secondary">Neutral</span>
+                    {% endif %}
+                    <span class="badge bg-light text-dark border">{{ report.research.confidence | title }} confidence</span>
+                    <div class="small text-muted mt-1">{{ report.research.depth | title }} analysis</div>
+                </div>
+            </div>
+            <div class="row g-2 mt-2 small">
+                {% if report.asset.price %}
+                <div class="col-sm-4"><strong>Delayed price:</strong> {{ report.asset.price }} {{ report.asset.currency }}</div>
+                {% endif %}
+                <div class="col-sm-4"><strong>Market-cap tier:</strong> {{ report.asset.market_cap_tier }}</div>
+                <div class="col-sm-4"><strong>Research as of:</strong> {{ report.research.as_of }}</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="mb-3">
+        <h5 class="fw-semibold mb-2">Executive summary</h5>
+        <p class="mb-0">{{ report.research.executive_summary }}</p>
+    </section>
+
+    {% if report.research.intent_response %}
+    <section class="alert alert-primary">
+        <h6 class="alert-heading fw-semibold">Response to your research intent</h6>
+        <p class="mb-0">
+            {{ report.research.intent_response.statement
+            }}{{ source_refs(report.research.intent_response.source_ids) }}
+        </p>
+    </section>
+    {% endif %}
+
+    {{ evidence_section("Business and fundamentals", report.research.business_and_fundamentals) }}
+    {{ evidence_section("Valuation", report.research.valuation) }}
+    {{ evidence_section("Recent developments", report.research.recent_developments) }}
+
+    <section class="mb-3">
+        <h5 class="fw-semibold mb-2">Horizon outlooks</h5>
+        <div class="row g-2">
+            {% for outlook in report.research.horizon_outlooks %}
+            <div class="col-md-4">
+                <div class="border rounded p-3 h-100">
+                    <div class="d-flex justify-content-between gap-2 mb-2">
+                        <strong>{{ outlook.horizon | replace("_", " ") | title }}</strong>
+                        <span class="badge bg-light text-dark border">{{ outlook.direction | title }}</span>
+                    </div>
+                    <p class="small mb-2">
+                        {{ outlook.thesis.statement }}{{ source_refs(outlook.thesis.source_ids) }}
+                    </p>
+                    <div class="small text-muted mb-1">{{ outlook.confidence | title }} confidence</div>
+                    <div class="small fw-semibold">Invalidation conditions</div>
+                    <ul class="small mb-0">
+                        {% for condition in outlook.invalidation_conditions %}
+                        <li>{{ condition }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {{ evidence_section("Catalysts", report.research.catalysts) }}
+    {{ evidence_section("Risks", report.research.risks) }}
+
+    {% if report.research.scenario_analysis %}
+    <section class="mb-3">
+        <h5 class="fw-semibold mb-2">Scenario analysis</h5>
+        <div class="row g-2 mb-2">
+            {% for label, scenario in [
+                ("Base case", report.research.scenario_analysis.base_case),
+                ("Upside case", report.research.scenario_analysis.upside_case),
+                ("Downside case", report.research.scenario_analysis.downside_case)
+            ] %}
+            <div class="col-md-4">
+                <div class="border rounded p-3 h-100">
+                    <strong>{{ label }}</strong>
+                    <p class="small mb-0">{{ scenario.statement }}{{ source_refs(scenario.source_ids) }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {{ evidence_section("Key sensitivities", report.research.scenario_analysis.key_sensitivities) }}
+    </section>
+    {% endif %}
+
+    {% if report.research.warnings %}
+    <section class="alert alert-warning">
+        <h6 class="alert-heading fw-semibold">Evidence limitations</h6>
+        <ul class="mb-0">
+            {% for warning in report.research.warnings %}
+            <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    <section>
+        <h5 class="fw-semibold mb-2">Sources</h5>
+        <ol class="small mb-0">
+            {% for source in report.research.sources %}
+            <li id="ticker-source-{{ source.id }}" class="mb-1">
+                <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.title }}</a>
+                - {{ source.publisher }}, {{ source.published_at }}
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+</article>

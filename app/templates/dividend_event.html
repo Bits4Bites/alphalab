@@ -12,11 +12,12 @@
                 <div class="mb-3">
                     <h2 class="h4 mb-1" id="dividend-event-heading">Analyze a Dividend Event</h2>
                     <p class="text-muted mb-0">
-                        Evaluate an upcoming dividend event for a stock, including yield, tax considerations, and
-                        whether the trade is worth making.
+                        Compare dividend capture with waiting for a possible post-dividend discount using verified
+                        research and server-calculated event history.
                     </p>
                 </div>
-                <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
+                <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none"
+                     role="status" aria-live="polite">
                     <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
                     <span id="storage-warning-message"></span>
                 </div>
@@ -24,68 +25,65 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label for="ticker" class="form-label fw-semibold">
-                                Stock Ticker
-                                <span class="text-danger ms-2">*</span>
+                                Stock Ticker <span class="text-danger ms-2">*</span>
                             </label>
-                            <input type="text" class="form-control" id="ticker" name="ticker" required
-                                   placeholder="e.g. AAPL, BHP.AX, MSFT">
+                            <input type="text" class="form-control" id="ticker" name="ticker"
+                                   maxlength="32" placeholder="e.g. ASX:BHP, NASDAQ:MSFT" required>
+                            <div class="form-text">Enter a ticker or an EXCHANGE:SYMBOL value.</div>
                         </div>
                         <div class="col-md-4">
                             <label for="dividend-amount" class="form-label fw-semibold">
-                                Dividend Amount
-                                <span class="text-muted ms-2">(Optional)</span>
+                                Dividend Amount <span class="text-muted ms-2">(Optional hint)</span>
                             </label>
-                            <input type="text" class="form-control" id="dividend-amount" name="dividend_amount"
-                                   placeholder="e.g. $0.25 per share">
+                            <input type="number" class="form-control" id="dividend-amount" name="dividend_amount"
+                                   min="0" max="1000000000" step="any" placeholder="e.g. 0.25">
                         </div>
                         <div class="col-md-4">
                             <label for="ex-dividend-date" class="form-label fw-semibold">
-                                Ex-Dividend Date
-                                <span class="text-muted ms-2">(Optional)</span>
+                                Ex-Dividend Date <span class="text-muted ms-2">(Optional hint)</span>
                             </label>
                             <input type="date" class="form-control" id="ex-dividend-date" name="ex_dividend_date">
                         </div>
                         <div class="col-md-4">
                             <label for="current-price" class="form-label fw-semibold">
-                                Current Price
-                                <span class="text-muted ms-2">(Optional)</span>
+                                Current Price <span class="text-muted ms-2">(Optional hint)</span>
                             </label>
-                            <input type="text" class="form-control" id="current-price" name="current_price"
-                                   placeholder="e.g. $150.00">
+                            <input type="number" class="form-control" id="current-price" name="current_price"
+                                   min="0" max="1000000000000" step="any" placeholder="e.g. 150.00">
                         </div>
                         <div class="col-md-4">
                             <label for="holding-period" class="form-label fw-semibold">
-                                Holding Period
-                                <span class="text-muted ms-2">(Optional)</span>
+                                Holding Period <span class="text-muted ms-2">(Optional)</span>
                             </label>
                             <select class="form-select" id="holding-period" name="holding_period">
                                 <option value="">Select...</option>
-                                <option value="Short-term (days to weeks)">Short-term (days to weeks)</option>
-                                <option value="Medium-term (weeks to months)">Medium-term (weeks to months)</option>
-                                <option value="Long-term (months to years)">Long-term (months to years)</option>
-                                <option value="Already holding">Already holding</option>
+                                <option value="short_term">Short-term (days to weeks)</option>
+                                <option value="medium_term">Medium-term (weeks to months)</option>
+                                <option value="long_term">Long-term (months to years)</option>
+                                <option value="already_holding">Already holding</option>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label for="tax-bracket" class="form-label fw-semibold">
-                                Tax Situation
-                                <span class="text-muted ms-2">(Optional)</span>
+                            <label for="tax-situation" class="form-label fw-semibold">
+                                Tax Situation <span class="text-muted ms-2">(Optional)</span>
                             </label>
-                            <select class="form-select" id="tax-bracket" name="tax_bracket">
+                            <select class="form-select" id="tax-situation" name="tax_situation">
                                 <option value="">Select...</option>
-                                <option value="Tax-free account (e.g. ISA, Roth IRA)">Tax-free account</option>
-                                <option value="Low tax bracket">Low tax bracket</option>
-                                <option value="High tax bracket">High tax bracket</option>
-                                <option value="Franking credits eligible (Australia)">Franking credits (AU)</option>
+                                <option value="tax_free">Tax-free account</option>
+                                <option value="low_bracket">Low tax bracket</option>
+                                <option value="high_bracket">High tax bracket</option>
+                                <option value="franking_eligible">Potentially eligible for franking credits</option>
                             </select>
+                            <div class="form-text">Used only for qualitative context and not saved in browser storage.</div>
                         </div>
                         <div class="col-12">
                             <label for="additional-notes" class="form-label fw-semibold">
-                                Additional Notes
-                                <span class="text-muted ms-2">(Optional)</span>
+                                Additional Notes <span class="text-muted ms-2">(Optional)</span>
                             </label>
-                            <textarea class="form-control" id="additional-notes" name="additional_notes" rows="2"
-                                      placeholder="e.g. I already hold 100 shares, considering buying more before ex-date"></textarea>
+                            <textarea class="form-control" id="additional-notes" name="additional_notes"
+                                      rows="2" maxlength="500"
+                                      placeholder="Relevant constraints or questions; do not include sensitive information"></textarea>
+                            <div class="form-text">Notes are not saved in browser storage.</div>
                         </div>
                     </div>
                     <div class="mt-3">
@@ -97,7 +95,6 @@
             </div>
         </div>
 
-        <!-- Progress indicator -->
         <div id="progress-section" class="d-none mb-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -110,7 +107,7 @@
                             <div class="progress mt-2" style="height: 6px;">
                                 <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
                             </div>
-                            <small class="text-muted" id="progress-step">Step 0 of 4</small>
+                            <small class="text-muted" id="progress-step">Step 0 of 5</small>
                             <small class="text-muted d-none ms-2" id="wait-timer"></small>
                         </div>
                     </div>
@@ -118,7 +115,6 @@
             </div>
         </div>
 
-        <!-- Error display -->
         <div id="error-section" class="d-none">
             <div class="alert alert-danger d-flex align-items-center" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -126,151 +122,90 @@
             </div>
         </div>
 
-        <!-- Result display -->
-        <style>
-        #dividend-result h1 {font-size: 1.5rem !important;}
-        #dividend-result h2 {font-size: 1.4rem !important;}
-        #dividend-result h3 {font-size: 1.3rem !important;}
-        #dividend-result h4 {font-size: 1.2rem !important;}
-        #dividend-result h5 {font-size: 1.1rem !important;}
-        </style>
-        <div id="result-section" class="d-none">
+        <div id="result-section" class="{% if not cached_result %}d-none{% endif %}">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex align-items-center justify-content-between">
                     <h4 class="fw-semibold mb-0">
                         <i class="bi bi-cash-coin me-1"></i>Dividend Analysis:
-                        <span id="result-ticker"></span>
+                        <span id="result-ticker">{% if cached_result %}{{ cached_result.payload.asset.requested_ticker }}{% endif %}</span>
                     </h4>
                     <button class="btn btn-outline-secondary btn-sm" onclick="printDividend()" title="Print">
                         <i class="bi bi-printer"></i>
                     </button>
                 </div>
                 <div class="card-body">
-                    <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none" role="status">
+                    <div id="cached-result-notice"
+                         class="alert alert-info small py-2 mb-3 {% if not cached_result %}d-none{% endif %}"
+                         role="status">
                         <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
-                        <span>This is a cached analysis completed on <span id="cached-result-time"></span>. Running it again will refresh it.</span>
+                        <span>
+                            This is a cached analysis completed on
+                            <time id="cached-result-time"
+                                  {% if cached_result %}datetime="{{ cached_result.generated_at }}"{% endif %}>
+                                {% if cached_result %}{{ cached_result.generated_at }}{% endif %}
+                            </time>.
+                            Running it again will refresh it.
+                        </span>
                     </div>
                     <div class="alert alert-warning small mb-3" role="alert">
                         <i class="bi bi-exclamation-triangle me-1"></i>
-                        <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
+                        <strong>Disclaimer:</strong> This AI-assisted content is general research, may become stale,
+                        and is not financial or tax advice.
                     </div>
-                    <div id="dividend-result"></div>
+                    <div id="dividend-result">
+                        {% if cached_result %}
+                            {% with report=cached_result.payload %}
+                                {% include "partials/dividend_event_report.html" %}
+                            {% endwith %}
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 const DIVIDEND_EVENT_STORAGE_FEATURE = 'dividend-event';
-const DIVIDEND_EVENT_STORAGE_SCHEMA_VERSION = 1;
-const DIVIDEND_EVENT_INPUT_FIELDS = [
-    'ticker',
-    'dividend_amount',
-    'ex_dividend_date',
-    'current_price',
-    'holding_period',
-    'tax_bracket',
-    'additional_notes'
-];
-const DIVIDEND_EVENT_HOLDING_PERIODS = [
-    '',
-    'Short-term (days to weeks)',
-    'Medium-term (weeks to months)',
-    'Long-term (months to years)',
-    'Already holding'
-];
-const DIVIDEND_EVENT_TAX_SITUATIONS = [
-    '',
-    'Tax-free account (e.g. ISA, Roth IRA)',
-    'Low tax bracket',
-    'High tax bracket',
-    'Franking credits eligible (Australia)'
-];
-const DIVIDEND_EVENT_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const DIVIDEND_EVENT_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+const DIVIDEND_EVENT_STORAGE_SCHEMA_VERSION = 2;
+const DIVIDEND_EVENT_HOLDING_PERIODS = ['', 'short_term', 'medium_term', 'long_term', 'already_holding'];
+const DIVIDEND_EVENT_TAX_SITUATIONS = ['', 'tax_free', 'low_bracket', 'high_bracket', 'franking_eligible'];
 
-function hasExactStringFields(value, fields) {
+function isValidStoredDividendEvent(value) {
+    const fields = ['ticker', 'dividend_amount', 'ex_dividend_date', 'current_price', 'holding_period'];
     return value !== null
         && typeof value === 'object'
         && !Array.isArray(value)
         && Object.keys(value).length === fields.length
         && fields.every(function(field) {
-            return Object.prototype.hasOwnProperty.call(value, field)
-                && typeof value[field] === 'string';
-        });
-}
-
-function isValidDividendDate(value) {
-    if (value === '') {
-        return true;
-    }
-    if (!DIVIDEND_EVENT_DATE_PATTERN.test(value)) {
-        return false;
-    }
-
-    const parsedDate = new Date(`${value}T00:00:00Z`);
-    return !Number.isNaN(parsedDate.getTime())
-        && parsedDate.toISOString().slice(0, 10) === value;
-}
-
-function hasValidDividendInputs(value) {
-    return value.ticker.trim().length > 0
-        && isValidDividendDate(value.ex_dividend_date)
-        && DIVIDEND_EVENT_HOLDING_PERIODS.includes(value.holding_period)
-        && DIVIDEND_EVENT_TAX_SITUATIONS.includes(value.tax_bracket);
-}
-
-function isValidStoredDividendEvent(value) {
-    return hasExactStringFields(value, DIVIDEND_EVENT_INPUT_FIELDS)
-        && hasValidDividendInputs(value);
-}
-
-function isValidCachedDividendEvent(value) {
-    const fields = [...DIVIDEND_EVENT_INPUT_FIELDS, 'content', 'generated_at'];
-
-    return hasExactStringFields(value, fields)
-        && hasValidDividendInputs(value)
-        && value.content.trim().length > 0
-        && DIVIDEND_EVENT_ISO_TIMESTAMP_PATTERN.test(value.generated_at)
-        && !Number.isNaN(new Date(value.generated_at).getTime());
+            return Object.prototype.hasOwnProperty.call(value, field) && typeof value[field] === 'string';
+        })
+        && value.ticker.length <= 32
+        && DIVIDEND_EVENT_HOLDING_PERIODS.includes(value.holding_period);
 }
 
 function showStorageWarning(message) {
     const warning = document.getElementById('storage-warning');
     const warningMessage = document.getElementById('storage-warning-message');
-    if (!warning || !warningMessage) {
-        return;
-    }
-
+    if (!warning || !warningMessage) return;
     warningMessage.textContent = message;
     warning.classList.remove('d-none');
 }
 
 window.addEventListener('alphalab:storage-warning', function(event) {
     const detail = event.detail;
-    if (!detail || (detail.feature !== DIVIDEND_EVENT_STORAGE_FEATURE && detail.feature !== null)) {
-        return;
-    }
-
+    if (!detail || (detail.feature !== DIVIDEND_EVENT_STORAGE_FEATURE && detail.feature !== null)) return;
     const resetCodes = ['corrupt-value', 'validation-failed', 'migration-failed', 'schema-mismatch'];
-    if (resetCodes.includes(detail.code)) {
-        showStorageWarning('Saved dividend inputs could not be read and were reset.');
-        return;
-    }
-
-    showStorageWarning('Local storage could not be used. You can continue, but your dividend inputs may not persist.');
+    showStorageWarning(
+        resetCodes.includes(detail.code)
+            ? 'Saved dividend inputs could not be read and were reset.'
+            : 'Local storage could not be used. You can continue, but basic inputs may not persist.'
+    );
 });
 
 window.addEventListener('DOMContentLoaded', function() {
-    const tickerInput = document.getElementById('ticker');
-    const dividendAmountInput = document.getElementById('dividend-amount');
     const exDividendDateInput = document.getElementById('ex-dividend-date');
-    const currentPriceInput = document.getElementById('current-price');
-    const holdingPeriodInput = document.getElementById('holding-period');
-    const taxBracketInput = document.getElementById('tax-bracket');
-    const additionalNotesInput = document.getElementById('additional-notes');
+    exDividendDateInput.min = new Date().toISOString().slice(0, 10);
 
     try {
         const storedData = window.AlphaLabStorage.load(DIVIDEND_EVENT_STORAGE_FEATURE, {
@@ -280,97 +215,194 @@ window.addEventListener('DOMContentLoaded', function() {
                 dividend_amount: '',
                 ex_dividend_date: '',
                 current_price: '',
-                holding_period: '',
-                tax_bracket: '',
-                additional_notes: ''
+                holding_period: ''
             },
             validate: isValidStoredDividendEvent
         });
-
         if (isValidStoredDividendEvent(storedData)) {
-            tickerInput.value = storedData.ticker;
-            dividendAmountInput.value = storedData.dividend_amount;
+            document.getElementById('ticker').value = storedData.ticker;
+            document.getElementById('dividend-amount').value = storedData.dividend_amount;
             exDividendDateInput.value = storedData.ex_dividend_date;
-            currentPriceInput.value = storedData.current_price;
-            holdingPeriodInput.value = storedData.holding_period;
-            taxBracketInput.value = storedData.tax_bracket;
-            additionalNotesInput.value = storedData.additional_notes;
+            document.getElementById('current-price').value = storedData.current_price;
+            document.getElementById('holding-period').value = storedData.holding_period;
         }
     } catch (error) {
         showStorageWarning('Saved dividend inputs could not be restored. You can continue with the analysis.');
     }
 
-    const cachedDataNode = document.getElementById('cached-result-data');
-    if (!cachedDataNode) {
-        return;
-    }
-
-    try {
-        const cachedData = JSON.parse(cachedDataNode.textContent);
-        if (!isValidCachedDividendEvent(cachedData)) {
-            return;
-        }
-
-        const generatedAt = new Date(cachedData.generated_at);
-        if (Number.isNaN(generatedAt.getTime())) {
-            return;
-        }
-
-        renderMarkdown(cachedData.content, document.getElementById('dividend-result'));
-        document.getElementById('result-ticker').textContent = cachedData.ticker;
-        document.getElementById('cached-result-time').textContent = generatedAt.toLocaleString();
-        document.getElementById('cached-result-notice').classList.remove('d-none');
-        document.getElementById('result-section').classList.remove('d-none');
-    } catch (error) {
-        // Ignore malformed cached data so the form remains usable.
+    const cachedTime = document.getElementById('cached-result-time');
+    if (cachedTime && cachedTime.dateTime) {
+        const generatedAt = new Date(cachedTime.dateTime);
+        if (!Number.isNaN(generatedAt.getTime())) cachedTime.textContent = generatedAt.toLocaleString();
     }
 });
 
-document.getElementById('dividend-form').addEventListener('submit', function(e) {
-    e.preventDefault();
+function parseDividendEventSseEvent(rawEvent) {
+    const dataLines = [];
+    rawEvent.split('\n').forEach(function(line) {
+        if (line.startsWith('data:')) dataLines.push(line.slice(5).replace(/^ /, ''));
+    });
+    if (dataLines.length === 0) return null;
+    try {
+        const data = JSON.parse(dataLines.join('\n'));
+        if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+            throw new TypeError('Invalid SSE payload');
+        }
+        return data;
+    } catch (error) {
+        return {type: 'error', message: 'The server returned an unreadable response. Please try again.'};
+    }
+}
 
-    const ticker = document.getElementById('ticker').value.trim();
-    if (!ticker) return;
+function handleDividendEventSseEvent(data, handlers) {
+    if (data.type === 'progress') {
+        if (!Number.isFinite(data.step) || !Number.isFinite(data.total)
+                || data.total <= 0 || typeof data.message !== 'string') {
+            handlers.onError('The server returned invalid progress information. Please try again.');
+            return true;
+        }
+        handlers.onProgress(data);
+        return false;
+    }
+    if (data.type === 'error') {
+        handlers.onError(
+            typeof data.message === 'string' && data.message.trim()
+                ? data.message
+                : 'Dividend Event research failed. Please try again.'
+        );
+        return true;
+    }
+    if (data.type === 'result') {
+        if (typeof data.html !== 'string' || !data.html.trim()
+                || typeof data.ticker !== 'string' || !data.ticker.trim()) {
+            handlers.onError('The server returned an incomplete dividend report. Please try again.');
+            return true;
+        }
+        handlers.onResult(data.html, data.ticker);
+        return true;
+    }
+    handlers.onError('The server returned an unknown response. Please try again.');
+    return true;
+}
 
-    const dividendAmount = document.getElementById('dividend-amount').value.trim();
+async function streamDividendEvent(body, handlers) {
+    let response;
+    try {
+        response = await fetch('/dividend-event/stream', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Accept': 'text/event-stream', 'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+    } catch (error) {
+        handlers.onError('Unable to reach the server. Check your connection and try again.');
+        return;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok || !response.body || !contentType.includes('text/event-stream')) {
+        handlers.onError(
+            response.status === 422
+                ? 'Check the ticker and dividend-event values and try again.'
+                : `The server returned an unexpected response (HTTP ${response.status}). Please try again.`
+        );
+        return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let terminal = false;
+    try {
+        while (!terminal) {
+            const {done, value} = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, {stream: true});
+            buffer = buffer.replace(/\r\n/g, '\n');
+            let boundary = buffer.indexOf('\n\n');
+            while (boundary !== -1 && !terminal) {
+                const parsed = parseDividendEventSseEvent(buffer.slice(0, boundary));
+                buffer = buffer.slice(boundary + 2);
+                if (parsed) terminal = handleDividendEventSseEvent(parsed, handlers);
+                boundary = buffer.indexOf('\n\n');
+            }
+        }
+    } catch (error) {
+        if (!terminal) handlers.onError('Connection lost before the analysis completed. Please try again.');
+        return;
+    } finally {
+        try {
+            await reader.cancel();
+        } catch (error) {
+            // Best-effort stream cleanup only.
+        }
+    }
+    if (!terminal) handlers.onError('The connection closed before the analysis completed. Please try again.');
+}
+
+function optionalPositiveNumber(input, label) {
+    const raw = input.value.trim();
+    if (!raw) return null;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value <= 0) throw new TypeError(`${label} must be greater than zero.`);
+    return value;
+}
+
+document.getElementById('dividend-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+    const ticker = document.getElementById('ticker').value.trim().toUpperCase();
+    const errorSection = document.getElementById('error-section');
+    if (!/^(?:[A-Z]{2,10}:)?[A-Z0-9][A-Z0-9.-]{0,19}$/.test(ticker)) {
+        document.getElementById('error-message').textContent = 'Enter a valid ticker or EXCHANGE:SYMBOL value.';
+        errorSection.classList.remove('d-none');
+        return;
+    }
+
+    let dividendAmount;
+    let currentPrice;
+    try {
+        dividendAmount = optionalPositiveNumber(document.getElementById('dividend-amount'), 'Dividend amount');
+        currentPrice = optionalPositiveNumber(document.getElementById('current-price'), 'Current price');
+    } catch (error) {
+        document.getElementById('error-message').textContent = error.message;
+        errorSection.classList.remove('d-none');
+        return;
+    }
+
     const exDividendDate = document.getElementById('ex-dividend-date').value;
-    const currentPrice = document.getElementById('current-price').value.trim();
     const holdingPeriod = document.getElementById('holding-period').value;
-    const taxBracket = document.getElementById('tax-bracket').value;
+    const taxSituation = document.getElementById('tax-situation').value;
     const additionalNotes = document.getElementById('additional-notes').value.trim();
+    if (!DIVIDEND_EVENT_HOLDING_PERIODS.includes(holdingPeriod)
+            || !DIVIDEND_EVENT_TAX_SITUATIONS.includes(taxSituation)) {
+        document.getElementById('error-message').textContent = 'Select valid dividend-event options.';
+        errorSection.classList.remove('d-none');
+        return;
+    }
 
     try {
         const persisted = window.AlphaLabStorage.save(
             DIVIDEND_EVENT_STORAGE_FEATURE,
             {
                 ticker: ticker,
-                dividend_amount: dividendAmount,
+                dividend_amount: document.getElementById('dividend-amount').value,
                 ex_dividend_date: exDividendDate,
-                current_price: currentPrice,
-                holding_period: holdingPeriod,
-                tax_bracket: taxBracket,
-                additional_notes: additionalNotes
+                current_price: document.getElementById('current-price').value,
+                holding_period: holdingPeriod
             },
-            {
-                schemaVersion: DIVIDEND_EVENT_STORAGE_SCHEMA_VERSION,
-                validate: isValidStoredDividendEvent
-            }
+            {schemaVersion: DIVIDEND_EVENT_STORAGE_SCHEMA_VERSION, validate: isValidStoredDividendEvent}
         );
-
         if (persisted === false) {
-            showStorageWarning('Your dividend inputs are available only for this page and could not be persisted.');
+            showStorageWarning('Basic inputs are available only for this page and could not be persisted.');
         }
     } catch (error) {
-        showStorageWarning('Your dividend inputs are available only for this page and could not be persisted.');
+        showStorageWarning('Basic inputs are available only for this page and could not be persisted.');
     }
 
     const btn = document.getElementById('analyze-btn');
     const progressSection = document.getElementById('progress-section');
-    const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
     const cachedResultNotice = document.getElementById('cached-result-notice');
-
-    // Reset UI
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing...';
     progressSection.classList.remove('d-none');
@@ -380,75 +412,62 @@ document.getElementById('dividend-form').addEventListener('submit', function(e) 
     const waitTimer = new WaitTimer('wait-timer');
     waitTimer.start();
 
-    const params = new URLSearchParams({
+    await streamDividendEvent({
         ticker: ticker,
         dividend_amount: dividendAmount,
-        ex_dividend_date: exDividendDate,
+        ex_dividend_date: exDividendDate || null,
         current_price: currentPrice,
         holding_period: holdingPeriod,
-        tax_bracket: taxBracket,
-        additional_notes: additionalNotes,
-    });
-
-    const eventSource = new EventSource(`/dividend-event/stream?${params.toString()}`);
-
-    eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-
-        if (data.type === 'progress') {
+        tax_situation: taxSituation,
+        additional_notes: additionalNotes
+    }, {
+        onProgress: function(data) {
             const pct = Math.round((data.step / data.total) * 100);
             document.getElementById('progress-message').textContent = data.message;
             document.getElementById('progress-bar').style.width = pct + '%';
             document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
-        } else if (data.type === 'error') {
+        },
+        onError: function(message) {
             waitTimer.stop();
             progressSection.classList.add('d-none');
             errorSection.classList.remove('d-none');
-            document.getElementById('error-message').textContent = data.message;
-            eventSource.close();
+            document.getElementById('error-message').textContent = message;
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-cash-coin me-1"></i>Analyze Dividend Event';
-        } else if (data.type === 'result') {
+        },
+        onResult: function(html, resolvedTicker) {
             waitTimer.stop();
             progressSection.classList.add('d-none');
-            cachedResultNotice.classList.add('d-none');
             resultSection.classList.remove('d-none');
-            document.getElementById('result-ticker').textContent = ticker;
-            renderMarkdown(data.content, document.getElementById('dividend-result'));
-            eventSource.close();
+            document.getElementById('result-ticker').textContent = resolvedTicker;
+            // The server builds this fragment from a validated report using Jinja autoescaping.
+            document.getElementById('dividend-result').innerHTML = html;
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-cash-coin me-1"></i>Analyze Dividend Event';
         }
-    };
-
-    eventSource.onerror = function() {
-        waitTimer.stop();
-        progressSection.classList.add('d-none');
-        errorSection.classList.remove('d-none');
-        document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
-        eventSource.close();
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-cash-coin me-1"></i>Analyze Dividend Event';
-    };
+    });
 });
 
 function printDividend() {
     const content = document.getElementById('dividend-result').innerHTML;
-    const html = `<html lang="en"><head><title>Dividend Analysis - {{ app_name }}</title>
+    const tickerElement = document.createElement('span');
+    tickerElement.textContent = document.getElementById('result-ticker').textContent;
+    const safeTicker = tickerElement.innerHTML;
+    const html = `<html lang="en"><head><title>Dividend Analysis: ${safeTicker}</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
         <style>body { padding: 2rem; } @media print { body { padding: 0; } }</style>
-        </head><body><div class="container"><h1 class="mb-4">Dividend Analysis</h1>${content}</div></body></html>`;
-    const blob = new Blob([html], { type: 'text/html' });
+        </head><body><div class="container"><h1 class="mb-4">Dividend Analysis: ${safeTicker}</h1>${content}</div></body></html>`;
+    const blob = new Blob([html], {type: 'text/html'});
     const url = URL.createObjectURL(blob);
     const printWindow = window.open(url, '_blank');
+    if (!printWindow) {
+        URL.revokeObjectURL(url);
+        return;
+    }
     printWindow.onload = function() {
         printWindow.print();
         URL.revokeObjectURL(url);
     };
 }
 </script>
-{% if cached_result %}
-<script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
-{% endif %}
 {% endblock %}

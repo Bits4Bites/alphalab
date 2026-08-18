@@ -1,0 +1,236 @@
+<section class="build-portfolio-report" aria-label="Portfolio recommendation">
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge text-bg-primary">{{ report.market_name }} ({{ report.market }})</span>
+        <span class="badge text-bg-secondary">{{ report.risk_tolerance }} risk</span>
+        {% if report.investment_horizon %}
+            <span class="badge text-bg-secondary">{{ report.investment_horizon }}</span>
+        {% endif %}
+        {% if report.budget %}
+            <span class="badge text-bg-success">{{ report.budget.label }}</span>
+        {% else %}
+            <span class="badge text-bg-light border text-dark">Target weights only</span>
+        {% endif %}
+    </div>
+
+    <p class="lead">{{ report.strategy_summary }}</p>
+
+    {% if report.warnings %}
+    <div class="alert alert-warning">
+        <h5 class="alert-heading h6">Validation notes</h5>
+        <ul class="mb-0">
+            {% for warning in report.warnings %}
+            <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <h5 class="mt-4">Target allocation</h5>
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Position</th>
+                    <th scope="col" class="text-end">Weight</th>
+                    <th scope="col">Role</th>
+                    <th scope="col" class="text-end">Current price</th>
+                    <th scope="col" class="text-end">Market cap / assets</th>
+                    <th scope="col" class="text-end">Avg. volume</th>
+                    {% if report.budget %}
+                    <th scope="col" class="text-end">Suggested amount</th>
+                    <th scope="col" class="text-end">Quantity</th>
+                    <th scope="col" class="text-end">Estimated cost</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for allocation in report.allocations %}
+                <tr>
+                    <td>
+                        <strong>{{ allocation.ticker }}</strong>
+                        <div class="small text-muted">{{ allocation.display_name }}</div>
+                        {% if allocation.sector %}<div class="small text-muted">{{ allocation.sector }}</div>{% endif %}
+                    </td>
+                    <td class="text-end">{{ "%.2f"|format(allocation.target_weight_pct) }}%</td>
+                    <td>{{ allocation.role }}</td>
+                    <td class="text-end">
+                        {% if allocation.current_price is not none %}
+                            {{ allocation.currency }} {{ "%.2f"|format(allocation.current_price) }}
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if allocation.market_cap is not none %}
+                            {% if allocation.market_cap >= 1000000000 %}
+                                {{ allocation.currency }} {{ "%.2f"|format(allocation.market_cap / 1000000000) }}B
+                            {% elif allocation.market_cap >= 1000000 %}
+                                {{ allocation.currency }} {{ "%.2f"|format(allocation.market_cap / 1000000) }}M
+                            {% else %}
+                                {{ allocation.currency }} {{ "%.0f"|format(allocation.market_cap) }}
+                            {% endif %}
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if allocation.average_volume is not none %}
+                            {{ "{:,.0f}".format(allocation.average_volume) }}
+                        {% else %}-{% endif %}
+                    </td>
+                    {% if report.budget %}
+                    <td class="text-end">
+                        {{ report.currency }} {{ "%.2f"|format(allocation.target_value or 0) }}
+                    </td>
+                    <td class="text-end">
+                        {% if allocation.quantity is not none %}
+                            {{ "%.6f"|format(allocation.quantity) if report.fractional_shares else "%.0f"|format(allocation.quantity) }}
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if allocation.estimated_cost is not none %}
+                            {{ report.currency }} {{ "%.2f"|format(allocation.estimated_cost) }}
+                        {% else %}-{% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                <tr>
+                    <td colspan="{% if report.budget %}9{% else %}6{% endif %}" class="small">
+                        {{ allocation.rationale }}
+                        <span class="text-muted">Sources: {{ allocation.source_ids | join(", ") }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if report.budget %}
+            <tfoot>
+                <tr class="fw-semibold">
+                    <td colspan="8" class="text-end">Estimated residual cash</td>
+                    <td class="text-end">{{ report.currency }} {{ "%.2f"|format(report.residual_cash or 0) }}</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+
+    {% if action_plan %}
+        {% include "partials/build_portfolio_action_plan.html" %}
+    {% else %}
+    <div class="alert alert-info mt-4">
+        The quote-dependent action plan is unavailable or has expired. Run Build Portfolio again to refresh it.
+    </div>
+    {% endif %}
+
+    <div class="row g-3 mt-1">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title h6">Portfolio quality checks</h5>
+                    <dl class="row small mb-0">
+                        <dt class="col-7">Securities</dt>
+                        <dd class="col-5 text-end">{{ report.quality.security_count }}</dd>
+                        <dt class="col-7">Largest position</dt>
+                        <dd class="col-5 text-end">{{ "%.2f"|format(report.quality.largest_position_pct) }}%</dd>
+                        <dt class="col-7">Largest sector/group</dt>
+                        <dd class="col-5 text-end">
+                            {{ report.quality.largest_sector }}
+                            ({{ "%.2f"|format(report.quality.largest_sector_pct) }}%)
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title h6">Sector and asset exposure</h5>
+                    <ul class="small mb-0">
+                        {% for exposure in report.sector_exposures %}
+                        <li>{{ exposure.sector }}: {{ "%.2f"|format(exposure.target_weight_pct) }}%</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if report.existing_holdings %}
+    <h5 class="mt-4">Verified existing holdings</h5>
+    <p class="small text-muted">
+        Current value: {{ report.currency }} {{ "%.2f"|format(report.existing_holdings_value or 0) }}.
+        These values informed the research; proposed purchase sizing is shown separately.
+    </p>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th scope="col">Ticker</th>
+                    <th scope="col" class="text-end">Quantity</th>
+                    <th scope="col" class="text-end">Current price</th>
+                    <th scope="col" class="text-end">Market value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for holding in report.existing_holdings %}
+                <tr>
+                    <td>{{ holding.ticker }} <span class="text-muted">{{ holding.display_name }}</span></td>
+                    <td class="text-end">{{ "%.6f"|format(holding.quantity) }}</td>
+                    <td class="text-end">{{ report.currency }} {{ "%.2f"|format(holding.current_price) }}</td>
+                    <td class="text-end">{{ report.currency }} {{ "%.2f"|format(holding.market_value) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-6">
+            <h5>Material risks</h5>
+            <ul>
+                {% for item in report.portfolio_risks %}
+                <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="col-lg-6">
+            <h5>Execution guidance</h5>
+            <ul>
+                {% for item in report.execution_guidance %}
+                <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    {% if report.assumptions %}
+    <h5>Assumptions</h5>
+    <ul>
+        {% for item in report.assumptions %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if report.tax_considerations %}
+    <h5>Qualitative tax considerations</h5>
+    <ul>
+        {% for item in report.tax_considerations %}
+        <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h5 class="mt-4">Sources</h5>
+    <ol class="small">
+        {% for source in report.sources %}
+        <li id="build-source-{{ source.id }}">
+            <strong>{{ source.id }}:</strong>
+            <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.title }}</a>
+            - {{ source.publisher }}, {{ source.published_at }}
+        </li>
+        {% endfor %}
+    </ol>
+
+    <p class="small text-muted mb-0">
+        Research date: {{ report.research_as_of }}.
+        Market data retrieved: {{ report.market_data_at }}.
+        Prices are snapshots and may change before execution.
+    </p>
+</section>
