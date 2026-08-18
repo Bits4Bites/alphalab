@@ -25,8 +25,11 @@
                                 <span class="text-muted ms-2">(Optional)</span>
                             </label>
                             <input type="text" class="form-control" id="markets" name="markets"
+                                   maxlength="324"
                                    placeholder="e.g. US, Australia, Japan, Europe (defaults to Global if empty)">
-                            <div class="form-text">Comma-separated list of markets to analyze. Leave empty for a global overview.</div>
+                            <div class="form-text">
+                                Enter up to five comma-separated markets. Leave empty for a global overview.
+                            </div>
                         </div>
                     </div>
                     <div class="mt-3">
@@ -51,7 +54,7 @@
                             <div class="progress mt-2" style="height: 6px;">
                                 <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
                             </div>
-                            <small class="text-muted" id="progress-step">Step 0 of 4</small>
+                            <small class="text-muted" id="progress-step">Step 0 of 3</small>
                             <small class="text-muted d-none ms-2" id="wait-timer"></small>
                         </div>
                     </div>
@@ -75,7 +78,7 @@
         #outlook-result h4 {font-size: 1.2rem !important;}
         #outlook-result h5 {font-size: 1.1rem !important;}
         </style>
-        <div id="result-section" class="d-none">
+        <div id="result-section" class="{% if not cached_result %}d-none{% endif %}">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex align-items-center justify-content-between">
                     <h4 class="fw-semibold mb-0">
@@ -86,22 +89,36 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none" role="status">
+                    <div id="cached-result-notice"
+                         class="alert alert-info small py-2 mb-3 {% if not cached_result %}d-none{% endif %}"
+                         role="status">
                         <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
-                        <span>This is a cached analysis completed on <span id="cached-result-time"></span>. Running it again will refresh it.</span>
+                        <span>
+                            This is a cached analysis completed on
+                            <time id="cached-result-time"
+                                  {% if cached_result %}datetime="{{ cached_result.generated_at }}"{% endif %}>
+                                {% if cached_result %}{{ cached_result.generated_at }}{% endif %}
+                            </time>.
+                            Running it again will refresh it.
+                        </span>
                     </div>
                     <div class="alert alert-warning small mb-3" role="alert">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
                     </div>
-                    <div id="outlook-result"></div>
+                    <div id="outlook-result">
+                        {% if cached_result %}
+                            {% with report=cached_result.payload %}
+                                {% include "partials/market_outlook_report.html" %}
+                            {% endwith %}
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 const MARKET_OUTLOOK_STORAGE_FEATURE = 'market-outlook';
 const MARKET_OUTLOOK_STORAGE_SCHEMA_VERSION = 1;
@@ -112,16 +129,8 @@ function isValidStoredMarketOutlook(value) {
         && !Array.isArray(value)
         && Object.keys(value).length === 1
         && Object.prototype.hasOwnProperty.call(value, 'markets')
-        && typeof value.markets === 'string';
-}
-
-function isValidCachedMarketOutlook(value) {
-    return value !== null
-        && typeof value === 'object'
-        && !Array.isArray(value)
         && typeof value.markets === 'string'
-        && typeof value.content === 'string'
-        && typeof value.generated_at === 'string';
+        && value.markets.length <= 324;
 }
 
 function showStorageWarning(message) {
@@ -167,35 +176,160 @@ window.addEventListener('DOMContentLoaded', function() {
         showStorageWarning('Saved market input could not be restored. You can continue with the analysis.');
     }
 
-    const cachedDataNode = document.getElementById('cached-result-data');
-    if (!cachedDataNode) {
-        return;
-    }
-
-    try {
-        const cachedData = JSON.parse(cachedDataNode.textContent);
-        if (!isValidCachedMarketOutlook(cachedData)) {
-            return;
-        }
-
-        const generatedAt = new Date(cachedData.generated_at);
+    const cachedTime = document.getElementById('cached-result-time');
+    if (cachedTime && cachedTime.dateTime) {
+        const generatedAt = new Date(cachedTime.dateTime);
         if (Number.isNaN(generatedAt.getTime())) {
             return;
         }
-
-        renderMarkdown(cachedData.content, document.getElementById('outlook-result'));
-        document.getElementById('cached-result-time').textContent = generatedAt.toLocaleString();
-        document.getElementById('cached-result-notice').classList.remove('d-none');
-        document.getElementById('result-section').classList.remove('d-none');
-    } catch (error) {
-        // Ignore malformed cached data so the form remains usable.
+        cachedTime.textContent = generatedAt.toLocaleString();
     }
 });
 
-document.getElementById('outlook-form').addEventListener('submit', function(e) {
+function parseMarketOutlookSseEvent(rawEvent) {
+    const dataLines = [];
+    rawEvent.split('\n').forEach(function(line) {
+        if (line.startsWith('data:')) {
+            dataLines.push(line.slice(5).replace(/^ /, ''));
+        }
+    });
+    if (dataLines.length === 0) {
+        return null;
+    }
+    try {
+        const data = JSON.parse(dataLines.join('\n'));
+        if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+            throw new TypeError('Invalid SSE payload');
+        }
+        return data;
+    } catch (error) {
+        return {
+            type: 'error',
+            message: 'The server returned an unreadable response. Please try again.'
+        };
+    }
+}
+
+function handleMarketOutlookSseEvent(data, handlers) {
+    if (data.type === 'progress') {
+        if (!Number.isFinite(data.step) || !Number.isFinite(data.total)
+                || data.total <= 0 || typeof data.message !== 'string') {
+            handlers.onError('The server returned invalid progress information. Please try again.');
+            return true;
+        }
+        handlers.onProgress(data);
+        return false;
+    }
+    if (data.type === 'error') {
+        handlers.onError(
+            typeof data.message === 'string' && data.message.trim()
+                ? data.message
+                : 'Market Outlook research failed. Please try again.'
+        );
+        return true;
+    }
+    if (data.type === 'result') {
+        if (typeof data.html !== 'string' || !data.html.trim()) {
+            handlers.onError('The server returned an empty Market Outlook report. Please try again.');
+            return true;
+        }
+        handlers.onResult(data.html);
+        return true;
+    }
+    handlers.onError('The server returned an unknown response. Please try again.');
+    return true;
+}
+
+async function streamMarketOutlook(markets, handlers) {
+    let response;
+    try {
+        response = await fetch('/market-outlook/stream', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'text/event-stream',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({markets: markets})
+        });
+    } catch (error) {
+        handlers.onError('Unable to reach the server. Check your connection and try again.');
+        return;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok || !response.body || !contentType.includes('text/event-stream')) {
+        const message = response.status === 422
+            ? 'Enter no more than five valid market labels and try again.'
+            : `The server returned an unexpected response (HTTP ${response.status}). Please try again.`;
+        handlers.onError(message);
+        return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let terminal = false;
+
+    try {
+        while (!terminal) {
+            const {done, value} = await reader.read();
+            if (done) {
+                break;
+            }
+            buffer += decoder.decode(value, {stream: true});
+            buffer = buffer.replace(/\r\n/g, '\n');
+            let boundary = buffer.indexOf('\n\n');
+            while (boundary !== -1 && !terminal) {
+                const parsed = parseMarketOutlookSseEvent(buffer.slice(0, boundary));
+                buffer = buffer.slice(boundary + 2);
+                if (parsed) {
+                    terminal = handleMarketOutlookSseEvent(parsed, handlers);
+                }
+                boundary = buffer.indexOf('\n\n');
+            }
+        }
+    } catch (error) {
+        if (!terminal) {
+            handlers.onError('Connection lost before the Market Outlook completed. Please try again.');
+        }
+        return;
+    } finally {
+        try {
+            await reader.cancel();
+        } catch (error) {
+            // Best-effort stream cleanup only.
+        }
+    }
+
+    if (!terminal) {
+        handlers.onError('The connection closed before the Market Outlook completed. Please try again.');
+    }
+}
+
+document.getElementById('outlook-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
     const markets = document.getElementById('markets').value.trim();
+    const marketLabels = [];
+    const seenMarkets = new Set();
+    markets.split(',').map(function(value) {
+        return value.trim().replace(/\s+/g, ' ');
+    }).filter(Boolean).forEach(function(value) {
+        const key = value.toLocaleLowerCase();
+        if (!seenMarkets.has(key)) {
+            seenMarkets.add(key);
+            marketLabels.push(value);
+        }
+    });
+
+    const errorSection = document.getElementById('error-section');
+    if (marketLabels.length > 5 || marketLabels.some(function(value) { return value.length > 64; })) {
+        document.getElementById('error-message').textContent =
+            'Enter no more than five markets, with each market limited to 64 characters.';
+        errorSection.classList.remove('d-none');
+        return;
+    }
 
     try {
         const persisted = window.AlphaLabStorage.save(
@@ -216,7 +350,6 @@ document.getElementById('outlook-form').addEventListener('submit', function(e) {
 
     const btn = document.getElementById('outlook-btn');
     const progressSection = document.getElementById('progress-section');
-    const errorSection = document.getElementById('error-section');
     const resultSection = document.getElementById('result-section');
     const cachedResultNotice = document.getElementById('cached-result-notice');
 
@@ -230,66 +363,51 @@ document.getElementById('outlook-form').addEventListener('submit', function(e) {
     const waitTimer = new WaitTimer('wait-timer');
     waitTimer.start();
 
-    const params = new URLSearchParams({ markets: markets });
-
-    const eventSource = new EventSource(`/market-outlook/stream?${params.toString()}`);
-
-    eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-
-        if (data.type === 'progress') {
+    await streamMarketOutlook(marketLabels, {
+        onProgress: function(data) {
             const pct = Math.round((data.step / data.total) * 100);
             document.getElementById('progress-message').textContent = data.message;
             document.getElementById('progress-bar').style.width = pct + '%';
             document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
-        } else if (data.type === 'error') {
+        },
+        onError: function(message) {
             waitTimer.stop();
             progressSection.classList.add('d-none');
             errorSection.classList.remove('d-none');
-            document.getElementById('error-message').textContent = data.message;
-            eventSource.close();
+            document.getElementById('error-message').textContent = message;
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-globe-americas me-1"></i>Get Market Outlook';
-        } else if (data.type === 'result') {
+        },
+        onResult: function(html) {
             waitTimer.stop();
             progressSection.classList.add('d-none');
             cachedResultNotice.classList.add('d-none');
             resultSection.classList.remove('d-none');
-            renderMarkdown(data.content, document.getElementById('outlook-result'));
-            eventSource.close();
+            // The server builds this fragment from a validated report using Jinja autoescaping.
+            document.getElementById('outlook-result').innerHTML = html;
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-globe-americas me-1"></i>Get Market Outlook';
         }
-    };
-
-    eventSource.onerror = function() {
-        waitTimer.stop();
-        progressSection.classList.add('d-none');
-        errorSection.classList.remove('d-none');
-        document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
-        eventSource.close();
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-globe-americas me-1"></i>Get Market Outlook';
-    };
+    });
 });
 
 function printOutlook() {
     const content = document.getElementById('outlook-result').innerHTML;
     const html = `<html lang="en"><head><title>Market Outlook - {{ app_name }}</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
         <style>body { padding: 2rem; } @media print { body { padding: 0; } }</style>
         </head><body><div class="container"><h1 class="mb-4">Market Outlook</h1>${content}</div></body></html>`;
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const printWindow = window.open(url, '_blank');
+    if (!printWindow) {
+        URL.revokeObjectURL(url);
+        return;
+    }
     printWindow.onload = function() {
         printWindow.print();
         URL.revokeObjectURL(url);
     };
 }
 </script>
-{% if cached_result %}
-<script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
-{% endif %}
 {% endblock %}

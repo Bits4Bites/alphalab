@@ -33,14 +33,11 @@ investment insights.
   recommendations when building or reviewing a portfolio. Add as much or as little detail as needed and answer
   focused clarification questions when necessary.
 - **Build Portfolio** Turn investment goals, risk tolerance, time horizon, and preferred themes into a practical
-  portfolio allocation.
-- **Portfolio Action Briefing** Turn current holdings, available cash, and optional watchlist names into a sourced,
-  prioritized action plan. Choose a horizon from today through the next three months, review portfolio risks and
-  catalysts, and export the resulting action list to CSV. Focus first on actions with the greatest urgency and
-  portfolio impact, with suggested quantities and values grounded in recent market prices.
+  portfolio allocation and prioritized implementation plan.
 - **Review Portfolio** Identify portfolio strengths, concentration risks, weak positions, and opportunities to
-  improve diversification and resilience. Create an optional market-specific plan showing estimated trades, cash
-  impact, and before-and-after allocations, then continue directly to Portfolio Action Briefing.
+  improve diversification and resilience. Turn the findings into a prioritized plan for starting, increasing,
+  holding, reducing, or exiting positions, with an optional rebalance plan that can introduce verified new
+  investments and show the expected cash and allocation impact.
 
 **Signals**
 - **Watchlist Monitor** Prioritize the names that deserve attention by combining news, technical signals, valuation,
@@ -83,8 +80,10 @@ cd alphalab
 python -m venv .venv
 
 # Activate virtual environment
-# Windows:
-.venv\Scripts\activate
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
+# Windows Command Prompt:
+.venv\Scripts\activate.bat
 # Linux/macOS:
 source .venv/bin/activate
 
@@ -119,17 +118,18 @@ Pre-set configurations are loaded from `.env` files. All pre-set values can be o
 | `ai_tasks.env`                    | AI task-to-vendor/tier/model mapping            |
 | `datastore.env`                   | Redis connection and key prefix                 |
 
-**Required configurations:**
+**Key configuration variables:**
 
 | Variable                                              | Description                                               |
 |-------------------------------------------------------|-----------------------------------------------------------|
 | `AL_ALLOWED_EMAILS`                                   | Comma-separated list of email addresses allowed to log in |
 | `AL_GITHUB_CLIENT_ID` / `AL_GITHUB_CLIENT_SECRET`     | GitHub OAuth credentials                                  |
 | `AL_LINKEDIN_CLIENT_ID` / `AL_LINKEDIN_CLIENT_SECRET` | LinkedIn OAuth credentials                                |
-| `AL_LLM__<VENDOR>__<TIER>__ENDPOINT`                  | AI vendor endpoint                                        |
-| `AL_LLM__<VENDOR>__<TIER>__API_KEY`                   | AI vendor API key                                         |
+| `AL_LLM__<VENDOR>__<TIER>__ENDPOINT`                  | Provider endpoint when required by the selected vendor    |
+| `AL_LLM__<VENDOR>__<TIER>__API_KEY`                   | Provider credential when API-key authentication is used   |
 
-> At least one identity provider (GitHub or LinkedIn) and one AI vendor must be configured for the app to function properly.
+> At least one identity provider (GitHub or LinkedIn) and one supported AI vendor tier used by the configured tasks
+> must be available. Azure OpenAI can use Azure AD credentials instead of an API key.
 
 **AI vendor configuration:**
 
@@ -158,14 +158,14 @@ Claude entries remain in `ai_vendors.env` for future support but cannot currentl
 > use models that support web search. This currently applies to:
 >
 > - **Dashboard:** `DASHBOARD_ANALYZE`, `DASHBOARD_FETCH_MARKET_NEWS`,
->   `DASHBOARD_EXECUTE_ACTIONABLE_PROMPT`
+>   `DASHBOARD_GENERATE_ACTIONABLE_IDEAS`
 > - **Market research:** `MARKET_OUTLOOK_ANALYZE`, `SECTOR_ROTATION_RADAR_ANALYZE`, `IPO_SCANNER_DISCOVER`,
 >   `IPO_SCANNER_VERIFY`
 > - **Stock analysis:** `ANALYZE_TICKER_ANALYZE_QUICK`, `ANALYZE_TICKER_ANALYZE`,
 >   `COMPARE_INVESTMENTS_ANALYZE`, `COMPARE_INVESTMENTS_ANALYZE_SCENARIO`, `DIVIDEND_EVENT_ANALYZE`,
 >   `IPO_ANALYZER_ANALYZE`
 > - **Portfolio:** `BUILD_PORTFOLIO_ANALYZE`, `REVIEW_PORTFOLIO_ANALYZE`,
->   `PORTFOLIO_ACTION_BRIEFING_ANALYZE`
+>   `REVIEW_PORTFOLIO_REBALANCE_ANALYZE`
 > - **Signals:** `WATCHLIST_MONITOR_ANALYZE`, `EARNINGS_CATALYST_TRACKER_ANALYZE`
 >
 > **Uploaded-document model recommendation:** Configure tasks that analyze uploaded files, currently
@@ -174,10 +174,9 @@ Claude entries remain in `ai_vendors.env` for future support but cannot currentl
 
 ### Data storage
 
-AlphaLab does not persist portfolio or watchlist data in an application database. Feature inputs and the latest
-successful result are stored in user-scoped browser storage for convenience. Portfolio Action Briefing submits the
-current request for on-demand processing, returns a streamed response, and retains no server-side portfolio record.
-Redis, when configured, is used only for temporary application data and bounded analysis caches.
+AlphaLab does not persist portfolio or watchlist data in an application database. Feature inputs and Draft Portfolio
+Intent work-in-progress are stored in user-scoped browser storage for convenience. Redis, when configured, stores
+temporary application data and bounded successful-result caches.
 
 **Optional configurations:**
 
@@ -185,7 +184,7 @@ Redis, when configured, is used only for temporary application data and bounded 
 |------------------------------------|----------------------------|--------------------------------------------------------------|
 | `AL_DEBUG`                         | `false`                    | Enable debug mode                                            |
 | `AL_BASE_URL`                      | `http://localhost:8000`    | Base URL for OAuth callbacks                                 |
-| `AL_PRIMARY_MARKETS`               | _(empty)_                  | Comma-separated list of primary markets (e.g. `US,ASX,LSE`)  |
+| `AL_PRIMARY_MARKETS`               | `AU,US,VN`                 | Enabled markets; portfolio market data supports AU, US, VN   |
 | `AL_SECRET_KEY`                    | `change-me-in-production`  | JWT signing secret                                           |
 | `AL_JWT_ALGORITHM`                 | `HS256`                    | JWT algorithm                                                |
 | `AL_JWT_EXPIRE_MINUTES`            | `10080` (7 days)           | JWT token expiry                                             |
@@ -198,14 +197,14 @@ Redis, when configured, is used only for temporary application data and bounded 
 | `AL_DATASTORE_REDIS_URL`           | `redis://localhost:6379/0` | Optional Redis connection for temporary application data     |
 | `AL_DATASTORE_REDIS_KEY_PREFIX`    | `al:`                      | Key namespace prefix for all Redis keys                      |
 
-OpenAI and Azure OpenAI web search limits are selected automatically from the task reasoning level:
+OpenAI and Azure OpenAI search context and tool-call limits are selected automatically from the task reasoning level:
 
 | Reasoning level | Search context size | Maximum tool calls |
 |-----------------|---------------------|--------------------|
-| `low`           | `low`               | 5                  |
-| `medium`        | `medium`            | 10                 |
-| `high`          | `high`              | 15                 |
-| Model default   | `medium`            | 10                 |
+| `low`           | `low`               | 4                  |
+| `medium`        | `medium`            | 7                  |
+| `high`          | `high`              | 13                 |
+| Model default   | `medium`            | 7                  |
 
 **Examples:**
 

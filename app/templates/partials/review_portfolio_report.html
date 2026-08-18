@@ -1,0 +1,226 @@
+<section class="review-portfolio-report" aria-label="Portfolio review">
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge text-bg-primary">{{ report.market_name }} ({{ report.market }})</span>
+        {% if report.risk_tolerance %}
+        <span class="badge text-bg-secondary">{{ report.risk_tolerance }} risk</span>
+        {% endif %}
+        {% if report.investment_horizon %}
+        <span class="badge text-bg-secondary">{{ report.investment_horizon }}</span>
+        {% endif %}
+        {% if report.additional_budget %}
+        <span class="badge text-bg-success">{{ report.additional_budget.label }}</span>
+        {% endif %}
+        {% set need = report.rebalance_assessment.need %}
+        <span class="badge {% if need == 'major' %}text-bg-danger{% elif need == 'minor' %}text-bg-warning{% else %}text-bg-success{% endif %}">
+            Rebalance need: {{ need | title }}
+        </span>
+    </div>
+
+    <p class="lead">{{ report.portfolio_summary }}</p>
+
+    <div class="alert {% if need == 'major' %}alert-danger{% elif need == 'minor' %}alert-warning{% else %}alert-success{% endif %}">
+        <h3 class="h6 alert-heading">
+            Rebalance assessment: {{ need | title }}
+            <span class="fw-normal">({{ report.rebalance_assessment.confidence }} confidence)</span>
+        </h3>
+        <p class="mb-2">{{ report.rebalance_assessment.summary }}</p>
+        <div class="small">
+            Suggested timing: {{ report.rebalance_assessment.urgency | replace("_", " ") | title }}
+        </div>
+        <ul class="mb-0 mt-2">
+            {% for driver in report.rebalance_assessment.drivers %}
+            <li>{{ driver.statement }} <span class="text-muted">[{{ driver.source_ids | join(", ") }}]</span></li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    {% if report.warnings %}
+    <div class="alert alert-warning">
+        <h3 class="h6 alert-heading">Validation notes</h3>
+        <ul class="mb-0">
+            {% for warning in report.warnings %}
+            <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <h3 class="h5 mt-4">Verified portfolio snapshot</h3>
+    <div class="row g-3 mb-3">
+        <div class="col-sm-6 col-lg-3">
+            <div class="border rounded p-3 h-100">
+                <div class="small text-muted">Holdings value</div>
+                <div class="fw-semibold">{{ report.currency }} {{ "{:,.2f}".format(report.holdings_value) }}</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="border rounded p-3 h-100">
+                <div class="small text-muted">Available cash</div>
+                <div class="fw-semibold">{{ report.currency }} {{ "{:,.2f}".format(report.available_cash) }}</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="border rounded p-3 h-100">
+                <div class="small text-muted">Current portfolio value</div>
+                <div class="fw-semibold">
+                    {{ report.currency }} {{ "{:,.2f}".format(report.total_portfolio_value) }}
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="border rounded p-3 h-100">
+                <div class="small text-muted">Largest position</div>
+                <div class="fw-semibold">{{ "%.2f"|format(report.largest_position_pct) }}%</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Position</th>
+                    <th scope="col" class="text-end">Quantity</th>
+                    <th scope="col" class="text-end">Price</th>
+                    <th scope="col" class="text-end">Value</th>
+                    <th scope="col" class="text-end">Weight</th>
+                    <th scope="col">Assessment</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for position in report.positions %}
+                <tr>
+                    <td>
+                        <strong>{{ position.ticker }}</strong>
+                        <div class="small text-muted">{{ position.display_name }}</div>
+                        <div class="small text-muted">{{ position.sector }} &middot; {{ position.asset_type }}</div>
+                    </td>
+                    <td class="text-end">{{ "{:,.6f}".format(position.quantity).rstrip("0").rstrip(".") }}</td>
+                    <td class="text-end">{{ report.currency }} {{ "{:,.2f}".format(position.current_price) }}</td>
+                    <td class="text-end">{{ report.currency }} {{ "{:,.2f}".format(position.market_value) }}</td>
+                    <td class="text-end">{{ "%.2f"|format(position.current_weight_pct) }}%</td>
+                    <td>
+                        <span class="badge {% if position.recommendation == 'EXIT' %}text-bg-danger{% elif position.recommendation == 'TRIM' %}text-bg-warning{% else %}text-bg-success{% endif %}">
+                            {{ position.recommendation }}
+                        </span>
+                        <span class="small text-muted">{{ position.fundamental_status | replace("_", " ") }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="6" class="small">
+                        <strong>Assessment:</strong> {{ position.assessment }}
+                        <div><strong>Portfolio fit:</strong> {{ position.portfolio_fit }}</div>
+                        <div class="text-muted">Sources: {{ position.source_ids | join(", ") }}</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-6">
+            <h3 class="h5">Current sector and asset exposure</h3>
+            <ul>
+                {% for exposure in report.sector_exposures %}
+                <li>{{ exposure.sector }}: {{ "%.2f"|format(exposure.current_weight_pct) }}%</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="col-lg-6">
+            <h3 class="h5">Diversification findings</h3>
+            <ul>
+                {% for item in report.diversification_findings %}
+                <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    {% if report.scenario_assessment %}
+    <h3 class="h5">Scenario assessment</h3>
+    <p><strong>{{ report.scenario_assessment.scenario }}</strong></p>
+    <p>{{ report.scenario_assessment.portfolio_impact }}</p>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <strong>More vulnerable:</strong>
+            {{ report.scenario_assessment.vulnerable_tickers | join(", ") or "None identified" }}
+        </div>
+        <div class="col-md-6">
+            <strong>More resilient:</strong>
+            {{ report.scenario_assessment.resilient_tickers | join(", ") or "None identified" }}
+        </div>
+    </div>
+    <p class="small text-muted mt-2">Sources: {{ report.scenario_assessment.source_ids | join(", ") }}</p>
+    {% endif %}
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-6">
+            <h3 class="h5">Material risks</h3>
+            <ul>
+                {% for item in report.portfolio_risks %}
+                <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="col-lg-6">
+            <h3 class="h5">Urgent actions</h3>
+            {% if report.urgent_actions %}
+            <ul>
+                {% for item in report.urgent_actions %}
+                <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p>No urgent action was supported by the validated review.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <h3 class="h5">Review triggers</h3>
+            <ul>
+                {% for item in report.review_triggers %}
+                <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if report.tax_considerations %}
+        <div class="col-lg-6">
+            <h3 class="h5">Qualitative tax considerations</h3>
+            <ul>
+                {% for item in report.tax_considerations %}
+                <li>{{ item.statement }} <span class="text-muted">[{{ item.source_ids | join(", ") }}]</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if report.assumptions %}
+    <h3 class="h5">Assumptions</h3>
+    <ul>
+        {% for assumption in report.assumptions %}
+        <li>{{ assumption }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h3 class="h5 mt-4">Sources</h3>
+    <ol class="small">
+        {% for source in report.sources %}
+        <li id="review-source-{{ source.id }}">
+            <strong>{{ source.id }}:</strong>
+            <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.title }}</a>
+            - {{ source.publisher }}, {{ source.published_at }}
+        </li>
+        {% endfor %}
+    </ol>
+
+    <p class="small text-muted mb-0">
+        Research date: {{ report.research_as_of }}.
+        Market data retrieved: {{ report.market_data_at }}.
+        Prices are delayed snapshots and may change before execution.
+    </p>
+</section>

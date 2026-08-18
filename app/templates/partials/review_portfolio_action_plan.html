@@ -1,0 +1,122 @@
+<section class="review-portfolio-action-plan" aria-label="Prioritized portfolio action plan">
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge text-bg-primary">{{ action_plan.market_name }} ({{ action_plan.market }})</span>
+        <span class="badge text-bg-secondary">{{ action_plan.currency }}</span>
+        <span class="badge text-bg-light border text-dark">
+            {{ "Rebalance-backed" if action_plan.basis == "rebalance" else "Existing holdings only" }}
+        </span>
+    </div>
+
+    <p class="lead">{{ action_plan.summary }}</p>
+
+    {% if action_plan.warnings %}
+    <div class="alert alert-warning">
+        <h3 class="h6 alert-heading">Action-plan notes</h3>
+        <ul class="mb-0">
+            {% for warning in action_plan.warnings %}
+            <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Sequence</th>
+                    <th scope="col">Priority</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">Position</th>
+                    <th scope="col">Timing</th>
+                    <th scope="col">Size and estimate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for action in action_plan.actions %}
+                <tr>
+                    <td>{{ action.sequence }}</td>
+                    <td>
+                        <span class="badge
+                            {% if action.priority == 'Critical' %}text-bg-danger
+                            {% elif action.priority == 'High' %}text-bg-warning
+                            {% elif action.priority == 'Medium' %}text-bg-info
+                            {% else %}text-bg-secondary{% endif %}">
+                            {{ action.priority }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge
+                            {% if action.action in ['NEW', 'ADD'] %}text-bg-success
+                            {% elif action.action == 'TRIM' %}text-bg-warning
+                            {% elif action.action == 'EXIT' %}text-bg-danger
+                            {% else %}text-bg-secondary{% endif %}">
+                            {% if action.action == "TRIM" %}
+                                SELL {{ "%.2f"|format(action.sizing_pct) }}%
+                            {% elif action.action == "EXIT" %}
+                                SELL ALL
+                            {% else %}
+                                {{ action.action }}
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>{{ action.ticker }}</strong>
+                        <div class="small text-muted">{{ action.display_name }}</div>
+                        {% if action.action in ["NEW", "ADD"] and action.target_weight_pct is not none %}
+                        <div class="small text-muted">
+                            Target allocation: {{ "%.2f"|format(action.target_weight_pct) }}%
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>{{ action.timing }}</td>
+                    <td>
+                        {% if action.action == "TRIM" %}
+                        <div>Sell {{ "%.2f"|format(action.sizing_pct) }}% of the current position</div>
+                        {% elif action.action == "EXIT" %}
+                        <div>Sell the full current position</div>
+                        {% elif action.action in ["NEW", "ADD"] and action.target_weight_pct is not none %}
+                        <div>{{ "%.2f"|format(action.target_weight_pct) }}% target portfolio allocation</div>
+                        {% endif %}
+                        {% if action.estimated_value is not none %}
+                        <div>{{ action_plan.currency }} {{ "{:,.2f}".format(action.estimated_value) }}</div>
+                        {% endif %}
+                        {% if action.estimated_quantity is not none %}
+                        <div class="small text-muted">
+                            Estimated quantity:
+                            {{ "{:,.6f}".format(action.estimated_quantity).rstrip("0").rstrip(".") }}
+                        </div>
+                        {% elif action.action == "HOLD" %}
+                        <span class="text-muted">No transaction</span>
+                        {% elif action.action in ["NEW", "ADD"] %}
+                        <span class="text-muted">Target allocation only; no executable quantity</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="6" class="small">
+                        <strong>Rationale:</strong> {{ action.rationale }}
+                        {% if action.dependencies %}
+                        <div><strong>After:</strong> {{ action.dependencies | join(", ") }}</div>
+                        {% endif %}
+                        {% if action.source_ids %}
+                        <div class="text-muted">
+                            Sources:
+                            {% for source_id in action.source_ids %}
+                                <a href="#{{ action.source_scope }}-source-{{ source_id }}">{{ source_id }}</a>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <p class="small text-muted mb-0">
+        Action plan generated: {{ action_plan.generated_at }}.
+        Market data retrieved: {{ action_plan.market_data_at }}.
+        Verify live prices, account rules, fees, taxes, and order details before trading.
+    </p>
+</section>

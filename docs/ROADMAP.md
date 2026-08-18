@@ -1,6 +1,6 @@
 # AlphaLab Roadmap
 
-Last updated: 2026-07-22
+Last updated: 2026-08-18
 
 This roadmap prioritizes features that improve investment decisions, research continuity, and actionable outcomes.
 AlphaLab should remain simple and server-rendered where practical, using browser storage for small user-owned data and
@@ -13,34 +13,6 @@ technical item is required to deliver a business feature safely or reliably.
 
 ### High Priority
 
-#### Portfolio Action Briefing
-
-Turn current holdings and watchlist names into an on-demand, prioritized view of what deserves attention now.
-
-**Status: Implemented**
-
-**MVP**
-
-- Rank sourced actions by timing urgency, potential impact, portfolio exposure, and evidence confidence.
-- Show portfolio risks and upcoming events within a selected today, 7-day, 2-week, 1-month, or 3-month horizon.
-- Import Review Portfolio inputs from user-scoped browser storage without retaining holdings server-side.
-- Calculate suggested quantities and estimated values deterministically from validated delayed market snapshots.
-
-#### Compare Investments
-
-Help investors choose two to five stocks or ETFs using a consistent scorecard.
-
-**Status: Implemented**
-
-**MVP**
-
-- Compare valuation, financial quality, growth, momentum, catalysts, and risks.
-- Include scenario sensitivity and suitability for different investor profiles.
-- Present a side-by-side summary table, category winners, and a balanced overall ranking.
-- Persist comparison inputs locally and cache the latest successful comparison per user.
-- Keep category weights fixed and transparent, and calculate winners and ranks deterministically on the backend.
-- Support mixed stock and ETF comparisons within one selected US or Australian market.
-
 #### Filing and Earnings Report Analyzer
 
 Extend source-based document research beyond IPO prospectuses.
@@ -51,21 +23,6 @@ Extend source-based document research beyond IPO prospectuses.
 - Extract key financial changes, guidance, management commentary, risks, and inconsistencies.
 - Cite the relevant page or document section for material findings.
 - Reuse the existing temporary upload and cleanup lifecycle.
-
-#### Review Portfolio: Rebalance Planner
-
-Turn portfolio analysis into an actionable adjustment plan within the investor's selected market.
-
-**Status: Implemented**
-
-**MVP**
-
-- Accept line-oriented holdings and derive currency from the required target market.
-- Make rebalancing optional within Review Portfolio, without adding a confirmation step.
-- Compare current, target, and estimated resulting allocations.
-- Produce deterministic buy, sell, trim, hold, and cash-deployment actions.
-- Show trade quantities, residual cash, concentration changes, quote timestamps, warnings, and CSV export.
-- Keep tax and execution considerations qualitative and clearly separate the plan from financial advice.
 
 ### Medium Priority
 
@@ -138,8 +95,6 @@ and additional privacy and operational controls.
 
 ## Recommended Sequence
 
-Portfolio Action Briefing, Compare Investments, and Review Portfolio: Rebalance Planner have been delivered.
-
 1. Filing and Earnings Report Analyzer.
 2. Investment Thesis Tracker.
 3. Unified Catalyst Calendar after selecting a trustworthy event-data source.
@@ -150,15 +105,13 @@ large standalone rewrites.
 
 ## Summary
 
-| Area | Priority | Initiative | Primary Outcome |
-|---|---|---|---|
-| Business | High | Compare Investments (delivered) | Faster, evidence-based selection between competing investments |
-| Business | High | Filing and Earnings Report Analyzer | Deeper source-backed company research |
-| Business | High | Review Portfolio: Rebalance Planner (delivered) | Concrete, market-specific adjustment plan |
-| Business | Medium | Investment Thesis Tracker | Research continuity and repeat engagement |
-| Business | Medium | Unified Catalyst Calendar | One prioritized view of upcoming market events |
-| Business | Low | Real-Time Alerts and Multi-Device Sync | Automated engagement after durable infrastructure exists |
-| Technical | High | Shared Analysis Page Client Module | Less duplicated UI and persistence logic |
-| Technical | High | Structured AI Result Contracts | Reliable tables, comparisons, actions, and exports |
-| Technical | Medium | Shared Backend Analysis Workflow | Consistent request, SSE, and caching behavior |
-| Technical | Low | Cache and AI Task Observability | Better operational visibility and diagnosis |
+| Area      | Priority | Initiative                                      | Primary Outcome                                                |
+|-----------|----------|-------------------------------------------------|----------------------------------------------------------------|
+| Business  | High     | Filing and Earnings Report Analyzer             | Deeper source-backed company research                          |
+| Business  | Medium   | Investment Thesis Tracker                       | Research continuity and repeat engagement                      |
+| Business  | Medium   | Unified Catalyst Calendar                       | One prioritized view of upcoming market events                 |
+| Business  | Low      | Real-Time Alerts and Multi-Device Sync          | Automated engagement after durable infrastructure exists       |
+| Technical | High     | Shared Analysis Page Client Module              | Less duplicated UI and persistence logic                       |
+| Technical | High     | Structured AI Result Contracts                  | Reliable tables, comparisons, actions, and exports             |
+| Technical | Medium   | Shared Backend Analysis Workflow                | Consistent request, SSE, and caching behavior                  |
+| Technical | Low      | Cache and AI Task Observability                 | Better operational visibility and diagnosis                    |

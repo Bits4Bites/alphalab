@@ -11,9 +11,14 @@
             <div class="card-body">
                 <div class="mb-3">
                     <h2 class="h4 mb-1" id="build-portfolio-heading">Build a New Portfolio</h2>
-                    <p class="text-muted mb-0">Generate an AI-tailored portfolio recommendation based on your risk tolerance, target market, and investment theme.</p>
+                    <p class="text-muted mb-0">
+                        Generate a researched target portfolio with verified sizing and a prioritized implementation
+                        plan.
+                    </p>
                 </div>
-                <div id="storage-warning" class="alert alert-warning small py-2 mb-3 d-none" role="status" aria-live="polite">
+                <div id="storage-warning"
+                     class="alert alert-warning small py-2 mb-3 d-none"
+                     role="status" aria-live="polite">
                     <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
                     <span id="storage-warning-message"></span>
                 </div>
@@ -21,8 +26,7 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label for="risk-tolerance" class="form-label fw-semibold">
-                                Risk Tolerance
-                                <span class="text-danger ms-2">*</span>
+                                Risk Tolerance <span class="text-danger ms-2">*</span>
                             </label>
                             <select class="form-select" id="risk-tolerance" name="risk_tolerance" required>
                                 <option value="">Select...</option>
@@ -34,16 +38,20 @@
                         </div>
                         <div class="col-md-4">
                             <label for="target-market" class="form-label fw-semibold">
-                                Target Market
-                                <span class="text-danger ms-2">*</span>
+                                Target Market <span class="text-danger ms-2">*</span>
                             </label>
-                            <input type="text" class="form-control" id="target-market" name="target_market"
-                                   placeholder="e.g. US, Australia, Vietnam, Global" required>
+                            <select class="form-select" id="target-market" name="target_market" required>
+                                {% for market in market_options %}
+                                <option value="{{ market.code }}"
+                                        {% if market.code == default_market %}selected{% endif %}>
+                                    {{ market.label }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div class="col-md-4">
                             <label for="investment-horizon" class="form-label fw-semibold">
-                                Investment Horizon
-                                <span class="text-muted ms-2">(Optional)</span>
+                                Investment Horizon <span class="text-muted ms-2">(Optional)</span>
                             </label>
                             <select class="form-select" id="investment-horizon" name="investment_horizon">
                                 <option value="">Select...</option>
@@ -55,41 +63,75 @@
                         </div>
                         <div class="col-md-8">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                                <label for="investment-theme" class="form-label fw-semibold mb-0">
-                                    Portfolio Intent / Investment Theme
-                                    <span class="text-danger ms-2">*</span>
+                                <label for="portfolio-intent" class="form-label fw-semibold mb-0">
+                                    Portfolio Intent <span class="text-danger ms-2">*</span>
                                 </label>
-                                <a class="small" href="/draft-portfolio-intent">
-                                    Need help? Draft portfolio intent
-                                </a>
+                                <a class="small" href="/draft-portfolio-intent">Need help? Draft portfolio intent</a>
                             </div>
-                            <textarea class="form-control" id="investment-theme" name="investment_theme"
-                                      rows="4" required
+                            <textarea class="form-control" id="portfolio-intent" name="portfolio_intent"
+                                      rows="5" maxlength="2500" required
                                       data-portfolio-intent-handoff-target="build"
-                                      data-portfolio-intent-handoff-status="#investment-theme-draft-success"
-                                      placeholder="Paste a portfolio intent, or enter a theme such as AI, dividends, growth, or value"></textarea>
-                            <div id="investment-theme-draft-success"
+                                      data-portfolio-intent-handoff-status="#portfolio-intent-draft-success"
+                                      placeholder="e.g. Long-term Australian ETF portfolio, balanced 50% growth and 50% income"></textarea>
+                            <div id="portfolio-intent-draft-success"
                                  class="alert alert-success small py-2 mt-2 mb-0 d-none"
                                  role="status" aria-live="polite"></div>
                         </div>
                         <div class="col-md-4">
                             <label for="budget" class="form-label fw-semibold">
-                                Budget
-                                <span class="text-muted ms-2">(Optional)</span>
+                                Budget <span class="text-muted ms-2">(Optional)</span>
                             </label>
                             <input type="text" class="form-control" id="budget" name="budget"
-                                   placeholder="e.g. $10,000">
+                                   maxlength="80"
+                                   placeholder="e.g. $10,000 or $1,000 monthly"
+                                   aria-describedby="budget-help">
+                            <div class="form-text" id="budget-help">
+                                No cadence means a total budget. Add weekly, monthly, quarterly, or annual for a
+                                recurring contribution.
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox"
+                                       id="allow-fractional-shares" name="allow_fractional_shares">
+                                <label class="form-check-label" for="allow-fractional-shares">
+                                    Fractional shares are available
+                                </label>
+                            </div>
                         </div>
-                        <div class="col-12">
+                        <div class="col-md-8">
                             <label for="existing-holdings" class="form-label fw-semibold">
-                                Existing Holdings
-                                <span class="text-muted ms-2">(Optional)</span>
+                                Existing Holdings <span class="text-muted ms-2">(Optional)</span>
                             </label>
-                            <textarea class="form-control" id="existing-holdings" name="existing_holdings" rows="3"
-                                      placeholder="e.g. AAPL 50 shares, MSFT 30 shares, VGS.AX 200 units"></textarea>
-                            <div class="form-text">List your current tickers/holdings so the AI can factor them into the recommendation.</div>
+                            <textarea class="form-control" id="existing-holdings" name="existing_holdings"
+                                      rows="4" maxlength="6000"
+                                      placeholder="AAPL, 50, 175.25&#10;MSFT, 30"></textarea>
+                            <div class="form-text">
+                                One holding per line: <code>TICKER, QUANTITY, AVERAGE_COST</code>.
+                                Average cost is optional. Holdings must match the selected market.
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="transition-mode" class="form-label fw-semibold">
+                                Existing Holdings Transition
+                            </label>
+                            <select class="form-select" id="transition-mode" name="transition_mode"
+                                    aria-describedby="transition-mode-help">
+                                <option value="contribution_only" selected>
+                                    Contribution only - do not sell
+                                </option>
+                                <option value="allow_trades">
+                                    Allow trims and exits
+                                </option>
+                            </select>
+                            <div id="transition-mode-help" class="form-text">
+                                Contribution only directs new funding toward target gaps. Allow trades may reduce or
+                                exit current holdings, without calculating exact tax liabilities.
+                            </div>
                         </div>
                     </div>
+                    <p class="small text-muted mt-3 mb-0">
+                        Inputs are saved in this browser for your account. Target research is cached for 72 hours;
+                        quote-dependent action plans are cached for 15 minutes.
+                    </p>
                     <div class="mt-3">
                         <button type="submit" class="btn btn-primary" id="build-btn">
                             <i class="bi bi-pie-chart me-1"></i>Build Portfolio
@@ -99,7 +141,6 @@
             </div>
         </div>
 
-        <!-- Progress indicator -->
         <div id="progress-section" class="d-none mb-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -112,7 +153,7 @@
                             <div class="progress mt-2" style="height: 6px;">
                                 <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
                             </div>
-                            <small class="text-muted" id="progress-step">Step 0 of 4</small>
+                            <small class="text-muted" id="progress-step">Step 0 of 10</small>
                             <small class="text-muted d-none ms-2" id="wait-timer"></small>
                         </div>
                     </div>
@@ -120,7 +161,6 @@
             </div>
         </div>
 
-        <!-- Error display -->
         <div id="error-section" class="d-none">
             <div class="alert alert-danger d-flex align-items-center" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -128,15 +168,7 @@
             </div>
         </div>
 
-        <!-- Result display -->
-        <style>
-        #portfolio-result h1 {font-size: 1.5rem !important;}
-        #portfolio-result h2 {font-size: 1.4rem !important;}
-        #portfolio-result h3 {font-size: 1.3rem !important;}
-        #portfolio-result h4 {font-size: 1.2rem !important;}
-        #portfolio-result h5 {font-size: 1.1rem !important;}
-        </style>
-        <div id="result-section" class="d-none">
+        <div id="result-section" class="{% if not cached_result %}d-none{% endif %}">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex align-items-center justify-content-between">
                     <h4 class="fw-semibold mb-0">
@@ -147,34 +179,45 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <div id="cached-result-notice" class="alert alert-info small py-2 mb-3 d-none" role="status">
+                    <div id="cached-result-notice"
+                         class="alert alert-info small py-2 mb-3 {% if not cached_result %}d-none{% endif %}"
+                         role="status">
                         <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
-                        <span>This is a cached analysis completed on <span id="cached-result-time"></span>. Running it again will refresh it.</span>
+                        <span>
+                            This is a cached analysis completed on
+                            <time id="cached-result-time"
+                                  {% if cached_result %}datetime="{{ cached_result.generated_at }}"{% endif %}>
+                                {% if cached_result %}{{ cached_result.generated_at }}{% endif %}
+                            </time>.
+                            Editing an input hides this result; running again refreshes it.
+                        </span>
                     </div>
                     <div class="alert alert-warning small mb-3" role="alert">
                         <i class="bi bi-exclamation-triangle me-1"></i>
-                        <strong>Disclaimer:</strong> This content is AI-generated and may not be up to date or accurate. It is provided for advisory purposes only and should not be considered financial advice. The site owner and developer(s) of {{ app_name }} accept no responsibility for any losses incurred based on this information.
+                        <strong>Disclaimer:</strong> This content is AI-assisted research and may not remain current.
+                        Verify prices, suitability, tax treatment, and execution details independently. It is not
+                        financial advice.
                     </div>
-                    <div id="portfolio-result"></div>
+                    <div id="portfolio-result">
+                        {% if cached_result %}
+                            {% with report=cached_result.payload,
+                                    action_plan=cached_action_plan.payload if cached_action_plan else none %}
+                                {% include "partials/build_portfolio_report.html" %}
+                            {% endwith %}
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 const BUILD_PORTFOLIO_STORAGE_FEATURE = 'build-portfolio';
-const BUILD_PORTFOLIO_STORAGE_SCHEMA_VERSION = 1;
-const BUILD_PORTFOLIO_INPUT_FIELDS = [
-    'risk_tolerance',
-    'investment_theme',
-    'target_market',
-    'investment_horizon',
-    'budget',
-    'existing_holdings'
-];
-const BUILD_PORTFOLIO_RISK_TOLERANCES = ['Conservative', 'Moderate', 'Aggressive', 'Very Aggressive'];
+const BUILD_PORTFOLIO_STORAGE_SCHEMA_VERSION = 3;
+const BUILD_PORTFOLIO_MARKETS = {{ market_codes | tojson }};
+const BUILD_PORTFOLIO_DEFAULT_MARKET = {{ default_market | tojson }};
+const BUILD_PORTFOLIO_RISK_TOLERANCES = ['', 'Conservative', 'Moderate', 'Aggressive', 'Very Aggressive'];
 const BUILD_PORTFOLIO_HORIZONS = [
     '',
     'Short-term (< 1 year)',
@@ -182,161 +225,239 @@ const BUILD_PORTFOLIO_HORIZONS = [
     'Long-term (3-5 years)',
     'Very long-term (5+ years)'
 ];
-const BUILD_PORTFOLIO_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+const BUILD_PORTFOLIO_TRANSITION_MODES = ['contribution_only', 'allow_trades'];
 
-function hasExactBuildPortfolioStringFields(value, fields) {
-    return value !== null
-        && typeof value === 'object'
-        && !Array.isArray(value)
-        && Object.keys(value).length === fields.length
-        && fields.every(function(field) {
-            return Object.prototype.hasOwnProperty.call(value, field)
-                && typeof value[field] === 'string';
-        });
-}
-
-function hasValidBuildPortfolioInputs(value) {
-    return BUILD_PORTFOLIO_RISK_TOLERANCES.includes(value.risk_tolerance)
-        && value.investment_theme.trim().length > 0
-        && value.target_market.trim().length > 0
-        && BUILD_PORTFOLIO_HORIZONS.includes(value.investment_horizon);
+function defaultBuildPortfolioInputs() {
+    return {
+        risk_tolerance: '',
+        portfolio_intent: '',
+        target_market: BUILD_PORTFOLIO_DEFAULT_MARKET,
+        investment_horizon: '',
+        budget: '',
+        allow_fractional_shares: false,
+        existing_holdings: '',
+        transition_mode: 'contribution_only'
+    };
 }
 
 function isValidStoredBuildPortfolio(value) {
-    return hasExactBuildPortfolioStringFields(value, BUILD_PORTFOLIO_INPUT_FIELDS)
-        && hasValidBuildPortfolioInputs(value);
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+    const expected = [
+        'risk_tolerance', 'portfolio_intent', 'target_market', 'investment_horizon',
+        'budget', 'allow_fractional_shares', 'existing_holdings', 'transition_mode'
+    ];
+    return Object.keys(value).length === expected.length
+        && expected.every(function(field) {
+            return Object.prototype.hasOwnProperty.call(value, field);
+        })
+        && typeof value.risk_tolerance === 'string'
+        && BUILD_PORTFOLIO_RISK_TOLERANCES.includes(value.risk_tolerance)
+        && typeof value.portfolio_intent === 'string'
+        && value.portfolio_intent.length <= 2500
+        && typeof value.target_market === 'string'
+        && BUILD_PORTFOLIO_MARKETS.includes(value.target_market)
+        && typeof value.investment_horizon === 'string'
+        && BUILD_PORTFOLIO_HORIZONS.includes(value.investment_horizon)
+        && typeof value.budget === 'string'
+        && value.budget.length <= 80
+        && typeof value.allow_fractional_shares === 'boolean'
+        && typeof value.existing_holdings === 'string'
+        && value.existing_holdings.length <= 6000
+        && typeof value.transition_mode === 'string'
+        && BUILD_PORTFOLIO_TRANSITION_MODES.includes(value.transition_mode);
 }
 
-function isValidCachedBuildPortfolio(value) {
-    const fields = [...BUILD_PORTFOLIO_INPUT_FIELDS, 'content', 'generated_at'];
-
-    return hasExactBuildPortfolioStringFields(value, fields)
-        && hasValidBuildPortfolioInputs(value)
-        && value.content.trim().length > 0
-        && BUILD_PORTFOLIO_ISO_TIMESTAMP_PATTERN.test(value.generated_at)
-        && !Number.isNaN(new Date(value.generated_at).getTime());
+function collectBuildPortfolioInputs() {
+    return {
+        risk_tolerance: document.getElementById('risk-tolerance').value,
+        portfolio_intent: document.getElementById('portfolio-intent').value.trim(),
+        target_market: document.getElementById('target-market').value,
+        investment_horizon: document.getElementById('investment-horizon').value,
+        budget: document.getElementById('budget').value.trim(),
+        allow_fractional_shares: document.getElementById('allow-fractional-shares').checked,
+        existing_holdings: document.getElementById('existing-holdings').value.trim(),
+        transition_mode: document.getElementById('transition-mode').value
+    };
 }
 
 function showStorageWarning(message) {
     const warning = document.getElementById('storage-warning');
     const warningMessage = document.getElementById('storage-warning-message');
-    if (!warning || !warningMessage) {
-        return;
-    }
-
+    if (!warning || !warningMessage) return;
     warningMessage.textContent = message;
     warning.classList.remove('d-none');
 }
 
-window.addEventListener('alphalab:storage-warning', function(event) {
-    const detail = event.detail;
-    if (!detail || (detail.feature !== BUILD_PORTFOLIO_STORAGE_FEATURE && detail.feature !== null)) {
-        return;
-    }
-
-    const resetCodes = ['corrupt-value', 'validation-failed', 'migration-failed', 'schema-mismatch'];
-    if (resetCodes.includes(detail.code)) {
-        showStorageWarning('Saved portfolio inputs could not be read and were reset.');
-        return;
-    }
-
-    showStorageWarning('Local storage could not be used. You can continue, but your portfolio inputs may not persist.');
-});
-
-window.addEventListener('DOMContentLoaded', function() {
-    const riskToleranceInput = document.getElementById('risk-tolerance');
-    const investmentThemeInput = document.getElementById('investment-theme');
-    const targetMarketInput = document.getElementById('target-market');
-    const investmentHorizonInput = document.getElementById('investment-horizon');
-    const budgetInput = document.getElementById('budget');
-    const existingHoldingsInput = document.getElementById('existing-holdings');
-
-    try {
-        const storedData = window.AlphaLabStorage.load(BUILD_PORTFOLIO_STORAGE_FEATURE, {
-            schemaVersion: BUILD_PORTFOLIO_STORAGE_SCHEMA_VERSION,
-            defaultValue: {
-                risk_tolerance: '',
-                investment_theme: '',
-                target_market: '',
-                investment_horizon: '',
-                budget: '',
-                existing_holdings: ''
-            },
-            validate: isValidStoredBuildPortfolio
-        });
-
-        if (isValidStoredBuildPortfolio(storedData)) {
-            riskToleranceInput.value = storedData.risk_tolerance;
-            investmentThemeInput.value = storedData.investment_theme;
-            targetMarketInput.value = storedData.target_market;
-            investmentHorizonInput.value = storedData.investment_horizon;
-            budgetInput.value = storedData.budget;
-            existingHoldingsInput.value = storedData.existing_holdings;
-        }
-    } catch (error) {
-        showStorageWarning('Saved portfolio inputs could not be restored. You can continue with the analysis.');
-    }
-
-    const cachedDataNode = document.getElementById('cached-result-data');
-    if (!cachedDataNode) {
-        return;
-    }
-
-    try {
-        const cachedData = JSON.parse(cachedDataNode.textContent);
-        if (!isValidCachedBuildPortfolio(cachedData)) {
-            return;
-        }
-
-        const generatedAt = new Date(cachedData.generated_at);
-        if (Number.isNaN(generatedAt.getTime())) {
-            return;
-        }
-
-        renderMarkdown(cachedData.content, document.getElementById('portfolio-result'));
-        document.getElementById('cached-result-time').textContent = generatedAt.toLocaleString();
-        document.getElementById('cached-result-notice').classList.remove('d-none');
-        document.getElementById('result-section').classList.remove('d-none');
-    } catch (error) {
-        // Ignore malformed cached data so the form remains usable.
-    }
-});
-
-document.getElementById('portfolio-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    const riskTolerance = document.getElementById('risk-tolerance').value;
-    const investmentTheme = document.getElementById('investment-theme').value.trim();
-    const targetMarket = document.getElementById('target-market').value.trim();
-    const investmentHorizon = document.getElementById('investment-horizon').value;
-    const budget = document.getElementById('budget').value.trim();
-    const existingHoldings = document.getElementById('existing-holdings').value.trim();
-
-    if (!riskTolerance || !investmentTheme || !targetMarket) return;
-
+function saveBuildPortfolioInputs() {
     try {
         const persisted = window.AlphaLabStorage.save(
             BUILD_PORTFOLIO_STORAGE_FEATURE,
-            {
-                risk_tolerance: riskTolerance,
-                investment_theme: investmentTheme,
-                target_market: targetMarket,
-                investment_horizon: investmentHorizon,
-                budget: budget,
-                existing_holdings: existingHoldings
-            },
+            collectBuildPortfolioInputs(),
             {
                 schemaVersion: BUILD_PORTFOLIO_STORAGE_SCHEMA_VERSION,
                 validate: isValidStoredBuildPortfolio
             }
         );
-
         if (persisted === false) {
             showStorageWarning('Your portfolio inputs are available only for this page and could not be persisted.');
         }
     } catch (error) {
         showStorageWarning('Your portfolio inputs are available only for this page and could not be persisted.');
     }
+}
+
+window.addEventListener('alphalab:storage-warning', function(event) {
+    const detail = event.detail;
+    if (!detail || (detail.feature !== BUILD_PORTFOLIO_STORAGE_FEATURE && detail.feature !== null)) return;
+    const resetCodes = ['corrupt-value', 'validation-failed', 'migration-failed', 'schema-mismatch'];
+    showStorageWarning(
+        resetCodes.includes(detail.code)
+            ? 'Saved portfolio inputs could not be read and were reset.'
+            : 'Local storage could not be used. You can continue, but your inputs may not persist.'
+    );
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+    try {
+        const stored = window.AlphaLabStorage.load(BUILD_PORTFOLIO_STORAGE_FEATURE, {
+            schemaVersion: BUILD_PORTFOLIO_STORAGE_SCHEMA_VERSION,
+            defaultValue: defaultBuildPortfolioInputs(),
+            validate: isValidStoredBuildPortfolio
+        });
+        if (isValidStoredBuildPortfolio(stored)) {
+            document.getElementById('risk-tolerance').value = stored.risk_tolerance;
+            document.getElementById('portfolio-intent').value = stored.portfolio_intent;
+            document.getElementById('target-market').value = stored.target_market;
+            document.getElementById('investment-horizon').value = stored.investment_horizon;
+            document.getElementById('budget').value = stored.budget;
+            document.getElementById('allow-fractional-shares').checked = stored.allow_fractional_shares;
+            document.getElementById('existing-holdings').value = stored.existing_holdings;
+            document.getElementById('transition-mode').value = stored.transition_mode;
+        }
+    } catch (error) {
+        showStorageWarning('Saved portfolio inputs could not be restored. You can continue with the analysis.');
+    }
+
+    const cachedTime = document.getElementById('cached-result-time');
+    if (cachedTime && cachedTime.dateTime) {
+        const generatedAt = new Date(cachedTime.dateTime);
+        if (!Number.isNaN(generatedAt.getTime())) cachedTime.textContent = generatedAt.toLocaleString();
+    }
+});
+
+function parseBuildPortfolioSseEvent(rawEvent) {
+    const dataLines = [];
+    rawEvent.split('\n').forEach(function(line) {
+        if (line.startsWith('data:')) dataLines.push(line.slice(5).replace(/^ /, ''));
+    });
+    if (!dataLines.length) return null;
+    try {
+        const data = JSON.parse(dataLines.join('\n'));
+        if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+            throw new TypeError('Invalid SSE payload');
+        }
+        return data;
+    } catch (error) {
+        return {type: 'error', message: 'The server returned an unreadable response. Please try again.'};
+    }
+}
+
+function handleBuildPortfolioSseEvent(data, handlers) {
+    if (data.type === 'progress') {
+        if (!Number.isFinite(data.step) || !Number.isFinite(data.total)
+                || data.total <= 0 || typeof data.message !== 'string') {
+            handlers.onError('The server returned invalid progress information. Please try again.');
+            return true;
+        }
+        handlers.onProgress(data);
+        return false;
+    }
+    if (data.type === 'error') {
+        handlers.onError(
+            typeof data.message === 'string' && data.message.trim()
+                ? data.message
+                : 'Portfolio construction failed. Please try again.'
+        );
+        return true;
+    }
+    if (data.type === 'result') {
+        if (typeof data.html !== 'string' || !data.html.trim()) {
+            handlers.onError('The server returned an empty portfolio report. Please try again.');
+            return true;
+        }
+        handlers.onResult(data.html);
+        return true;
+    }
+    handlers.onError('The server returned an unknown response. Please try again.');
+    return true;
+}
+
+async function streamBuildPortfolio(requestBody, handlers) {
+    let response;
+    try {
+        response = await fetch('/build-portfolio/stream', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Accept': 'text/event-stream', 'Content-Type': 'application/json'},
+            body: JSON.stringify(requestBody)
+        });
+    } catch (error) {
+        handlers.onError('Unable to reach the server. Check your connection and try again.');
+        return;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok || !response.body || !contentType.includes('text/event-stream')) {
+        handlers.onError(
+            response.status === 422
+                ? 'Check the portfolio inputs and try again.'
+                : `The server returned an unexpected response (HTTP ${response.status}). Please try again.`
+        );
+        return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let terminal = false;
+    try {
+        while (!terminal) {
+            const {done, value} = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, {stream: true});
+            buffer = buffer.replace(/\r\n/g, '\n');
+            let boundary = buffer.indexOf('\n\n');
+            while (boundary !== -1 && !terminal) {
+                const parsed = parseBuildPortfolioSseEvent(buffer.slice(0, boundary));
+                buffer = buffer.slice(boundary + 2);
+                if (parsed) terminal = handleBuildPortfolioSseEvent(parsed, handlers);
+                boundary = buffer.indexOf('\n\n');
+            }
+        }
+    } catch (error) {
+        if (!terminal) handlers.onError('Connection lost before the portfolio completed. Please try again.');
+        return;
+    } finally {
+        try {
+            await reader.cancel();
+        } catch (error) {
+            // Best-effort stream cleanup only.
+        }
+    }
+    if (!terminal) handlers.onError('The connection closed before the portfolio completed. Please try again.');
+}
+
+document.getElementById('portfolio-form').addEventListener('input', function() {
+    saveBuildPortfolioInputs();
+    document.getElementById('result-section').classList.add('d-none');
+    document.getElementById('cached-result-notice').classList.add('d-none');
+});
+
+document.getElementById('portfolio-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+    const inputs = collectBuildPortfolioInputs();
+    if (!inputs.risk_tolerance || !inputs.portfolio_intent || !inputs.target_market) return;
+    saveBuildPortfolioInputs();
 
     const btn = document.getElementById('build-btn');
     const progressSection = document.getElementById('progress-section');
@@ -344,7 +465,6 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
     const resultSection = document.getElementById('result-section');
     const cachedResultNotice = document.getElementById('cached-result-notice');
 
-    // Reset UI
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Building...';
     progressSection.classList.remove('d-none');
@@ -354,75 +474,52 @@ document.getElementById('portfolio-form').addEventListener('submit', function(e)
     const waitTimer = new WaitTimer('wait-timer');
     waitTimer.start();
 
-    const params = new URLSearchParams({
-        risk_tolerance: riskTolerance,
-        investment_theme: investmentTheme,
-        target_market: targetMarket,
-        investment_horizon: investmentHorizon,
-        budget: budget,
-        existing_holdings: existingHoldings,
-    });
-
-    const eventSource = new EventSource(`/build-portfolio/stream?${params.toString()}`);
-
-    eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-
-        if (data.type === 'progress') {
+    await streamBuildPortfolio(inputs, {
+        onProgress: function(data) {
             const pct = Math.round((data.step / data.total) * 100);
             document.getElementById('progress-message').textContent = data.message;
             document.getElementById('progress-bar').style.width = pct + '%';
             document.getElementById('progress-step').textContent = `Step ${data.step} of ${data.total}`;
-        } else if (data.type === 'error') {
+        },
+        onError: function(message) {
             waitTimer.stop();
             progressSection.classList.add('d-none');
             errorSection.classList.remove('d-none');
-            document.getElementById('error-message').textContent = data.message;
-            eventSource.close();
+            document.getElementById('error-message').textContent = message;
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-pie-chart me-1"></i>Build Portfolio';
-        } else if (data.type === 'result') {
+        },
+        onResult: function(html) {
             waitTimer.stop();
             progressSection.classList.add('d-none');
             cachedResultNotice.classList.add('d-none');
             resultSection.classList.remove('d-none');
-            renderMarkdown(data.content, document.getElementById('portfolio-result'));
-            eventSource.close();
+            document.getElementById('portfolio-result').innerHTML = html;
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-pie-chart me-1"></i>Build Portfolio';
         }
-    };
-
-    eventSource.onerror = function() {
-        waitTimer.stop();
-        progressSection.classList.add('d-none');
-        errorSection.classList.remove('d-none');
-        document.getElementById('error-message').textContent = 'Connection lost. Please try again.';
-        eventSource.close();
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-pie-chart me-1"></i>Build Portfolio';
-    };
+    });
 });
 
 function printPortfolio() {
     const content = document.getElementById('portfolio-result').innerHTML;
     const html = `<html lang="en"><head><title>Portfolio Recommendation - {{ app_name }}</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
         <style>body { padding: 2rem; } @media print { body { padding: 0; } }</style>
         </head><body><div class="container"><h1 class="mb-4">Portfolio Recommendation</h1>${content}</div></body></html>`;
-    const blob = new Blob([html], { type: 'text/html' });
+    const blob = new Blob([html], {type: 'text/html'});
     const url = URL.createObjectURL(blob);
     const printWindow = window.open(url, '_blank');
+    if (!printWindow) {
+        URL.revokeObjectURL(url);
+        return;
+    }
     printWindow.onload = function() {
         printWindow.print();
         URL.revokeObjectURL(url);
     };
 }
 </script>
-{% if cached_result %}
-<script id="cached-result-data" type="application/json">{{ cached_result | tojson }}</script>
-{% endif %}
 {% endblock %}
 
 {% block scripts %}

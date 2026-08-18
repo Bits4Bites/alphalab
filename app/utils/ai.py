@@ -15,10 +15,10 @@ if TYPE_CHECKING:
 ReasoningEffort = Literal["low", "medium", "high"]
 
 _MAX_TOOL_CALLS_BY_REASONING: dict[ReasoningEffort | None, int] = {
-    None: 10,
-    "low": 5,
-    "medium": 10,
-    "high": 15,
+    None: 7,
+    "low": 4,
+    "medium": 7,
+    "high": 13,
 }
 
 _SEARCH_CONTEXT_SIZE_BY_REASONING: dict[ReasoningEffort | None, str] = {
