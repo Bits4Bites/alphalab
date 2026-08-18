@@ -1,7 +1,7 @@
 # This file has been cleaned up post-releasing version 0.11.0.
 # Generate its content quickly using the following command:
 #   git log origin..HEAD | grep "^\s" > .semrelease/this_release
-#!VERSION=0.11.1
+#!VERSION=0.12.0
 - fix(UI): Draft Portfolio Intent wrongly displayed on the landing page.
 - patch(config): Change primary markets to AU,US,VN.
 - impr(dashboard): Harden AI planning, streamed requests, and result rendering.
