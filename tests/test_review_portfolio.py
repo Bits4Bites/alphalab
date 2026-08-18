@@ -354,6 +354,84 @@ def test_review_validation_requires_complete_recent_position_evidence() -> None:
         review_portfolio.parse_review_research(json.dumps(stale), _market(), ("AAPL",), "")
 
 
+def test_review_validation_reports_field_details_for_correction() -> None:
+    invalid = copy.deepcopy(_review_data())
+    del invalid["rebalance_assessment"]["confidence"]  # type: ignore[index]
+
+    with pytest.raises(
+        review_portfolio.ReviewResearchError,
+        match=r"rebalance_assessment\.confidence: Field required",
+    ) as exc_info:
+        review_portfolio.parse_review_research(json.dumps(invalid), _market(), ("AAPL",), "")
+
+    correction = review_portfolio.build_correction_prompt(
+        "Trusted original prompt",
+        json.dumps(invalid),
+        str(exc_info.value),
+        stage="portfolio-review research",
+    )
+    assert "rebalance_assessment.confidence: Field required" in correction
+
+
+@pytest.mark.asyncio
+async def test_corrected_review_rejection_logs_field_details_without_model_content(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    first_invalid = copy.deepcopy(_review_data())
+    del first_invalid["rebalance_assessment"]["urgency"]  # type: ignore[index]
+    second_invalid = copy.deepcopy(_review_data())
+    private_model_content = "private-model-content-must-not-be-logged"
+    second_invalid["rebalance_assessment"]["confidence"] = private_model_content  # type: ignore[index]
+    execute = mock.AsyncMock(
+        side_effect=[
+            ai.AIResponse(completion=ADAPTIVE_REVIEW_PROMPT),
+            ai.AIResponse(completion=json.dumps(first_invalid)),
+            ai.AIResponse(completion=json.dumps(second_invalid)),
+        ]
+    )
+    monkeypatch.setattr(review_router.config, "ai_task_settings", _task_settings())
+    monkeypatch.setattr(review_router.ai, "execute_task_prompt", execute)
+    monkeypatch.setattr(
+        review_router.portfolio_market_data,
+        "fetch_quotes",
+        mock.AsyncMock(return_value={"AAPL": _quote("AAPL")}),
+    )
+    caplog.set_level("WARNING")
+
+    response = await review_router.review_portfolio_stream(_body(), user=_user())
+    events = await _collect_stream_events(response)
+
+    assert "rebalance_assessment.urgency: Field required" in execute.await_args_list[2].args[2]
+    assert "Review Portfolio rejected the corrected research" in caplog.text
+    assert "rebalance_assessment.confidence" in caplog.text
+    assert private_model_content not in caplog.text
+    assert events[-1] == {
+        "type": "error",
+        "message": "The portfolio review could not be verified. Please try again.",
+    }
+
+
+def test_review_normalizes_scenario_tickers_for_selected_market() -> None:
+    market = portfolio_market_data.resolve_market("AU")
+    assert market is not None
+    data = _review_data(scenario="Rate shock")
+    data["market"] = "AU"
+    data["position_assessments"][0]["ticker"] = "CBA.AX"  # type: ignore[index]
+    data["scenario_assessment"]["vulnerable_tickers"] = ["CBA.AX"]  # type: ignore[index]
+
+    report = review_portfolio.parse_review_research(
+        json.dumps(data),
+        market,
+        ("CBA",),
+        "Rate shock",
+    )
+
+    assert report.position_assessments[0].ticker == "CBA"
+    assert report.scenario_assessment is not None
+    assert report.scenario_assessment.vulnerable_tickers == ["CBA"]
+
+
 def test_target_allocation_must_follow_validated_position_actions() -> None:
     body = _body()
     market = _market()
@@ -388,7 +466,7 @@ def test_target_allocation_must_follow_validated_position_actions() -> None:
         ("AAPL",),
         "",
     )
-    with pytest.raises(review_portfolio.RebalanceResearchError, match="validated HOLD"):
+    with pytest.raises(review_portfolio.RebalanceResearchError, match=r"at least 90\.909091%"):
         review_portfolio.validate_rebalance_alignment(aligned, hold_review, snapshot)
 
     hold_plan = portfolio_rebalance.calculate_plan(
@@ -558,6 +636,50 @@ async def test_review_and_rebalance_each_allow_one_conditional_correction(
     assert len(execute.await_args_list) == 6
     assert "failed application validation" in execute.await_args_list[2].args[2]
     assert "failed application validation" in execute.await_args_list[5].args[2]
+    assert events[-1] == {"type": "complete", "status": "success"}
+
+
+@pytest.mark.asyncio
+async def test_hold_alignment_correction_receives_exact_minimum_weight(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    review_data = _review_data(need="major")
+    review_data["position_assessments"][0]["recommendation"] = "HOLD"  # type: ignore[index]
+    corrected_rebalance = copy.deepcopy(_rebalance_data())
+    corrected_rebalance["allocations"][0]["target_weight_pct"] = 91  # type: ignore[index]
+    corrected_rebalance["allocations"][1]["target_weight_pct"] = 9  # type: ignore[index]
+    execute = mock.AsyncMock(
+        side_effect=[
+            ai.AIResponse(completion=ADAPTIVE_REVIEW_PROMPT),
+            ai.AIResponse(completion=json.dumps(review_data)),
+            ai.AIResponse(completion=ADAPTIVE_REBALANCE_PROMPT),
+            ai.AIResponse(completion=json.dumps(_rebalance_data())),
+            ai.AIResponse(completion=json.dumps(corrected_rebalance)),
+        ]
+    )
+    monkeypatch.setattr(review_router.config, "ai_task_settings", _task_settings())
+    monkeypatch.setattr(review_router.ai, "execute_task_prompt", execute)
+    monkeypatch.setattr(
+        review_router.portfolio_market_data,
+        "fetch_quotes",
+        mock.AsyncMock(side_effect=lambda symbols, _market: {ticker: _quote(ticker) for ticker in symbols}),
+    )
+    monkeypatch.setattr(
+        review_router.analysis_cache,
+        "set_cached_payload",
+        mock.AsyncMock(return_value=True),
+    )
+
+    response = await review_router.review_portfolio_stream(
+        _body(include_rebalance=True),
+        user=_user(),
+    )
+    events = await _collect_stream_events(response)
+
+    assert len(execute.await_args_list) == 5
+    correction_prompt = execute.await_args_list[4].args[2]
+    assert '"minimum_target_weight_pct": "90.909091"' in correction_prompt
+    assert "target_weight_pct must be at least 90.909091%" in correction_prompt
     assert events[-1] == {"type": "complete", "status": "success"}
 
 

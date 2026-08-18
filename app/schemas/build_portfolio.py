@@ -38,6 +38,10 @@ SourceId = Annotated[
     str,
     StringConstraints(strip_whitespace=True, pattern=r"^[A-Za-z0-9_-]{1,32}$"),
 ]
+ActionId = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, pattern=r"^A[1-9][0-9]{0,2}$"),
+]
 SingleLineText = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=300),
@@ -67,6 +71,10 @@ InvestmentHorizon = Literal[
     "Very long-term (5+ years)",
 ]
 BudgetCadence = Literal["total", "weekly", "fortnightly", "monthly", "quarterly", "annual"]
+TransitionMode = Literal["contribution_only", "allow_trades"]
+BuildActionType = Literal["BUY", "ADD", "HOLD", "TRIM", "EXIT", "KEEP_CASH"]
+BuildActionPriority = Literal["Critical", "High", "Medium", "Low"]
+ActionSizingBasis = Literal["contribution", "current_position", "target_portfolio", "none"]
 
 
 class _StrictModel(BaseModel):
@@ -81,6 +89,7 @@ class BuildPortfolioRequest(_StrictModel):
     budget: str = Field(default="", max_length=80)
     allow_fractional_shares: bool = False
     existing_holdings: str = Field(default="", max_length=6000)
+    transition_mode: TransitionMode = "contribution_only"
 
     @field_validator("target_market", "budget")
     @classmethod
@@ -183,6 +192,36 @@ class BuildPortfolioResearch(_StrictModel):
         return self
 
 
+class BuildActionAnnotation(_StrictModel):
+    action_id: ActionId
+    priority: BuildActionPriority
+    rationale: LongText
+    dependency_ids: list[ActionId] = Field(max_length=5)
+    source_ids: list[SourceId] = Field(max_length=5)
+
+
+class BuildActionPlanResearch(_StrictModel):
+    summary: LongText
+    actions: list[BuildActionAnnotation] = Field(min_length=1, max_length=36)
+
+    @model_validator(mode="after")
+    def validate_actions(self) -> BuildActionPlanResearch:
+        action_ids = [action.action_id for action in self.actions]
+        if len(action_ids) != len(set(action_ids)):
+            raise ValueError("action IDs must be unique")
+        known_ids = set(action_ids)
+        for action in self.actions:
+            if len(action.dependency_ids) != len(set(action.dependency_ids)):
+                raise ValueError("action dependencies within an item must be unique")
+            if action.action_id in action.dependency_ids:
+                raise ValueError("an action cannot depend on itself")
+            if set(action.dependency_ids) - known_ids:
+                raise ValueError("all action dependencies must identify a supplied action")
+            if len(action.source_ids) != len(set(action.source_ids)):
+                raise ValueError("action source references within an item must be unique")
+        return self
+
+
 class BudgetSummary(_StrictModel):
     amount: float = Field(gt=0)
     currency: str = Field(min_length=3, max_length=3)
@@ -228,6 +267,52 @@ class PortfolioQuality(_StrictModel):
     largest_sector: str
     largest_sector_pct: float = Field(gt=0, le=100)
     security_count: int = Field(ge=0, le=15)
+
+
+class BuildActionCandidate(_StrictModel):
+    action_id: ActionId
+    ticker: str
+    display_name: str
+    action: BuildActionType
+    target_weight_pct: float | None = Field(default=None, gt=0, le=100)
+    sizing_basis: ActionSizingBasis
+    sizing_pct: float | None = Field(default=None, gt=0, le=100)
+    estimated_quantity: float | None = Field(default=None, gt=0)
+    estimated_value: float | None = Field(default=None, ge=0)
+    role: str
+    strategic_rationale: str
+    allowed_source_ids: list[SourceId]
+
+
+class BuildAction(_StrictModel):
+    sequence: int = Field(ge=1, le=36)
+    action_id: ActionId
+    ticker: str
+    display_name: str
+    action: BuildActionType
+    priority: BuildActionPriority
+    timing: str
+    target_weight_pct: float | None = Field(default=None, gt=0, le=100)
+    sizing_basis: ActionSizingBasis
+    sizing_pct: float | None = Field(default=None, gt=0, le=100)
+    estimated_quantity: float | None = Field(default=None, gt=0)
+    estimated_value: float | None = Field(default=None, ge=0)
+    rationale: str
+    dependencies: list[str] = Field(max_length=5)
+    source_ids: list[SourceId] = Field(max_length=5)
+
+
+class BuildActionPlanPayload(_StrictModel):
+    generated_at: datetime.datetime
+    market_data_at: datetime.datetime
+    market: str
+    market_name: str
+    currency: str
+    transition_mode: TransitionMode
+    budget: BudgetSummary | None
+    summary: str
+    actions: list[BuildAction] = Field(min_length=1, max_length=36)
+    warnings: list[str] = Field(max_length=10)
 
 
 class BuildPortfolioPayload(_StrictModel):

@@ -164,7 +164,10 @@ def test_review_research_prompt_has_server_owned_diagnostic_boundary() -> None:
     assert "Trusted server-owned role and constraints" in prompt
     assert "do not design a target allocation or calculate trades" in prompt
     assert "Assess every verified current holding exactly once" in prompt
+    assert "Use HOLD only when the position's current units and market value should not be reduced" in prompt
     assert "The classification must not change merely because the user requested a plan" in prompt
+    assert "every position assessment, rebalance driver, and supplied-scenario" in prompt
+    assert "Source IDs and source URLs must be unique" in prompt
     assert "2026-08-17" in prompt
     assert json.dumps(adaptive) in prompt
 
@@ -202,6 +205,8 @@ def test_rebalance_stages_are_focused_and_recurring_budget_is_one_contribution()
     assert "Design one strategic target allocation" in research_prompt
     assert "A recurring budget is one next contribution" in research_prompt
     assert "Do not calculate trades, quantities, costs" in research_prompt
+    assert "Mandatory position-action alignment" in research_prompt
+    assert '"target_weight_must_be_below_current_weight_pct": true' in research_prompt
     assert '"need": "major"' in research_prompt
 
 

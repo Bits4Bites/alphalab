@@ -1,0 +1,116 @@
+<section class="mt-4" aria-labelledby="build-action-plan-heading">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <h5 id="build-action-plan-heading" class="mb-0">Prioritized action plan</h5>
+        <span class="badge text-bg-light border text-dark">
+            {{ action_plan.transition_mode | replace("_", " ") | title }}
+        </span>
+    </div>
+    <p>{{ action_plan.summary }}</p>
+
+    {% if action_plan.warnings %}
+    <div class="alert alert-warning">
+        <h6 class="alert-heading">Action-plan notes</h6>
+        <ul class="mb-0">
+            {% for warning in action_plan.warnings %}
+            <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Sequence</th>
+                    <th scope="col">Priority</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">Position</th>
+                    <th scope="col">Timing</th>
+                    <th scope="col">Size and estimate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for action in action_plan.actions %}
+                <tr>
+                    <td>{{ action.sequence }}</td>
+                    <td>
+                        <span class="badge
+                            {% if action.priority == 'Critical' %}text-bg-danger
+                            {% elif action.priority == 'High' %}text-bg-warning
+                            {% elif action.priority == 'Medium' %}text-bg-info
+                            {% else %}text-bg-secondary{% endif %}">
+                            {{ action.priority }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge
+                            {% if action.action in ['BUY', 'ADD'] %}text-bg-success
+                            {% elif action.action == 'TRIM' %}text-bg-warning
+                            {% elif action.action == 'EXIT' %}text-bg-danger
+                            {% elif action.action == 'KEEP_CASH' %}text-bg-info
+                            {% else %}text-bg-secondary{% endif %}">
+                            {{ action.action | replace("_", " ") }}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>{{ action.ticker }}</strong>
+                        <div class="small text-muted">{{ action.display_name }}</div>
+                        {% if action.target_weight_pct is not none %}
+                        <div class="small text-muted">
+                            Target: {{ "%.2f"|format(action.target_weight_pct) }}%
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>{{ action.timing }}</td>
+                    <td>
+                        {% if action.sizing_pct is not none %}
+                        <div>
+                            {{ "%.2f"|format(action.sizing_pct) }}%
+                            {% if action.sizing_basis == "contribution" %}
+                                of this contribution
+                            {% elif action.sizing_basis == "current_position" %}
+                                of the current position
+                            {% else %}
+                                target portfolio weight
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if action.estimated_value is not none %}
+                        <div>{{ action_plan.currency }} {{ "{:,.2f}".format(action.estimated_value) }}</div>
+                        {% endif %}
+                        {% if action.estimated_quantity is not none %}
+                        <div class="small text-muted">
+                            Estimated quantity: {{ "{:,.6f}".format(action.estimated_quantity).rstrip("0").rstrip(".") }}
+                        </div>
+                        {% elif action.sizing_pct is none %}
+                        <span class="text-muted">No transaction</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="6" class="small">
+                        <strong>Rationale:</strong> {{ action.rationale }}
+                        {% if action.dependencies %}
+                        <div><strong>After:</strong> {{ action.dependencies | join(", ") }}</div>
+                        {% endif %}
+                        {% if action.source_ids %}
+                        <div class="text-muted">
+                            Sources:
+                            {% for source_id in action.source_ids %}
+                                <a href="#build-source-{{ source_id }}">{{ source_id }}</a>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <p class="small text-muted">
+        Action plan generated: {{ action_plan.generated_at }}.
+        Market data retrieved: {{ action_plan.market_data_at }}.
+    </p>
+</section>

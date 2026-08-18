@@ -217,6 +217,7 @@ async def review_portfolio_stream(
             )
         except review_portfolio.ReviewResearchError as exc:
             review_issue = str(exc)
+            logger.warning("Review Portfolio research validation failed: %s", review_issue)
 
         if review_issue is not None:
             correction_result = await ai.execute_task_prompt(
@@ -242,8 +243,8 @@ async def review_portfolio_stream(
                     current_tickers,
                     body.scenario,
                 )
-            except review_portfolio.ReviewResearchError:
-                logger.warning("Review Portfolio rejected the corrected research")
+            except review_portfolio.ReviewResearchError as exc:
+                logger.warning("Review Portfolio rejected the corrected research: %s", exc)
                 yield event("error", message="The portfolio review could not be verified. Please try again.")
                 return
 
@@ -369,6 +370,7 @@ async def review_portfolio_stream(
                 all_quotes.update(await portfolio_market_data.fetch_quotes(missing_tickers, market))
         except (review_portfolio.RebalanceResearchError, portfolio_market_data.MarketDataError) as exc:
             rebalance_issue = str(exc)
+            logger.warning("Portfolio Rebalance research validation failed: %s", rebalance_issue)
 
         if rebalance_issue is not None:
             correction_result = await ai.execute_task_prompt(
@@ -407,8 +409,8 @@ async def review_portfolio_stream(
                 )
                 if missing_tickers:
                     all_quotes.update(await portfolio_market_data.fetch_quotes(missing_tickers, market))
-            except (review_portfolio.RebalanceResearchError, portfolio_market_data.MarketDataError):
-                logger.warning("Portfolio Rebalance rejected the corrected research")
+            except (review_portfolio.RebalanceResearchError, portfolio_market_data.MarketDataError) as exc:
+                logger.warning("Portfolio Rebalance rejected the corrected research: %s", exc)
                 yield event("rebalance_error", message="The target allocation could not be verified. Please try again.")
                 yield event("complete", status="rebalance_failed")
                 return

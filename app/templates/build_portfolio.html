@@ -12,7 +12,8 @@
                 <div class="mb-3">
                     <h2 class="h4 mb-1" id="build-portfolio-heading">Build a New Portfolio</h2>
                     <p class="text-muted mb-0">
-                        Generate a researched target portfolio with verified market data and deterministic sizing.
+                        Generate a researched target portfolio with verified sizing and a prioritized implementation
+                        plan.
                     </p>
                 </div>
                 <div id="storage-warning"
@@ -96,7 +97,7 @@
                                 </label>
                             </div>
                         </div>
-                        <div class="col-12">
+                        <div class="col-md-8">
                             <label for="existing-holdings" class="form-label fw-semibold">
                                 Existing Holdings <span class="text-muted ms-2">(Optional)</span>
                             </label>
@@ -108,9 +109,28 @@
                                 Average cost is optional. Holdings must match the selected market.
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <label for="transition-mode" class="form-label fw-semibold">
+                                Existing Holdings Transition
+                            </label>
+                            <select class="form-select" id="transition-mode" name="transition_mode"
+                                    aria-describedby="transition-mode-help">
+                                <option value="contribution_only" selected>
+                                    Contribution only - do not sell
+                                </option>
+                                <option value="allow_trades">
+                                    Allow trims and exits
+                                </option>
+                            </select>
+                            <div id="transition-mode-help" class="form-text">
+                                Contribution only directs new funding toward target gaps. Allow trades may reduce or
+                                exit current holdings, without calculating exact tax liabilities.
+                            </div>
+                        </div>
                     </div>
                     <p class="small text-muted mt-3 mb-0">
-                        Inputs are saved in this browser for your account. Successful reports are cached for 72 hours.
+                        Inputs are saved in this browser for your account. Target research is cached for 72 hours;
+                        quote-dependent action plans are cached for 15 minutes.
                     </p>
                     <div class="mt-3">
                         <button type="submit" class="btn btn-primary" id="build-btn">
@@ -133,7 +153,7 @@
                             <div class="progress mt-2" style="height: 6px;">
                                 <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
                             </div>
-                            <small class="text-muted" id="progress-step">Step 0 of 7</small>
+                            <small class="text-muted" id="progress-step">Step 0 of 10</small>
                             <small class="text-muted d-none ms-2" id="wait-timer"></small>
                         </div>
                     </div>
@@ -180,7 +200,8 @@
                     </div>
                     <div id="portfolio-result">
                         {% if cached_result %}
-                            {% with report=cached_result.payload %}
+                            {% with report=cached_result.payload,
+                                    action_plan=cached_action_plan.payload if cached_action_plan else none %}
                                 {% include "partials/build_portfolio_report.html" %}
                             {% endwith %}
                         {% endif %}
@@ -193,7 +214,7 @@
 
 <script>
 const BUILD_PORTFOLIO_STORAGE_FEATURE = 'build-portfolio';
-const BUILD_PORTFOLIO_STORAGE_SCHEMA_VERSION = 2;
+const BUILD_PORTFOLIO_STORAGE_SCHEMA_VERSION = 3;
 const BUILD_PORTFOLIO_MARKETS = {{ market_codes | tojson }};
 const BUILD_PORTFOLIO_DEFAULT_MARKET = {{ default_market | tojson }};
 const BUILD_PORTFOLIO_RISK_TOLERANCES = ['', 'Conservative', 'Moderate', 'Aggressive', 'Very Aggressive'];
@@ -204,6 +225,7 @@ const BUILD_PORTFOLIO_HORIZONS = [
     'Long-term (3-5 years)',
     'Very long-term (5+ years)'
 ];
+const BUILD_PORTFOLIO_TRANSITION_MODES = ['contribution_only', 'allow_trades'];
 
 function defaultBuildPortfolioInputs() {
     return {
@@ -213,7 +235,8 @@ function defaultBuildPortfolioInputs() {
         investment_horizon: '',
         budget: '',
         allow_fractional_shares: false,
-        existing_holdings: ''
+        existing_holdings: '',
+        transition_mode: 'contribution_only'
     };
 }
 
@@ -221,7 +244,7 @@ function isValidStoredBuildPortfolio(value) {
     if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
     const expected = [
         'risk_tolerance', 'portfolio_intent', 'target_market', 'investment_horizon',
-        'budget', 'allow_fractional_shares', 'existing_holdings'
+        'budget', 'allow_fractional_shares', 'existing_holdings', 'transition_mode'
     ];
     return Object.keys(value).length === expected.length
         && expected.every(function(field) {
@@ -239,7 +262,9 @@ function isValidStoredBuildPortfolio(value) {
         && value.budget.length <= 80
         && typeof value.allow_fractional_shares === 'boolean'
         && typeof value.existing_holdings === 'string'
-        && value.existing_holdings.length <= 6000;
+        && value.existing_holdings.length <= 6000
+        && typeof value.transition_mode === 'string'
+        && BUILD_PORTFOLIO_TRANSITION_MODES.includes(value.transition_mode);
 }
 
 function collectBuildPortfolioInputs() {
@@ -250,7 +275,8 @@ function collectBuildPortfolioInputs() {
         investment_horizon: document.getElementById('investment-horizon').value,
         budget: document.getElementById('budget').value.trim(),
         allow_fractional_shares: document.getElementById('allow-fractional-shares').checked,
-        existing_holdings: document.getElementById('existing-holdings').value.trim()
+        existing_holdings: document.getElementById('existing-holdings').value.trim(),
+        transition_mode: document.getElementById('transition-mode').value
     };
 }
 
@@ -306,6 +332,7 @@ window.addEventListener('DOMContentLoaded', function() {
             document.getElementById('budget').value = stored.budget;
             document.getElementById('allow-fractional-shares').checked = stored.allow_fractional_shares;
             document.getElementById('existing-holdings').value = stored.existing_holdings;
+            document.getElementById('transition-mode').value = stored.transition_mode;
         }
     } catch (error) {
         showStorageWarning('Saved portfolio inputs could not be restored. You can continue with the analysis.');

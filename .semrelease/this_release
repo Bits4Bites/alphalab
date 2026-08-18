@@ -12,4 +12,5 @@
 - impr(dividend-event): Add deterministic event metrics and validated source-backed analysis.
 - impr(portfolio-intent): Add validated neutral drafting, persistent browser state, and safe portfolio handoffs.
 - impr(build-portfolio): Add adaptive structured research, verified market data, and deterministic sizing.
+- impr(build-portfolio): Add focused prioritized action planning with deterministic transition sizing.
 - impr(review-portfolio): Add focused structured review and conditional evidence-backed rebalance planning.

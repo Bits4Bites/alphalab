@@ -109,6 +109,14 @@
         </table>
     </div>
 
+    {% if action_plan %}
+        {% include "partials/build_portfolio_action_plan.html" %}
+    {% else %}
+    <div class="alert alert-info mt-4">
+        The quote-dependent action plan is unavailable or has expired. Run Build Portfolio again to refresh it.
+    </div>
+    {% endif %}
+
     <div class="row g-3 mt-1">
         <div class="col-md-6">
             <div class="card h-100">

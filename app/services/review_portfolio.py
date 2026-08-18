@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import decimal
 import json
 import logging
 import re
@@ -19,6 +20,7 @@ RECENT_SOURCE_DAYS = 180
 logger = logging.getLogger(__name__)
 
 _UNSAFE_CONTROL_PATTERN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_WEIGHT_GUARDRAIL_QUANTUM = Decimal("0.000001")
 
 _REVIEW_PROMPT_WRITER_TEMPLATE = """You are AlphaLab's adaptive portfolio-review prompt writer.
 
@@ -58,6 +60,8 @@ _REVIEW_RESEARCH_TEMPLATE = """You are AlphaLab's premium portfolio-review resea
 - Use the adaptive prompt only to tailor research focus where it does not conflict with this contract.
 - Use web search for current issuer, fund, valuation, business-quality, risk, and market evidence.
 - Assess every verified current holding exactly once using HOLD, TRIM, or EXIT.
+- Use HOLD only when the position's current units and market value should not be reduced, TRIM when its portfolio
+  exposure should be reduced without adding units, and EXIT when it should be removed completely.
 - Determine whether rebalancing need is none, minor, or major. Base severity on portfolio concentration,
   diversification, investor-profile alignment, thesis deterioration, scenario exposure, and the ability to improve
   alignment through available cash or the next contribution.
@@ -75,12 +79,15 @@ _REVIEW_RESEARCH_TEMPLATE = """You are AlphaLab's premium portfolio-review resea
 
 ## Evidence requirements
 - Provide one complete position assessment for every current ticker.
-- Cite one to five sources for every position assessment and at least one source from the past 180 days.
+- Cite one to five sources for every position assessment.
+- Cite at least one source from the past 180 days for every position assessment, rebalance driver, and supplied-scenario
+  assessment.
 - Support portfolio risks, diversification findings, review triggers, tax observations, scenario conclusions, and
   rebalance drivers with source IDs.
 - Prefer primary sources such as issuer filings, exchanges, regulators, and official fund documents. Use established
   financial publications where primary sources are unavailable.
-- Include direct HTTP(S) URLs and real publication dates. Every referenced source ID must resolve.
+- Include direct HTTP(S) URLs and real publication dates. Source IDs and source URLs must be unique, source IDs within
+  each item must not repeat, and every referenced source ID must resolve.
 - If a scenario was supplied, return a bounded scenario assessment covering only current holdings. Otherwise return
   null for scenario_assessment.
 - Do not include Markdown, HTML, target allocations, follow-up questions, or commentary outside the schema.
@@ -108,6 +115,8 @@ _REBALANCE_PROMPT_WRITER_TEMPLATE = """You are AlphaLab's adaptive portfolio-reb
   this prompt.
 - Adapt the allocation-research focus to the validated diagnosis, investor goals, tax context, available cash,
   additional-budget cadence, fractional-share support, and minimum trade size.
+- Preserve every server-calculated HOLD, TRIM, and EXIT allocation constraint exactly; do not reinterpret or weaken
+  the validated position actions.
 - Preserve conflicts and uncertainty by requiring evidence, assumptions, and explicit risks.
 
 ## Prompt-writing instructions
@@ -146,6 +155,18 @@ _REBALANCE_RESEARCH_TEMPLATE = """You are AlphaLab's premium portfolio-allocatio
 - Return general decision support, not personalized financial advice or guaranteed outcomes.
 - Return only the structured response required by the supplied response schema.
 
+## Mandatory position-action alignment
+- Obey the server-calculated constraints below exactly.
+- HOLD: include the ticker and keep target_weight_pct at or above minimum_target_weight_pct. A HOLD allocation must
+  not reduce its current units or market value.
+- TRIM: include the ticker and keep target_weight_pct below current_weight_pct. A TRIM allocation must never add
+  units.
+- EXIT: omit the ticker from allocations.
+- Use CASH for residual weight when necessary rather than violating a position-action constraint.
+
+## Trusted server-calculated allocation constraints
+{action_constraints_json}
+
 ## Allocation and evidence requirements
 - Return one to twenty unique allocations totaling 100 percent within 0.05 percentage points.
 - Give every allocation a concise role, evidence-based rationale, and one to five source IDs.
@@ -156,7 +177,8 @@ _REBALANCE_RESEARCH_TEMPLATE = """You are AlphaLab's premium portfolio-allocatio
 - Prefer primary sources such as issuer filings, exchanges, regulators, and official fund documents. Use established
   financial publications where primary sources are unavailable.
 - Include direct HTTP(S) URLs and real publication dates. Every allocation must cite at least one source published
-  within the past 180 days and every referenced source ID must resolve.
+  within the past 180 days. Source IDs and source URLs must be unique, source IDs within each item must not repeat,
+  and every referenced source ID must resolve.
 - Do not include Markdown, HTML, follow-up questions, or commentary outside the schema.
 
 ## Analysis date
@@ -203,6 +225,20 @@ class ReviewResearchError(ReviewPortfolioError):
 
 class RebalanceResearchError(ReviewPortfolioError):
     pass
+
+
+def _structured_validation_issue(exc: ValidationError, *, subject: str) -> str:
+    issues = tuple(
+        f"{'.'.join(str(part) for part in error['loc']) or 'response'}: {error['msg']}"
+        for error in exc.errors(
+            include_url=False,
+            include_context=False,
+            include_input=False,
+        )[:12]
+    )
+    detail = " | ".join(issues)
+    logger.warning("%s structured validation failed: %s", subject, detail)
+    return detail
 
 
 def _budget_data(budget: build_portfolio.BudgetPlan | None) -> dict[str, object] | None:
@@ -381,8 +417,8 @@ def parse_review_research(
     try:
         report = review_portfolio_schemas.PortfolioReviewResearch.model_validate_json(value)
     except ValidationError as exc:
-        logger.warning("Review Portfolio research returned an invalid structured response")
-        raise ReviewResearchError("The AI returned an invalid portfolio review.") from exc
+        issue = _structured_validation_issue(exc, subject="Review Portfolio research")
+        raise ReviewResearchError(f"The AI returned an invalid portfolio review: {issue}") from exc
 
     analysis_date = today or datetime.date.today()
     source_dates = _validate_report_header(
@@ -404,7 +440,10 @@ def parse_review_research(
             raise ReviewResearchError("Every position assessment requires recent supporting evidence.")
         normalized_positions.append(position.model_copy(update={"ticker": ticker_value}))
 
-    if set(position.ticker for position in normalized_positions) != set(current_tickers):
+    normalized_tickers = [position.ticker for position in normalized_positions]
+    if len(normalized_tickers) != len(set(normalized_tickers)):
+        raise ReviewResearchError("The portfolio review contains duplicate normalized position tickers.")
+    if len(normalized_tickers) != len(current_tickers) or set(normalized_tickers) != set(current_tickers):
         raise ReviewResearchError("The portfolio review must assess every current holding exactly once.")
 
     for driver in report.rebalance_assessment.drivers:
@@ -416,14 +455,32 @@ def parse_review_research(
     if not scenario.strip() and report.scenario_assessment is not None:
         raise ReviewResearchError("The review returned an unrequested scenario assessment.")
     if report.scenario_assessment is not None:
-        scenario_tickers = {
-            *report.scenario_assessment.vulnerable_tickers,
-            *report.scenario_assessment.resilient_tickers,
-        }
+        normalized_scenario_lists: dict[str, list[str]] = {}
+        for field_name in ("vulnerable_tickers", "resilient_tickers"):
+            normalized_values: list[str] = []
+            for ticker_value in getattr(report.scenario_assessment, field_name):
+                try:
+                    normalized_values.append(portfolio_market_data.normalize_symbol(ticker_value, market))
+                except portfolio_market_data.MarketSymbolError as exc:
+                    raise ReviewResearchError(
+                        "The scenario assessment contains an invalid market ticker."
+                    ) from exc
+            if len(normalized_values) != len(set(normalized_values)):
+                raise ReviewResearchError("The scenario assessment contains duplicate normalized tickers.")
+            normalized_scenario_lists[field_name] = normalized_values
+
+        scenario_tickers = set().union(*normalized_scenario_lists.values())
         if scenario_tickers - set(current_tickers):
             raise ReviewResearchError("The scenario assessment references a ticker outside the current portfolio.")
         if not _has_recent_source(report.scenario_assessment.source_ids, source_dates, analysis_date):
             raise ReviewResearchError("The scenario assessment requires recent supporting evidence.")
+        report = report.model_copy(
+            update={
+                "scenario_assessment": report.scenario_assessment.model_copy(
+                    update=normalized_scenario_lists,
+                )
+            }
+        )
 
     return report.model_copy(update={"market": market.code, "position_assessments": normalized_positions})
 
@@ -558,9 +615,14 @@ def _planning_data(
     snapshot: portfolio_rebalance.PortfolioSnapshot,
     review: review_portfolio_schemas.PortfolioReviewResearch,
 ) -> dict[str, object]:
+    planning_total_value = _planning_total_value(snapshot, budget)
     return {
         "investor_and_execution_constraints": _profile_data(request, market, settings, budget, snapshot),
         "validated_portfolio_review": review.model_dump(mode="json"),
+        "server_calculated_allocation_constraints": {
+            "planning_total_value": format(planning_total_value, "f"),
+            "position_actions": _allocation_action_constraints(snapshot, review, budget),
+        },
         "budget_interpretation": (
             None
             if budget is None
@@ -574,6 +636,52 @@ def _planning_data(
             }
         ),
     }
+
+
+def _planning_total_value(
+    snapshot: portfolio_rebalance.PortfolioSnapshot,
+    budget: build_portfolio.BudgetPlan | None,
+) -> Decimal:
+    return snapshot.total_value + (budget.amount if budget else Decimal(0))
+
+
+def _no_trade_target_weight(current_value: Decimal, planning_total_value: Decimal) -> Decimal:
+    return current_value / planning_total_value * Decimal(100)
+
+
+def _allocation_action_constraints(
+    snapshot: portfolio_rebalance.PortfolioSnapshot,
+    review: review_portfolio_schemas.PortfolioReviewResearch,
+    budget: build_portfolio.BudgetPlan | None,
+) -> list[dict[str, object]]:
+    positions = {position.holding.ticker: position for position in snapshot.positions}
+    planning_total_value = _planning_total_value(snapshot, budget)
+    constraints: list[dict[str, object]] = []
+
+    for assessment in review.position_assessments:
+        position = positions[assessment.ticker]
+        constraint: dict[str, object] = {
+            "ticker": assessment.ticker,
+            "validated_action": assessment.recommendation,
+            "current_market_value": format(position.market_value, "f"),
+            "current_weight_pct": format(position.weight_pct, "f"),
+        }
+        no_trade_weight = _no_trade_target_weight(position.market_value, planning_total_value)
+        if assessment.recommendation == "HOLD":
+            constraint["minimum_target_weight_pct"] = format(
+                no_trade_weight.quantize(
+                    _WEIGHT_GUARDRAIL_QUANTUM,
+                    rounding=decimal.ROUND_CEILING,
+                ),
+                "f",
+            )
+        elif assessment.recommendation == "TRIM":
+            constraint["target_weight_must_be_below_current_weight_pct"] = True
+        else:
+            constraint["must_be_omitted"] = True
+        constraints.append(constraint)
+
+    return constraints
 
 
 def build_rebalance_prompt_writer_request(
@@ -609,6 +717,14 @@ def build_rebalance_research_prompt(
         market_name=market.name,
         market_code=market.code,
         currency=market.currency,
+        action_constraints_json=json.dumps(
+            {
+                "planning_total_value": format(_planning_total_value(snapshot, budget), "f"),
+                "position_actions": _allocation_action_constraints(snapshot, review, budget),
+            },
+            indent=2,
+            ensure_ascii=True,
+        ),
         adaptive_prompt_json=json.dumps({"adaptive_prompt": adaptive_prompt}, indent=2, ensure_ascii=True),
         planning_json=json.dumps(
             _planning_data(request, market, settings, budget, snapshot, review),
@@ -627,8 +743,8 @@ def parse_rebalance_research(
     try:
         report = review_portfolio_schemas.RebalanceResearch.model_validate_json(value)
     except ValidationError as exc:
-        logger.warning("Portfolio Rebalance research returned an invalid structured response")
-        raise RebalanceResearchError("The AI returned an invalid target allocation.") from exc
+        issue = _structured_validation_issue(exc, subject="Portfolio Rebalance research")
+        raise RebalanceResearchError(f"The AI returned an invalid target allocation: {issue}") from exc
 
     analysis_date = today or datetime.date.today()
     source_dates = _validate_report_header(
@@ -673,7 +789,7 @@ def validate_rebalance_alignment(
     allocations = {allocation.ticker: allocation for allocation in report.allocations}
     current_weights = {position.holding.ticker: position.weight_pct for position in snapshot.positions}
     current_values = {position.holding.ticker: position.market_value for position in snapshot.positions}
-    planning_total_value = snapshot.total_value + (budget.amount if budget else Decimal(0))
+    planning_total_value = _planning_total_value(snapshot, budget)
     for assessment in review.position_assessments:
         allocation = allocations.get(assessment.ticker)
         if assessment.recommendation == "EXIT":
@@ -688,12 +804,18 @@ def validate_rebalance_alignment(
                 f"{assessment.recommendation} assessment."
             )
         target_value = planning_total_value * Decimal(str(allocation.target_weight_pct)) / Decimal(100)
+        no_trade_weight = _no_trade_target_weight(current_values[assessment.ticker], planning_total_value)
         if (
             assessment.recommendation == "HOLD"
             and target_value + portfolio_rebalance.MONEY_QUANTUM < current_values[assessment.ticker]
         ):
+            minimum_weight = no_trade_weight.quantize(
+                _WEIGHT_GUARDRAIL_QUANTUM,
+                rounding=decimal.ROUND_CEILING,
+            )
             raise RebalanceResearchError(
-                f"The target allocation would reduce {assessment.ticker} despite the validated HOLD assessment."
+                f"The target allocation would reduce {assessment.ticker} despite the validated HOLD assessment; "
+                f"its target_weight_pct must be at least {minimum_weight}%."
             )
         if (
             assessment.recommendation == "TRIM"
