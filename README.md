@@ -33,14 +33,10 @@ investment insights.
   recommendations when building or reviewing a portfolio. Add as much or as little detail as needed and answer
   focused clarification questions when necessary.
 - **Build Portfolio** Turn investment goals, risk tolerance, time horizon, and preferred themes into a practical
-  portfolio allocation.
-- **Portfolio Action Briefing** Turn current holdings, available cash, and optional watchlist names into a sourced,
-  prioritized action plan. Choose a horizon from today through the next three months, review portfolio risks and
-  catalysts, and export the resulting action list to CSV. Focus first on actions with the greatest urgency and
-  portfolio impact, with suggested quantities and values grounded in recent market prices.
+  portfolio allocation and prioritized implementation plan.
 - **Review Portfolio** Identify portfolio strengths, concentration risks, weak positions, and opportunities to
   improve diversification and resilience. Create an optional market-specific plan showing estimated trades, cash
-  impact, and before-and-after allocations, then continue directly to Portfolio Action Briefing.
+  impact, and before-and-after allocations.
 
 **Signals**
 - **Watchlist Monitor** Prioritize the names that deserve attention by combining news, technical signals, valuation,
@@ -164,8 +160,7 @@ Claude entries remain in `ai_vendors.env` for future support but cannot currentl
 > - **Stock analysis:** `ANALYZE_TICKER_ANALYZE_QUICK`, `ANALYZE_TICKER_ANALYZE`,
 >   `COMPARE_INVESTMENTS_ANALYZE`, `COMPARE_INVESTMENTS_ANALYZE_SCENARIO`, `DIVIDEND_EVENT_ANALYZE`,
 >   `IPO_ANALYZER_ANALYZE`
-> - **Portfolio:** `BUILD_PORTFOLIO_ANALYZE`, `REVIEW_PORTFOLIO_ANALYZE`,
->   `PORTFOLIO_ACTION_BRIEFING_ANALYZE`
+> - **Portfolio:** `BUILD_PORTFOLIO_ANALYZE`, `REVIEW_PORTFOLIO_ANALYZE`
 > - **Signals:** `WATCHLIST_MONITOR_ANALYZE`, `EARNINGS_CATALYST_TRACKER_ANALYZE`
 >
 > **Uploaded-document model recommendation:** Configure tasks that analyze uploaded files, currently
@@ -175,9 +170,8 @@ Claude entries remain in `ai_vendors.env` for future support but cannot currentl
 ### Data storage
 
 AlphaLab does not persist portfolio or watchlist data in an application database. Feature inputs and the latest
-successful result are stored in user-scoped browser storage for convenience. Portfolio Action Briefing submits the
-current request for on-demand processing, returns a streamed response, and retains no server-side portfolio record.
-Redis, when configured, is used only for temporary application data and bounded analysis caches.
+successful result are stored in user-scoped browser storage for convenience. Redis, when configured, is used only for
+temporary application data and bounded analysis caches.
 
 **Optional configurations:**
 

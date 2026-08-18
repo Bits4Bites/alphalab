@@ -14,3 +14,4 @@
 - impr(build-portfolio): Add adaptive structured research, verified market data, and deterministic sizing.
 - impr(build-portfolio): Add focused prioritized action planning with deterministic transition sizing.
 - impr(review-portfolio): Add focused structured review and conditional evidence-backed rebalance planning.
+- remove(portfolio): Retire the standalone Portfolio Action Briefing feature.

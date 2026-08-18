@@ -308,16 +308,6 @@
                             <strong>Disclaimer:</strong> This is AI-assisted research and not financial advice.
                             Verify suitability, prices, tax treatment, and execution details independently.
                         </div>
-                        <div class="alert alert-primary d-flex flex-wrap align-items-center
-                                    justify-content-between gap-2 mb-3 no-print" role="note">
-                            <div>
-                                Turn this review into a prioritized, time-boxed Portfolio Action Briefing.
-                            </div>
-                            <button type="button" class="btn btn-primary btn-sm"
-                                    id="continue-to-briefing-btn">
-                                Continue to Action Briefing
-                            </button>
-                        </div>
                         <div id="review-result">
                             {% if cached_review %}
                                 {% with report=cached_review.payload %}
@@ -403,10 +393,6 @@ const REVIEW_HORIZONS = [
 ];
 const REVIEW_TAX_CONTEXTS = ['unknown', 'taxable', 'tax-advantaged'];
 const MONEY_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/;
-const ACTION_BRIEFING_STORAGE_FEATURE = 'portfolio-action-briefing';
-const ACTION_BRIEFING_STORAGE_VERSION = 1;
-const ACTION_BRIEFING_TICKER_PATTERN = /^[A-Z0-9][A-Z0-9.-]{0,19}$/;
-const MAX_HOLDINGS = 20;
 const PRINT_TITLE = {{ ('Portfolio Review - ' ~ app_name) | tojson }};
 let currentRebalancePlan =
     {% if cached_rebalance %}{{ cached_rebalance.payload.plan | tojson }}{% else %}null{% endif %};
@@ -876,59 +862,6 @@ function exportRebalanceCsv() {
     window.setTimeout(function() { URL.revokeObjectURL(url); }, 0);
 }
 
-function isCompatibleBriefingHoldings(value) {
-    if (typeof value !== 'string') return false;
-    const seen = new Set();
-    let count = 0;
-    for (const rawLine of value.split(/\r?\n/)) {
-        const line = rawLine.trim();
-        if (!line) continue;
-        count += 1;
-        const fields = line.split(',').map(function(field) { return field.trim(); });
-        const ticker = (fields[0] || '').toUpperCase();
-        if (count > MAX_HOLDINGS || ![2, 3].includes(fields.length)
-                || !ACTION_BRIEFING_TICKER_PATTERN.test(ticker) || seen.has(ticker)
-                || !MONEY_PATTERN.test(fields[1]) || Number(fields[1]) <= 0
-                || (fields.length === 3 && fields[2] && !MONEY_PATTERN.test(fields[2]))) {
-            return false;
-        }
-        seen.add(ticker);
-    }
-    return count > 0;
-}
-
-function handoffToActionBriefing() {
-    const values = collectInputs();
-    let imported = false;
-    if (isCompatibleBriefingHoldings(values.holdings)) {
-        try {
-            imported = window.AlphaLabStorage.save(
-                ACTION_BRIEFING_STORAGE_FEATURE,
-                {
-                    holdings: values.holdings,
-                    target_market: values.target_market,
-                    watchlist: '',
-                    horizon: '7',
-                    focus_preset: '',
-                    focus_custom: '',
-                    risk_tolerance: values.risk_tolerance,
-                    available_cash: values.available_cash,
-                    additional_context: [values.investment_goals, values.scenario]
-                        .filter(Boolean).join('. ').slice(0, 2000),
-                    payload: null,
-                    generated_at: null
-                },
-                {schemaVersion: ACTION_BRIEFING_STORAGE_VERSION}
-            );
-        } catch (error) {
-            imported = false;
-        }
-    }
-    window.location.href = imported
-        ? '/portfolio-action-briefing?source=review-portfolio'
-        : '/portfolio-action-briefing';
-}
-
 window.addEventListener('alphalab:storage-warning', function(event) {
     const detail = event.detail;
     if (!detail || (detail.feature !== REVIEW_STORAGE_FEATURE && detail.feature !== null)) return;
@@ -960,7 +893,6 @@ window.addEventListener('DOMContentLoaded', function() {
     document.getElementById('print-review-btn').addEventListener('click', printVisibleResults);
     document.getElementById('print-rebalance-btn').addEventListener('click', printVisibleResults);
     document.getElementById('export-rebalance-btn').addEventListener('click', exportRebalanceCsv);
-    document.getElementById('continue-to-briefing-btn').addEventListener('click', handoffToActionBriefing);
 });
 
 document.getElementById('review-form').addEventListener('input', function() {

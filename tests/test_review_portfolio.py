@@ -781,6 +781,8 @@ def test_page_renders_structured_caches_and_post_storage_ui(
     assert 'data-portfolio-intent-handoff-target="review"' in response.text
     assert "safeCsvCell" in response.text
     assert "portfolio-rebalance-" in response.text
+    assert "portfolio-action-briefing" not in response.text
+    assert client.get("/portfolio-action-briefing").status_code == 404
 
     handoff_script = pathlib.Path("app/static/js/draft-portfolio-intent.js").read_text(encoding="utf-8")
     assert "handoff.target !== expectedTarget" in handoff_script

@@ -21,7 +21,6 @@ from app.routers import (
     ipo_analyzer,
     ipo_scanner,
     market_outlook,
-    portfolio_action_briefing,
     portfolio_intent,
     review_portfolio,
     sector_rotation_radar,
@@ -145,7 +144,6 @@ app.include_router(dashboard.router)
 app.include_router(analyze_ticker.router)
 app.include_router(compare_investments.router)
 app.include_router(build_portfolio.router)
-app.include_router(portfolio_action_briefing.router)
 app.include_router(portfolio_intent.router)
 app.include_router(review_portfolio.router)
 app.include_router(dividend_event.router)

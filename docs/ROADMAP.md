@@ -1,6 +1,6 @@
 # AlphaLab Roadmap
 
-Last updated: 2026-07-22
+Last updated: 2026-08-18
 
 This roadmap prioritizes features that improve investment decisions, research continuity, and actionable outcomes.
 AlphaLab should remain simple and server-rendered where practical, using browser storage for small user-owned data and
@@ -12,19 +12,6 @@ technical item is required to deliver a business feature safely or reliably.
 ## Business Features
 
 ### High Priority
-
-#### Portfolio Action Briefing
-
-Turn current holdings and watchlist names into an on-demand, prioritized view of what deserves attention now.
-
-**Status: Implemented**
-
-**MVP**
-
-- Rank sourced actions by timing urgency, potential impact, portfolio exposure, and evidence confidence.
-- Show portfolio risks and upcoming events within a selected today, 7-day, 2-week, 1-month, or 3-month horizon.
-- Import Review Portfolio inputs from user-scoped browser storage without retaining holdings server-side.
-- Calculate suggested quantities and estimated values deterministically from validated delayed market snapshots.
 
 #### Compare Investments
 
@@ -138,7 +125,7 @@ and additional privacy and operational controls.
 
 ## Recommended Sequence
 
-Portfolio Action Briefing, Compare Investments, and Review Portfolio: Rebalance Planner have been delivered.
+Compare Investments and Review Portfolio: Rebalance Planner have been delivered.
 
 1. Filing and Earnings Report Analyzer.
 2. Investment Thesis Tracker.

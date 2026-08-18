@@ -4,8 +4,8 @@ This internal file tracks the remaining architecture reviews for AlphaLab flows 
 
 Remaining inventory:
 
-- 7 reviewable flows
-- 18 configured AI tasks used by these flows
+- 6 reviewable flows
+- 16 configured AI tasks used by these flows
 - All remaining items are authenticated feature flows
 
 ## Remaining flows
@@ -39,20 +39,13 @@ Remaining inventory:
    - Flow: validate input -> AI-validate market -> write discovery prompt -> discover candidates with web search ->
      parse candidates -> write verification prompt -> verify candidates with web search -> cache result
 
-5. **Portfolio Action Briefing**
-    - [ ] Reviewed
-    - [ ] Implemented
-    - Tasks: `PORTFOLIO_ACTION_BRIEFING_BUILD_PROMPT`, `PORTFOLIO_ACTION_BRIEFING_ANALYZE`
-    - Flow: validate holdings and watchlist -> fetch current quotes -> write research prompt -> run structured web research ->
-      optionally repair invalid output without web search -> rank and size actions deterministically
-
-6. **Watchlist Monitor**
+5. **Watchlist Monitor**
     - [ ] Reviewed
     - [ ] Implemented
     - Tasks: `WATCHLIST_MONITOR_BUILD_PROMPT`, `WATCHLIST_MONITOR_ANALYZE`
     - Flow: validate watchlist inputs -> write monitoring prompt -> run web-enabled analysis -> cache result
 
-7. **Earnings Catalyst Tracker**
+6. **Earnings Catalyst Tracker**
     - [ ] Reviewed
     - [ ] Implemented
     - Tasks: `EARNINGS_CATALYST_TRACKER_BUILD_PROMPT`, `EARNINGS_CATALYST_TRACKER_ANALYZE`
