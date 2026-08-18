@@ -724,9 +724,7 @@ def _contribution_only_candidates(
     for allocation in payload.allocations:
         target_tickers.add(allocation.ticker)
         if allocation.ticker == "CASH":
-            sizing_basis: build_portfolio_schemas.ActionSizingBasis = (
-                "contribution" if budget else "target_portfolio"
-            )
+            sizing_basis: build_portfolio_schemas.ActionSizingBasis = "contribution" if budget else "target_portfolio"
             sizing_pct = (
                 float(Decimal(str(allocation.target_value or 0)) / budget.amount * Decimal(100))
                 if budget
@@ -759,9 +757,7 @@ def _contribution_only_candidates(
             action = "BUY"
         else:
             current_weight = (
-                Decimal(str(holding.market_value)) / holdings_value * Decimal(100)
-                if holdings_value > 0
-                else Decimal(0)
+                Decimal(str(holding.market_value)) / holdings_value * Decimal(100) if holdings_value > 0 else Decimal(0)
             )
             action = "ADD" if current_weight < Decimal(str(allocation.target_weight_pct)) else "HOLD"
 
@@ -903,9 +899,7 @@ def _allow_trades_candidates(
 
         if action in {"TRIM", "EXIT"}:
             sizing_basis: build_portfolio_schemas.ActionSizingBasis = "current_position"
-            sizing_pct = (
-                trade.trade_quantity / trade.current_quantity * 100 if trade.current_quantity > 0 else 100.0
-            )
+            sizing_pct = trade.trade_quantity / trade.current_quantity * 100 if trade.current_quantity > 0 else 100.0
         elif action in {"BUY", "ADD"}:
             sizing_basis = "target_portfolio"
             sizing_pct = trade.target_weight_pct
@@ -921,7 +915,9 @@ def _allow_trades_candidates(
                 display_name=(
                     allocation.display_name
                     if allocation is not None
-                    else holding.display_name if holding is not None else ticker
+                    else holding.display_name
+                    if holding is not None
+                    else ticker
                 ),
                 action=action,
                 target_weight_pct=trade.target_weight_pct if trade.target_weight_pct > 0 else None,
@@ -1081,23 +1077,15 @@ def _ordered_action_ids(
     candidates: list[build_portfolio_schemas.BuildActionCandidate] | None = None,
 ) -> list[str]:
     annotation_by_id = {annotation.action_id: annotation for annotation in annotations}
-    remaining_dependencies = {
-        annotation.action_id: set(annotation.dependency_ids) for annotation in annotations
-    }
+    remaining_dependencies = {annotation.action_id: set(annotation.dependency_ids) for annotation in annotations}
     if candidates is not None:
-        sale_ids = {
-            candidate.action_id for candidate in candidates if candidate.action in {"TRIM", "EXIT"}
-        }
+        sale_ids = {candidate.action_id for candidate in candidates if candidate.action in {"TRIM", "EXIT"}}
         for candidate in candidates:
             if candidate.action in {"BUY", "ADD"}:
                 remaining_dependencies[candidate.action_id].update(sale_ids)
     ordered: list[str] = []
     while remaining_dependencies:
-        ready = [
-            action_id
-            for action_id, dependencies in remaining_dependencies.items()
-            if not dependencies
-        ]
+        ready = [action_id for action_id, dependencies in remaining_dependencies.items() if not dependencies]
         if not ready:
             raise ActionPlanError("The action plan contains a circular dependency.")
         ready.sort(
@@ -1134,9 +1122,7 @@ def parse_action_plan_research(
     known_source_ids = {source.id for source in report.sources}
     annotations = {annotation.action_id: annotation for annotation in action_plan.actions}
     candidates_by_id = {candidate.action_id: candidate for candidate in candidates}
-    sale_ids = {
-        candidate.action_id for candidate in candidates if candidate.action in {"TRIM", "EXIT"}
-    }
+    sale_ids = {candidate.action_id for candidate in candidates if candidate.action in {"TRIM", "EXIT"}}
     for annotation in action_plan.actions:
         if set(annotation.source_ids) - known_source_ids:
             raise ActionPlanError("The action plan references an unknown source ID.")
@@ -1148,8 +1134,7 @@ def parse_action_plan_research(
                 raise ActionPlanError("A higher-priority action cannot depend on a lower-priority action.")
         if candidates_by_id[annotation.action_id].action in {"BUY", "ADD"}:
             if any(
-                _ACTION_PRIORITY_ORDER[annotations[sale_id].priority]
-                > _ACTION_PRIORITY_ORDER[annotation.priority]
+                _ACTION_PRIORITY_ORDER[annotations[sale_id].priority] > _ACTION_PRIORITY_ORDER[annotation.priority]
                 for sale_id in sale_ids
             ):
                 raise ActionPlanError("A purchase cannot have higher priority than a required trim or exit.")
@@ -1196,8 +1181,7 @@ def build_action_plan_payload(
         candidate = candidates_by_id[action_id]
         annotation = annotations_by_id[action_id]
         dependencies = [
-            f"{candidates_by_id[dependency_id].action.replace('_', ' ')} "
-            f"{candidates_by_id[dependency_id].ticker}"
+            f"{candidates_by_id[dependency_id].action.replace('_', ' ')} {candidates_by_id[dependency_id].ticker}"
             for dependency_id in annotation.dependency_ids
         ]
         actions.append(

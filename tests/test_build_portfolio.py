@@ -918,9 +918,7 @@ def test_cache_and_task_policy() -> None:
     stale["generated_at"] = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=74)).isoformat()
     assert build_portfolio.is_valid_cache_payload(stale) is False
     stale_action = copy.deepcopy(action_payload)
-    stale_action["generated_at"] = (
-        datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=17)
-    ).isoformat()
+    stale_action["generated_at"] = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=17)).isoformat()
     assert build_portfolio.is_valid_action_plan_cache_payload(stale_action) is False
 
     prompt_task = config.ai_task_settings.tasks["BUILD_PORTFOLIO_BUILD_PROMPT"]

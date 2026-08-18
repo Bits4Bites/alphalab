@@ -462,9 +462,7 @@ def parse_review_research(
                 try:
                     normalized_values.append(portfolio_market_data.normalize_symbol(ticker_value, market))
                 except portfolio_market_data.MarketSymbolError as exc:
-                    raise ReviewResearchError(
-                        "The scenario assessment contains an invalid market ticker."
-                    ) from exc
+                    raise ReviewResearchError("The scenario assessment contains an invalid market ticker.") from exc
             if len(normalized_values) != len(set(normalized_values)):
                 raise ReviewResearchError("The scenario assessment contains duplicate normalized tickers.")
             normalized_scenario_lists[field_name] = normalized_values
